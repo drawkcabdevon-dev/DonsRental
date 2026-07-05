@@ -1,0 +1,6 @@
+google-adk>=0.1.0
+google-cloud-aiplatform>=1.73.0
+google-generativeai>=0.8.3
+google-api-python-client>=2.131.0
+google-auth-httplib2>=0.2.0
+sendgrid>=6.11.0

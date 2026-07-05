@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Don's Rental - Book Online</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <h1 class="logo">&#x1F698; Don's Rental</h1>
+      <p class="tagline">Book your vehicle — no calls needed</p>
+    </div>
+  </header>
+
+  <main class="container" id="app">
+
+    <!-- Progress -->
+    <div class="progress" id="progressBar">
+      <div class="progress-step active">Vehicle</div>
+      <div class="progress-step">Dates</div>
+      <div class="progress-step">Your Info</div>
+      <div class="progress-step">License</div>
+      <div class="progress-step">Confirm</div>
+    </div>
+
+    <!-- Step 1 -->
+    <section class="step active" id="s1"><h2>Choose Vehicle</h2><div class="vehicle-grid" id="vehicleGrid"></div></section>
+
+    <!-- Step 2 -->
+    <section class="step" id="s2">
+      <h2>Pick Dates</h2>
+      <form class="form-stacked">
+        <div class="form-row">
+          <div class="form-group"><label>Pick-up Date</label><input type="date" id="puDate" /></div>
+          <div class="form-group"><label>Pick-up Time</label><input type="time" id="puTime" value="09:00" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Return Date</label><input type="date" id="reDate" /></div>
+          <div class="form-group"><label>Return Time</label><input type="time" id="reTime" value="17:00" /></div>
+        </div>
+        <p class="cost-preview" id="costPreview"></p>
+      </form>
+    </section>
+
+    <!-- Step 3 -->
+    <section class="step" id="s3">
+      <h2>Your Details</h2>
+      <form class="form-stacked">
+        <div class="form-group"><label>Full Name *</label><input type="text" id="cName" /></div>
+        <div class="form-group"><label>Email *</label><input type="email" id="cEmail" /></div>
+        <div class="form-group"><label>Phone *</label><input type="tel" id="cPhone" /></div>
+        <div class="form-group"><label>Address</label><textarea id="cAddress" rows="2"></textarea></div>
+      </form>
+    </section>
+
+    <!-- Step 4 -->
+    <section class="step" id="s4">
+      <h2>Driver's License</h2>
+      <div class="scan-area">
+        <p class="scan-hint">Take a photo to auto-fill &darr;</p>
+        <div class="scan-buttons">
+          <button type="button" class="btn btn-outline" id="scanCameraBtn">&#x1F4F7; Take Photo</button>
+          <button type="button" class="btn btn-outline" id="scanUploadBtn">&#x1F4C1; Upload</button>
+        </div>
+        <input type="file" id="scanFileInput" accept="image/*" style="display:none" />
+        <div class="scan-preview hidden" id="scanPreview">
+          <img id="scanPreviewImg" /><p class="form-note" id="scanStatus"></p>
+        </div>
+      </div>
+      <hr class="divider" />
+      <p class="form-label-manual">Or enter manually:</p>
+      <form class="form-stacked">
+        <div class="form-group"><label>License Number *</label><input type="text" id="lNum" /></div>
+        <div class="form-row">
+          <div class="form-group"><label>Expiry *</label><input type="date" id="lExpiry" /></div>
+          <div class="form-group"><label>Issuing Authority *</label><input type="text" id="lIssuer" placeholder="e.g. DMV" /></div>
+        </div>
+        <div class="form-group"><label>License Class</label><input type="text" id="lClass" placeholder="e.g. B" /></div>
+      </form>
+    </section>
+
+    <!-- Step 5 -->
+    <section class="step" id="s5">
+      <h2>Confirm</h2>
+      <div class="review-card" id="reviewCard"></div>
+      <button class="btn btn-primary btn-lg" id="confirmBtn">&#x2713; Confirm Booking</button>
+    </section>
+
+    <!-- Nav -->
+    <div class="nav-buttons" id="navButtons">
+      <button class="btn btn-outline" id="prevBtn" disabled>&larr; Back</button>
+      <button class="btn btn-primary" id="nextBtn">Next &rarr;</button>
+    </div>
+
+    <!-- Camera overlay -->
+    <div class="camera-overlay hidden" id="cameraOverlay">
+      <div class="camera-view"><video id="cameraVideo" autoplay playsinline></video><div class="camera-frame"><span>Position license inside frame</span></div></div>
+      <div class="camera-actions">
+        <button class="btn btn-outline" id="cameraCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="cameraCaptureBtn">&#x1F4F7; Capture</button>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay hidden" id="loadingOverlay"><div class="spinner"></div><p id="loadingMsg">Processing&hellip;</p></div>
+
+    <!-- Success -->
+    <section class="step" id="sSuccess">
+      <div class="success-card">
+        <div class="success-icon">&#x2705;</div>
+        <h2>Booking Confirmed!</h2>
+        <p id="successMsg"></p>
+        <button class="btn btn-primary" onclick="location.reload()">Book Another</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer"><div class="container"><p>&copy; 2026 Don's Rental</p></div></footer>
+  <script src="app.js"></script>
+</body>
+</html>

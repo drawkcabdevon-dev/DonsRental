@@ -15,11 +15,10 @@ from datetime import datetime
 
 import vertexai
 from google.adk.agents import LlmAgent
-from google.adk.tools import tool
 from google.auth import default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-import google.generativeai as genai
+from google import genai as genai_client
 import sendgrid
 from sendgrid.helpers.mail import Mail, Email, To, Content
 
@@ -42,8 +41,12 @@ LOCATION = os.environ.get('VERTEX_AI_LOCATION', 'us-central1')
 # ── INIT CLIENTS ───────────────────────────
 vertexai.init(project=PROJECT, location=LOCATION)
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+_genai_client = None
+def _get_genai():
+    global _genai_client
+    if _genai_client is None and GEMINI_API_KEY:
+        _genai_client = genai_client.Client(api_key=GEMINI_API_KEY)
+    return _genai_client
 
 _sheets = None
 _sg     = None
@@ -100,10 +103,9 @@ def _ensure_bookings_sheet(svc):
         logging.error(f'Sheet setup: {e}')
 
 # ══════════════════════════════════════════
-#  TOOLS
+#  TOOLS  (plain functions — ADK auto-detects them)
 # ══════════════════════════════════════════
 
-@tool
 def get_vehicles() -> list:
     """Fetch available rental vehicles with their daily rates.
 
@@ -144,7 +146,6 @@ def get_vehicles() -> list:
         return defaults
 
 
-@tool
 def scan_license(image_base64: str) -> dict:
     """Extract driver's license fields from a photo using Gemini.
 
@@ -155,7 +156,8 @@ def scan_license(image_base64: str) -> dict:
         Dict with keys: name, licenseNumber, expiryDate, issuingAuthority,
         dateOfBirth, address, licenseClass (null if not visible).
     """
-    if not GEMINI_API_KEY:
+    client = _get_genai()
+    if not client:
         return {'error': 'Gemini API key not configured'}
 
     if ',' in image_base64:
@@ -167,7 +169,6 @@ def scan_license(image_base64: str) -> dict:
         return {'error': 'Invalid base64 image data'}
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = """Extract the following fields from this driver's license image.
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
   "name": full name,
@@ -178,10 +179,10 @@ Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
   "address": address,
   "licenseClass": class/type.
 If a field is not visible, set it to null."""
-        response = model.generate_content([
-            {'mime_type': 'image/jpeg', 'data': image_bytes},
-            prompt,
-        ])
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=[prompt, {'mime_type': 'image/jpeg', 'data': image_bytes}],
+        )
         raw = response.text.strip()
         raw = re.sub(r'^```(?:json)?\s*', '', raw)
         raw = re.sub(r'\s*```$', '', raw)
@@ -192,7 +193,6 @@ If a field is not visible, set it to null."""
         return {'error': str(e)}
 
 
-@tool
 def create_booking(
     vehicle_id: str,
     vehicle_name: str,
@@ -394,6 +394,6 @@ Be concise and friendly.
 agent = LlmAgent(
     name="rental_booking_agent",
     model="gemini-2.0-flash-001",
-    instructions=AGENT_INSTRUCTIONS,
+    instruction=AGENT_INSTRUCTIONS,
     tools=[get_vehicles, scan_license, create_booking],
 )

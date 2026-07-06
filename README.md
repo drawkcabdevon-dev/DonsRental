@@ -51,3 +51,4 @@ python -c "from main import *; print(get_vehicles())"
 | `frontend/index.html` | Booking SPA |
 | `frontend/app.js` | Frontend logic (camera, forms, agent calls) |
 | `frontend/style.css` | Responsive styling |
+

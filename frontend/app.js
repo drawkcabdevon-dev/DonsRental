@@ -1,13 +1,10 @@
 /**
  * Don's Rental — Booking SPA Frontend
- * Communicates with the Vertex AI Agent Engine backend.
+ * Calls the backend (/api/chat) which proxies to Agent Engine.
  */
 
-// ── CONFIG ─────────────────────────────────
-// After deploying the agent, paste its query endpoint here:
-const AGENT_ENDPOINT = 'REPLACE_WITH_AGENT_ENGINE_URL';
+const API = '/api/chat';
 
-// ── STATE ──────────────────────────────────
 const state = {
   step: 1, vehicles: [], selectedVehicle: null,
   puDate: '', puTime: '09:00', reDate: '', reTime: '17:00',
@@ -18,34 +15,14 @@ const state = {
 
 const $ = id => document.getElementById(id);
 
-// ── INIT ───────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const today = new Date();
   const ymd = today.toISOString().slice(0, 10);
   $('puDate').min = $('reDate').min = ymd;
   $('puDate').value = ymd;
-
   bindEvents();
-  loadVehicles();
-});
-
-// ── VEHICLES ───────────────────────────────
-async function loadVehicles() {
-  // Try agent endpoint first
-  if (AGENT_ENDPOINT && AGENT_ENDPOINT !== 'REPLACE_WITH_AGENT_ENGINE_URL') {
-    try {
-      const resp = await fetch(AGENT_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: 'List available vehicles with rates.' }),
-      });
-      const data = await resp.json();
-      // Try to extract structured data from the response
-      if (data.response) return fallbackVehicles();
-    } catch (_) {}
-  }
   fallbackVehicles();
-}
+});
 
 function fallbackVehicles() {
   state.vehicles = [
@@ -82,7 +59,6 @@ function updateCost() {
   $('costPreview').textContent = `${state.selectedVehicle.name}: ${d} day${d>1?'s':''} × $${state.selectedVehicle.rate} = $${d * state.selectedVehicle.rate}`;
 }
 
-// ── EVENTS ─────────────────────────────────
 function bindEvents() {
   $('nextBtn').onclick = goNext;
   $('prevBtn').onclick = goPrev;
@@ -143,7 +119,6 @@ function validate(step) {
   return true;
 }
 
-// ── CAMERA / SCAN ──────────────────────────
 async function openCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -181,19 +156,6 @@ async function processLicense(img) {
   $('scanStatus').textContent = 'Scanning...';
   $('scanStatus').style.color = '#888';
 
-  // If agent endpoint is configured, use it
-  if (AGENT_ENDPOINT && AGENT_ENDPOINT !== 'REPLACE_WITH_AGENT_ENGINE_URL') {
-    try {
-      const resp = await fetch(AGENT_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: `Extract license info from this image: ${img.slice(0, 100)}...` }),
-      });
-      // For now, fall through to demo mode
-    } catch (_) {}
-  }
-
-  // Demo: simulate scan result
   await new Promise(r => setTimeout(r, 1500));
   if (!$('cName').value) { $('cName').value = 'John Doe'; state.cName = 'John Doe'; }
   if (!$('lNum').value) { $('lNum').value = 'DL-' + Math.random().toString(36).slice(2, 8).toUpperCase(); state.lNum = $('lNum').value; }
@@ -203,7 +165,6 @@ async function processLicense(img) {
   $('scanStatus').style.color = '#1a8a3f';
 }
 
-// ── REVIEW ─────────────────────────────────
 function populateReview() {
   const v = state.selectedVehicle, d = Math.max(1, Math.ceil((new Date(state.reDate) - new Date(state.puDate)) / 86400000) + 1);
   $('reviewCard').innerHTML = `
@@ -214,37 +175,30 @@ function populateReview() {
     <div class="review-row"><span class="review-label">License</span><span class="review-value">${state.lNum}</span></div>`;
 }
 
-// ── SUBMIT ─────────────────────────────────
 async function submitBooking() {
   if (state.submitting) return;
   state.submitting = true;
   $('confirmBtn').disabled = true;
   showLoading('Creating booking...');
 
-  const payload = {
-    vehicle: `${state.selectedVehicle?.id}: ${state.selectedVehicle?.name}`,
-    pickup: `${state.puDate} at ${state.puTime}`,
-    return: `${state.reDate} at ${state.reTime}`,
-    customer: { name: state.cName, email: state.cEmail, phone: state.cPhone, address: state.cAddress },
-    license: { number: state.lNum, expiry: state.lExpiry, issuer: state.lIssuer, class: state.lClass },
-  };
-
-  // Build a structured prompt for the agent
-  const prompt = `Create a new booking: Vehicle: ${payload.vehicle}. Pickup: ${payload.pickup}. Return: ${payload.return}. Customer name: ${payload.customer.name}. Email: ${payload.customer.email}. Phone: ${payload.customer.phone}. Address: ${payload.customer.address}. License: ${payload.license.number} (exp ${payload.license.expiry}, ${payload.license.issuer}). Confirm and finalize.`;
+  const msg = [
+    `Create booking. Vehicle: ${state.selectedVehicle?.name}.`,
+    `Pickup: ${state.puDate} at ${state.puTime}. Return: ${state.reDate} at ${state.reTime}.`,
+    `Customer: ${state.cName}, email ${state.cEmail}, phone ${state.cPhone}, address ${state.cAddress}.`,
+    `License: ${state.lNum}, expires ${state.lExpiry}, issuer ${state.lIssuer}, class ${state.lClass}.`,
+    'Confirm and finalize the booking.'
+  ].join(' ');
 
   try {
-    if (AGENT_ENDPOINT && AGENT_ENDPOINT !== 'REPLACE_WITH_AGENT_ENGINE_URL') {
-      const resp = await fetch(AGENT_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-      const data = await resp.json();
-      showSuccess(data.booking_id || 'BK-' + Date.now().toString(36).toUpperCase());
-    } else {
-      await new Promise(r => setTimeout(r, 1500));
-      showSuccess('BK-' + Date.now().toString(36).toUpperCase());
-    }
+    const resp = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg }),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    hideLoading();
+    showSuccess(data.booking_ref || 'BK-' + Date.now().toString(36).toUpperCase());
   } catch (err) {
     hideLoading();
     state.submitting = false;

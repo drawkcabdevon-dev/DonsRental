@@ -114,8 +114,9 @@ def deploy(env_vars: dict):
     print(f'  from vertexai import agent_engines')
     print(f'  remote = agent_engines.get("{remote.resource_name}")')
     print(f'  remote.query(input="Show me available vehicles")')
-    print(f'\nTo build the frontend into it:')
-    print(f'  URL will be available in Agent Builder UI')
+    print(f'\nTo wire the frontend backend (Cloud Run):')
+    print(f'  export AGENT_ENGINE="{remote.resource_name}"')
+    print(f'  ./deploy-cloudrun.sh')
     print(f'{"="*50}\n')
 
 

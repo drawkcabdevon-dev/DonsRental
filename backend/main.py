@@ -3,17 +3,15 @@ Don's Rental — Cloud Run Backend
 Proxies requests to Vertex AI Agent Engine.
 """
 
-import os
 import json
-import re
 import logging
+import os
+import re
 
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from google.auth import default
-from google.auth.transport.requests import Request as AuthRequest
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO)
@@ -39,15 +37,17 @@ class ChatResponse(BaseModel):
     response: str
     booking_ref: str = ""
 
-_creds = None
+MDS_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
-def _get_token():
-    global _creds
-    if _creds is None:
-        _creds, _ = default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
-    if not _creds.valid:
-        _creds.refresh(AuthRequest())
-    return _creds.token
+def _get_token() -> str:
+    import requests as rq
+    resp = rq.get(
+        MDS_URL,
+        headers={"Metadata-Flavor": "Google"},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    return resp.json()["access_token"]
 
 def _extract_booking_ref(text: str) -> str:
     m = re.search(r'(BK[-:][A-Z0-9]+)', text, re.I)

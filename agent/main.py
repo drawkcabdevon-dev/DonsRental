@@ -394,10 +394,8 @@ def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
 #  AGENT DEFINITION
 # ══════════════════════════════════════════
 
-agent = LlmAgent(
-    name="rental_booking_agent",
-    model="gemini-2.0-flash-001",
-    instruction=lambda: f"""
+def _build_instruction(ctx=None):
+    return f"""
 You are a friendly car rental booking assistant for {_company()}.
 
 Your job is to help customers complete a booking step by step. Use your
@@ -415,6 +413,10 @@ Booking flow:
 
 Important: Always confirm with the customer before calling create_booking.
 Be concise and friendly.
-""",
+"""
+agent = LlmAgent(
+    name="rental_booking_agent",
+    model="gemini-2.5-flash",
+    instruction=_build_instruction,
     tools=[get_vehicles, scan_license, create_booking],
 )

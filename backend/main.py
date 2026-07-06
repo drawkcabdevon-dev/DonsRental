@@ -8,12 +8,13 @@ import json
 import re
 import logging
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from google.auth import default
+from google.auth.transport.requests import Request as AuthRequest
 from pydantic import BaseModel
-import vertexai
-from vertexai import agent_engines
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,8 +22,6 @@ logger = logging.getLogger(__name__)
 AGENT_ENGINE = os.environ.get("AGENT_ENGINE", "")
 PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
 LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
-
-vertexai.init(project=PROJECT, location=LOCATION)
 
 app = FastAPI(title="Don's Rental Backend")
 
@@ -40,47 +39,65 @@ class ChatResponse(BaseModel):
     response: str
     booking_ref: str = ""
 
-_remote = None
+_creds = None
 
-def _get_engine():
-    global _remote
-    if _remote is None and AGENT_ENGINE:
-        _remote = agent_engines.get(AGENT_ENGINE)
-    return _remote
+def _get_token():
+    global _creds
+    if _creds is None:
+        _creds, _ = default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    if not _creds.valid:
+        _creds.refresh(AuthRequest())
+    return _creds.token
 
 def _extract_booking_ref(text: str) -> str:
     m = re.search(r'(BK[-:][A-Z0-9]+)', text, re.I)
     return m.group(1).upper() if m else ""
 
-def _flatten_events(result):
-    if isinstance(result, str):
-        return result
-    if isinstance(result, dict):
-        content = result.get("content") or result.get("response") or result.get("output", "")
-        if isinstance(content, list):
+async def _query_agent(message: str) -> str:
+    if not AGENT_ENGINE:
+        raise HTTPException(503, "Agent Engine not configured (set AGENT_ENGINE env var)")
+
+    token = _get_token()
+    url = f"https://{LOCATION}-aiplatform.googleapis.com/v1beta1/{AGENT_ENGINE}:streamQuery"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    body = {"input": {"message": message, "user_id": "web-user"}}
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        async with client.stream("POST", url, json=body, headers=headers) as resp:
+            if resp.status_code != 200:
+                text = await resp.aread()
+                raise HTTPException(502, f"Agent Engine error ({resp.status_code}): {text.decode(errors='replace')[:500]}")
+
             parts = []
-            for item in content:
-                if isinstance(item, dict):
-                    for p in item.get("parts", []):
-                        if isinstance(p, dict) and "text" in p:
-                            parts.append(p["text"])
+            async for line in resp.aiter_lines():
+                if not line:
+                    continue
+                try:
+                    chunk = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if "error_code" in chunk:
+                    logger.warning("Agent error: %s - %s", chunk.get("error_code"), chunk.get("error_message"))
+                    continue
+                content = chunk.get("content") or {}
+                for p in content.get("parts", []):
+                    if "text" in p:
+                        parts.append(p["text"])
             return " ".join(parts)
-        return str(content or json.dumps(result))
-    return str(result)
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    engine = _get_engine()
-    if not engine:
-        raise HTTPException(503, "Agent Engine not configured (set AGENT_ENGINE env var)")
-
     logger.info("Sending to agent: %s", req.message[:100])
     try:
-        result = engine.query(input=req.message)
-        text = _flatten_events(result)
+        text = await _query_agent(req.message)
         ref = _extract_booking_ref(text)
         logger.info("Agent response (len=%d, ref=%s)", len(text), ref or "none")
         return ChatResponse(response=text, booking_ref=ref)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Agent query failed: %s", e)
         raise HTTPException(502, f"Agent error: {e}")

@@ -113,17 +113,17 @@ def get_vehicles() -> list:
     Falls back to defaults if the sheet is unavailable.
     """
     defaults = [
-        {'id': 'v1', 'name': 'Economy Sedan', 'type': 'economy', 'rate': 35, 'icon': '🚗', 'desc': 'Compact & fuel-efficient.'},
-        {'id': 'v2', 'name': 'Mid-size SUV',   'type': 'suv',     'rate': 55, 'icon': '🚙', 'desc': 'Spacious ride with extra cargo room.'},
-        {'id': 'v3', 'name': 'Pickup Truck',   'type': 'truck',   'rate': 65, 'icon': '🛻', 'desc': 'Haul gear or equipment with ease.'},
-        {'id': 'v4', 'name': 'Luxury Sedan',   'type': 'luxury',  'rate': 85, 'icon': '🚘', 'desc': 'Premium comfort for special occasions.'},
+        {'id': 'v1', 'name': 'Economy Sedan', 'type': 'economy', 'rate': 35, 'icon': '🚗', 'desc': 'Compact & fuel-efficient.', 'image_url': ''},
+        {'id': 'v2', 'name': 'Mid-size SUV',   'type': 'suv',     'rate': 55, 'icon': '🚙', 'desc': 'Spacious ride with extra cargo room.', 'image_url': ''},
+        {'id': 'v3', 'name': 'Pickup Truck',   'type': 'truck',   'rate': 65, 'icon': '🛻', 'desc': 'Haul gear or equipment with ease.', 'image_url': ''},
+        {'id': 'v4', 'name': 'Luxury Sedan',   'type': 'luxury',  'rate': 85, 'icon': '🚘', 'desc': 'Premium comfort for special occasions.', 'image_url': ''},
     ]
     try:
         svc = _get_sheets()
         if not svc or not SPREADSHEET_ID:
             return defaults
         result = svc.spreadsheets().values().get(
-            spreadsheetId=SPREADSHEET_ID, range='Vehicles!A:F',
+            spreadsheetId=SPREADSHEET_ID, range='Vehicles!A:G',
         ).execute()
         rows = result.get('values', [])
         if len(rows) < 2:
@@ -275,14 +275,18 @@ def create_booking(
     except Exception as e:
         logging.error(f'Sheet write: {e}')
 
-    # Send emails
-    email_ok = _send_emails(
-        b_id, customer_name, customer_email,
-        vehicle_name, pickup_date, pickup_time,
-        return_date, return_time, days, total,
-        license_number, license_expiry, license_issuer,
-        payment_method,
-    )
+    # Send emails (optional — skips gracefully if SendGrid not configured)
+    email_ok = False
+    try:
+        email_ok = _send_emails(
+            b_id, customer_name, customer_email,
+            vehicle_name, pickup_date, pickup_time,
+            return_date, return_time, days, total,
+            license_number, license_expiry, license_issuer,
+            payment_method,
+        )
+    except Exception as e:
+        logging.warning(f'Email skipped (optional feature): {e}')
 
     return {
         'booking_id': b_id,

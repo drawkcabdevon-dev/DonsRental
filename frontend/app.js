@@ -49,10 +49,10 @@ async function loadVehicles() {
 
 function fallbackVehicles() {
   state.vehicles = [
-    { id: 'v1', name: 'Economy Sedan', rate: 35, icon: '🚗', desc: 'Compact & fuel-efficient.' },
-    { id: 'v2', name: 'Mid-size SUV', rate: 55, icon: '🚙', desc: 'Spacious ride.' },
-    { id: 'v3', name: 'Pickup Truck', rate: 65, icon: '🛻', desc: 'Haul gear with ease.' },
-    { id: 'v4', name: 'Luxury Sedan', rate: 85, icon: '🚘', desc: 'Premium comfort.' },
+    { id: 'v1', name: 'Economy Sedan', rate: 35, icon: '🚗', desc: 'Compact & fuel-efficient.', image_url: '' },
+    { id: 'v2', name: 'Mid-size SUV', rate: 55, icon: '🚙', desc: 'Spacious ride.', image_url: '' },
+    { id: 'v3', name: 'Pickup Truck', rate: 65, icon: '🛻', desc: 'Haul gear with ease.', image_url: '' },
+    { id: 'v4', name: 'Luxury Sedan', rate: 85, icon: '🚘', desc: 'Premium comfort.', image_url: '' },
   ];
   renderVehicles();
 }
@@ -60,7 +60,7 @@ function fallbackVehicles() {
 function renderVehicles() {
   $('vehicleGrid').innerHTML = state.vehicles.map(v =>
     `<div class="vehicle-card${state.selectedVehicle?.id === v.id ? ' selected' : ''}" data-id="${v.id}">
-      <div class="vehicle-icon">${v.icon}</div>
+      ${v.image_url ? `<img src="${v.image_url}" alt="${v.name}" class="vehicle-photo" />` : `<div class="vehicle-icon">${v.icon}</div>`}
       <h3>${v.name}</h3>
       <p class="rate">$${v.rate}<span style="font-weight:400;font-size:.85rem;color:#888">/day</span></p>
       <p class="desc">${v.desc}</p>

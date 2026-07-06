@@ -1,0 +1,6 @@
+.git/
+.gitignore
+*.md
+agent/
+test_local.py
+deploy-cloudrun.sh

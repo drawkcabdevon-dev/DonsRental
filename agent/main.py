@@ -19,59 +19,60 @@ from google.auth import default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from google import genai as genai_client
-import sendgrid
-from sendgrid.helpers.mail import Mail, Email, To, Content
+try:
+    import sendgrid
+    from sendgrid.helpers.mail import Mail, Email, To, Content
+    _sendgrid_ok = True
+except ImportError:
+    _sendgrid_ok = False
 
 logging.basicConfig(level=logging.INFO)
 
-# ── CONFIG (from env vars) ─────────────────
-COMPANY_NAME  = os.environ.get('COMPANY_NAME', "Don's Rental")
-COMPANY_EMAIL = os.environ.get('COMPANY_EMAIL', 'bookings@donsrental.com')
-COMPANY_PHONE = os.environ.get('COMPANY_PHONE', '+1 (555) 000-0000')
-OWNER_EMAIL   = os.environ.get('OWNER_EMAIL', '')
+_initialized = False
 
-GEMINI_API_KEY    = os.environ.get('GEMINI_API_KEY', '')
-SENDGRID_API_KEY  = os.environ.get('SENDGRID_API_KEY', '')
-SPREADSHEET_ID    = os.environ.get('SPREADSHEET_ID', '')
-SHEETS_CREDENTIALS = os.environ.get('GOOGLE_SHEETS_CREDENTIALS', '')
+def _ensure_init():
+    global _initialized
+    if not _initialized:
+        p = os.environ.get('VERTEX_AI_PROJECT', 'onlineeverywhere')
+        l = os.environ.get('VERTEX_AI_LOCATION', 'us-central1')
+        vertexai.init(project=p, location=l)
+        _initialized = True
 
-PROJECT  = os.environ.get('VERTEX_AI_PROJECT', 'onlineeverywhere')
-LOCATION = os.environ.get('VERTEX_AI_LOCATION', 'us-central1')
-
-# ── INIT CLIENTS ───────────────────────────
-vertexai.init(project=PROJECT, location=LOCATION)
+def _env(key, default_val=''):
+    return os.environ.get(key, default_val)
 
 _genai_client = None
 def _get_genai():
     global _genai_client
-    if _genai_client is None and GEMINI_API_KEY:
-        _genai_client = genai_client.Client(api_key=GEMINI_API_KEY)
+    k = _env('GEMINI_API_KEY')
+    if _genai_client is None and k:
+        _genai_client = genai_client.Client(api_key=k)
     return _genai_client
 
-_sheets = None
-_sg     = None
-
+_sheets_svc = None
 def _get_sheets():
-    global _sheets
-    if _sheets:
-        return _sheets
-    if SHEETS_CREDENTIALS:
+    global _sheets_svc
+    if _sheets_svc:
+        return _sheets_svc
+    _ensure_init()
+    creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
+    if creds_json:
         creds = service_account.Credentials.from_service_account_info(
-            json.loads(SHEETS_CREDENTIALS),
+            json.loads(creds_json),
             scopes=['https://www.googleapis.com/auth/spreadsheets'],
         )
     else:
         creds, _ = default(scopes=['https://www.googleapis.com/auth/spreadsheets'])
-    _sheets = build('sheets', 'v4', credentials=creds)
-    return _sheets
+    _sheets_svc = build('sheets', 'v4', credentials=creds)
+    return _sheets_svc
 
+_sg = None
 def _get_sg():
     global _sg
-    if not _sg and SENDGRID_API_KEY:
-        _sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+    if not _sg and _env('SENDGRID_API_KEY') and _sendgrid_ok:
+        _sg = sendgrid.SendGridAPIClient(api_key=_env('SENDGRID_API_KEY'))
     return _sg
 
-# ── HELPERS ────────────────────────────────
 def _esc(s):
     return str(s or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
@@ -79,16 +80,19 @@ def _bid():
     return 'BK-' + uuid.uuid4().hex[:8].upper()
 
 def _ensure_bookings_sheet(svc):
+    sid = _env('SPREADSHEET_ID')
+    if not sid:
+        return
     try:
-        spreadsheet = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+        spreadsheet = svc.spreadsheets().get(spreadsheetId=sid).execute()
         existing = [s['properties']['title'] for s in spreadsheet.get('sheets', [])]
         if 'Bookings' not in existing:
             svc.spreadsheets().batchUpdate(
-                spreadsheetId=SPREADSHEET_ID,
+                spreadsheetId=sid,
                 body={'requests': [{'addSheet': {'properties': {'title': 'Bookings'}}}]},
             ).execute()
             svc.spreadsheets().values().update(
-                spreadsheetId=SPREADSHEET_ID,
+                spreadsheetId=sid,
                 range='Bookings!A1',
                 valueInputOption='USER_ENTERED',
                 body={'values': [[
@@ -102,8 +106,20 @@ def _ensure_bookings_sheet(svc):
     except Exception as e:
         logging.error(f'Sheet setup: {e}')
 
+def _company():
+    return _env('COMPANY_NAME', "Don's Rental")
+
+def _company_email():
+    return _env('COMPANY_EMAIL', 'bookings@donsrental.com')
+
+def _company_phone():
+    return _env('COMPANY_PHONE', '+1 (555) 000-0000')
+
+def _owner_email():
+    return _env('OWNER_EMAIL', '')
+
 # ══════════════════════════════════════════
-#  TOOLS  (plain functions — ADK auto-detects them)
+#  TOOLS
 # ══════════════════════════════════════════
 
 def get_vehicles() -> list:
@@ -118,12 +134,13 @@ def get_vehicles() -> list:
         {'id': 'v3', 'name': 'Pickup Truck',   'type': 'truck',   'rate': 65, 'icon': '🛻', 'desc': 'Haul gear or equipment with ease.', 'image_url': ''},
         {'id': 'v4', 'name': 'Luxury Sedan',   'type': 'luxury',  'rate': 85, 'icon': '🚘', 'desc': 'Premium comfort for special occasions.', 'image_url': ''},
     ]
+    sid = _env('SPREADSHEET_ID')
     try:
         svc = _get_sheets()
-        if not svc or not SPREADSHEET_ID:
+        if not svc or not sid:
             return defaults
         result = svc.spreadsheets().values().get(
-            spreadsheetId=SPREADSHEET_ID, range='Vehicles!A:G',
+            spreadsheetId=sid, range='Vehicles!A:G',
         ).execute()
         rows = result.get('values', [])
         if len(rows) < 2:
@@ -235,7 +252,6 @@ def create_booking(
     b_id = _bid()
     now  = datetime.utcnow().isoformat() + 'Z'
 
-    # Calculate days + total
     try:
         start = datetime.strptime(pickup_date, '%Y-%m-%d')
         end   = datetime.strptime(return_date, '%Y-%m-%d')
@@ -259,14 +275,14 @@ def create_booking(
         payment_method, total, '', '',
     ]
 
-    # Write to sheet
+    sid = _env('SPREADSHEET_ID')
     sheets_ok = False
     try:
         svc = _get_sheets()
-        if svc and SPREADSHEET_ID:
+        if svc and sid:
             _ensure_bookings_sheet(svc)
             svc.spreadsheets().values().append(
-                spreadsheetId=SPREADSHEET_ID,
+                spreadsheetId=sid,
                 range='Bookings!A:V',
                 valueInputOption='USER_ENTERED',
                 body={'values': [row]},
@@ -275,7 +291,6 @@ def create_booking(
     except Exception as e:
         logging.error(f'Sheet write: {e}')
 
-    # Send emails (optional — skips gracefully if SendGrid not configured)
     email_ok = False
     try:
         email_ok = _send_emails(
@@ -309,10 +324,15 @@ def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
         'bank_transfer': f'Transfer to: Bank: Your Bank | Account: 1234-5678 | Use ref {b_id}',
     }.get(pm, 'Details provided at pickup.')
 
+    cname = _company()
+    cemail = _company_email()
+    cphone = _company_phone()
+    oemail = _owner_email()
+
     invoice = f'''<!DOCTYPE html>
 <html><body style="font-family:Arial,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;">
 <div style="background:#0f3460;color:#fff;padding:24px 32px;border-radius:12px 12px 0 0;">
-  <h2 style="margin:0;">{_esc(COMPANY_NAME)}</h2>
+  <h2 style="margin:0;">{_esc(cname)}</h2>
   <p style="margin:4px 0 0;opacity:.85;">Booking Confirmation &amp; Invoice</p>
 </div>
 <div style="padding:24px 32px;border:1px solid #e0e0e0;border-top:0;border-radius:0 0 12px 12px;">
@@ -335,14 +355,14 @@ def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
   <h3 style="margin-top:24px;">License</h3>
   <p style="color:#555;">{_esc(lic_num)} (exp {_esc(lic_exp)}) &bull; {_esc(lic_iss)}</p>
   <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
-  <p style="color:#999;font-size:.85rem;">{_esc(COMPANY_NAME)} &bull; {_esc(COMPANY_PHONE)}</p>
+  <p style="color:#999;font-size:.85rem;">{_esc(cname)} &bull; {_esc(cphone)}</p>
 </div></body></html>'''
 
     try:
         msg = Mail(
-            from_email=Email(COMPANY_EMAIL, COMPANY_NAME),
+            from_email=Email(cemail, cname),
             to_emails=To(email),
-            subject=f'Booking Confirmation & Invoice — {COMPANY_NAME} (Ref: {b_id})',
+            subject=f'Booking Confirmation & Invoice — {cname} (Ref: {b_id})',
             html_content=Content('text/html', invoice),
         )
         sg.client.mail.send.post(request_body=msg.get())
@@ -356,12 +376,11 @@ def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
             logging.error(f'Retry also failed: {e2}')
             return False
 
-    # Notify owner
-    if OWNER_EMAIL:
+    if oemail:
         try:
             alert = Mail(
-                from_email=Email(COMPANY_EMAIL, COMPANY_NAME),
-                to_emails=To(OWNER_EMAIL),
+                from_email=Email(cemail, cname),
+                to_emails=To(oemail),
                 subject=f'New Booking: {name} — {vehicle} ({b_id})',
                 html_content=Content('text/html', f'<p>{name} booked {vehicle} from {pu_d} to {re_d}. Total: ${total}. Check your sheet.</p>'),
             )
@@ -375,8 +394,11 @@ def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
 #  AGENT DEFINITION
 # ══════════════════════════════════════════
 
-AGENT_INSTRUCTIONS = """
-You are a friendly car rental booking assistant for {company}.
+agent = LlmAgent(
+    name="rental_booking_agent",
+    model="gemini-2.0-flash-001",
+    instruction=lambda: f"""
+You are a friendly car rental booking assistant for {_company()}.
 
 Your job is to help customers complete a booking step by step. Use your
 tools to get vehicles, create bookings, and scan licenses.
@@ -393,11 +415,6 @@ Booking flow:
 
 Important: Always confirm with the customer before calling create_booking.
 Be concise and friendly.
-""".format(company=COMPANY_NAME)
-
-agent = LlmAgent(
-    name="rental_booking_agent",
-    model="gemini-2.0-flash-001",
-    instruction=AGENT_INSTRUCTIONS,
+""",
     tools=[get_vehicles, scan_license, create_booking],
 )

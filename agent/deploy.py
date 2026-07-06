@@ -17,12 +17,13 @@ import json
 from getpass import getpass
 
 from vertexai.preview.reasoning_engines import AdkApp
+from vertexai import agent_engines
 import vertexai
 
 from main import agent
 
 # ── CONFIG ─────────────────────────────────
-PROJECT  = os.environ.get('VERTEX_AI_PROJECT', 'onlineeverywhere')
+PROJECT  = os.environ.get('VERTEX_AI_PROJECT', 'renal-car-booking')
 LOCATION = os.environ.get('VERTEX_AI_LOCATION', 'us-central1')
 DISPLAY_NAME = os.environ.get('AGENT_DISPLAY_NAME', "Don's Rental Agent")
 
@@ -71,17 +72,38 @@ def deploy(env_vars: dict):
     vertexai.init(
         project=env_vars.get('PROJECT', PROJECT),
         location=env_vars.get('LOCATION', LOCATION),
+        staging_bucket='gs://renal-car-booking-agent-staging-069495',
     )
+
+    # Build env vars for the deployed agent
+    agent_env = {
+        'GEMINI_API_KEY': env_vars.get('GEMINI_API_KEY', os.environ.get('GEMINI_API_KEY', '')),
+        'SPREADSHEET_ID': env_vars.get('SPREADSHEET_ID', os.environ.get('SPREADSHEET_ID', '')),
+        'GOOGLE_SHEETS_CREDENTIALS': env_vars.get('GOOGLE_SHEETS_CREDENTIALS', os.environ.get('GOOGLE_SHEETS_CREDENTIALS', '')),
+        'SENDGRID_API_KEY': env_vars.get('SENDGRID_API_KEY', os.environ.get('SENDGRID_API_KEY', '')),
+        'COMPANY_NAME': env_vars.get('COMPANY_NAME', os.environ.get('COMPANY_NAME', "Don's Rental")),
+        'COMPANY_EMAIL': env_vars.get('COMPANY_EMAIL', os.environ.get('COMPANY_EMAIL', '')),
+        'COMPANY_PHONE': env_vars.get('COMPANY_PHONE', os.environ.get('COMPANY_PHONE', '')),
+        'OWNER_EMAIL': env_vars.get('OWNER_EMAIL', os.environ.get('OWNER_EMAIL', '')),
+    }
+    agent_env = {k: v for k, v in agent_env.items() if v}
 
     app = AdkApp(
         agent=agent,
-        display_name=DISPLAY_NAME,
+        env_vars=agent_env,
     )
 
     print('Uploading to Agent Engine (this takes ~2 minutes)...')
-    remote = app.deploy(
-        project=env_vars.get('PROJECT', PROJECT),
-        location=env_vars.get('LOCATION', LOCATION),
+    with open('requirements.txt') as f:
+        requirements_list = [l.strip() for l in f if l.strip() and not l.startswith('#')]
+    print(f'Requirements: {requirements_list}')
+
+    remote = agent_engines.create(
+        agent_engine=app,
+        display_name=DISPLAY_NAME,
+        requirements=requirements_list,
+        extra_packages=['./'],
+        env_vars=agent_env,
     )
 
     print(f'\n{"="*50}')
@@ -89,9 +111,9 @@ def deploy(env_vars: dict):
     print(f'{"="*50}')
     print(f'Resource Name: {remote.resource_name}')
     print(f'\nTo query the agent:')
-    print(f'  from vertexai.preview.reasoning_engines import AdkApp')
-    print(f'  app = AdkApp(agent=agent)')
-    print(f'  app.remote_query(resource_name="{remote.resource_name}", input="Show me available vehicles")')
+    print(f'  from vertexai import agent_engines')
+    print(f'  remote = agent_engines.get("{remote.resource_name}")')
+    print(f'  remote.query(input="Show me available vehicles")')
     print(f'\nTo build the frontend into it:')
     print(f'  URL will be available in Agent Builder UI')
     print(f'{"="*50}\n')
@@ -114,7 +136,7 @@ if __name__ == '__main__':
             'PROJECT': os.environ.get('VERTEX_AI_PROJECT', PROJECT),
             'LOCATION': os.environ.get('VERTEX_AI_LOCATION', LOCATION),
         }
-        missing = [k for k, v in env.items() if not v and k not in ('COMPANY_PHONE', 'OWNER_EMAIL', 'COMPANY_EMAIL')]
+        missing = [k for k, v in env.items() if not v and k not in ('COMPANY_PHONE', 'OWNER_EMAIL', 'COMPANY_EMAIL', 'GOOGLE_SHEETS_CREDENTIALS', 'SENDGRID_API_KEY')]
         if missing:
             print(f'Missing required env vars: {", ".join(missing)}')
             sys.exit(1)

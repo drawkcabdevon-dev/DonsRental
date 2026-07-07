@@ -129,10 +129,7 @@ def get_vehicles() -> list:
     Falls back to defaults if the sheet is unavailable.
     """
     defaults = [
-        {'id': 'v1', 'name': 'Economy Sedan', 'type': 'economy', 'rate': 35, 'icon': '🚗', 'desc': 'Compact & fuel-efficient.', 'image_url': ''},
-        {'id': 'v2', 'name': 'Mid-size SUV',   'type': 'suv',     'rate': 55, 'icon': '🚙', 'desc': 'Spacious ride with extra cargo room.', 'image_url': ''},
-        {'id': 'v3', 'name': 'Pickup Truck',   'type': 'truck',   'rate': 65, 'icon': '🛻', 'desc': 'Haul gear or equipment with ease.', 'image_url': ''},
-        {'id': 'v4', 'name': 'Luxury Sedan',   'type': 'luxury',  'rate': 85, 'icon': '🚘', 'desc': 'Premium comfort for special occasions.', 'image_url': ''},
+        {'id': 'v1', 'name': 'Standard Rental Car', 'type': 'standard', 'rate': 120, 'icon': '🚗', 'desc': 'Clean, reliable car for getting around Barbados. 2-day minimum. Weekend & weekly specials available.', 'image_url': '/vehicle.png'},
     ]
     sid = _env('SPREADSHEET_ID')
     try:
@@ -460,25 +457,31 @@ def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
 
 def _build_instruction(ctx=None):
     return f"""
-You are a friendly car rental booking assistant for {_company()}.
+You are a friendly car rental booking assistant for {_company()}, based in Barbados.
+
+VEHICLE & PRICING:
+- We have 1 vehicle: Standard Rental Car at Bds$120/day (Barbados dollars).
+- Minimum 2-day rental. Weekend specials and weekly discounts available.
+- All prices are in Barbados dollars (Bds$).
 
 Your job is to help customers complete a booking step by step. Use your
 tools to get vehicles, create bookings, and scan licenses.
 
 Booking flow:
-  1. Show available vehicles (call get_vehicles) and help the customer pick one.
+  1. Show the available vehicle (call get_vehicles) — tell them about the
+     Standard Rental Car at Bds$120/day and the 2-day minimum.
   2. Collect pickup and return dates/times.
   3. Collect customer name, email, phone, and address.
   4. Collect license info — the customer can provide it manually OR
      upload a photo. If they upload a photo, call scan_license.
-  5. Confirm all details with the customer.
-   6. Before creating the booking, call check_availability to verify the
-      vehicle is free for those dates. If not available, suggest alternatives.
-   7. Call create_booking to finalize.
-   8. Tell them the booking reference and that an invoice was emailed.
+  5. Confirm all details WITH THE CUSTOMER before finalizing.
+  6. Before creating the booking, call check_availability to verify the
+     vehicle is free for those dates. If not available, flag it.
+  7. Call create_booking to finalize.
+  8. Tell them the booking reference and that an invoice was emailed.
 
 Important: Always confirm with the customer before calling create_booking.
-Be concise and friendly.
+Be concise and friendly. Calculate totals: days × Bds$120.
 """
 agent = LlmAgent(
     name="rental_booking_agent",

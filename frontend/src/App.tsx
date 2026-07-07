@@ -28,6 +28,24 @@ function App() {
     totalCost: 0,
   });
 
+  // Auto-fill personal info from license scan
+  const handleLicenseScan = async (imageData: string) => {
+    try {
+      const extracted = await api.scanLicense(imageData);
+      if (extracted.customerName || extracted.customerEmail || extracted.customerPhone || extracted.customerAddress) {
+        setBooking((prev) => ({
+          ...prev,
+          customerName: extracted.customerName || prev.customerName,
+          customerEmail: extracted.customerEmail || prev.customerEmail,
+          customerPhone: extracted.customerPhone || prev.customerPhone,
+          customerAddress: extracted.customerAddress || prev.customerAddress,
+        }));
+      }
+    } catch {
+      // Silent fail — user can type manually on next step
+    }
+  };
+
   // Load vehicles on mount
   useEffect(() => {
     const loadVehicles = async () => {
@@ -84,14 +102,14 @@ function App() {
       return;
     }
     if (step === 3) {
-      if (!booking.customerName || !booking.customerEmail || !booking.customerPhone) {
-        setError('Please fill in required fields');
+      if (!booking.licenseNumber || !booking.licenseExpiry) {
+        setError('Please provide license details');
         return;
       }
     }
     if (step === 4) {
-      if (!booking.licenseNumber || !booking.licenseExpiry) {
-        setError('Please provide license details');
+      if (!booking.customerName || !booking.customerEmail || !booking.customerPhone) {
+        setError('Please fill in required fields');
         return;
       }
     }
@@ -161,7 +179,7 @@ function App() {
         {/* Progress Stepper */}
         <div style={{ marginBottom: 'var(--space-12)' }}>
           <ProgressStepper
-            steps={['Vehicle', 'Dates', 'Your Info', 'License', 'Confirm']}
+            steps={['Vehicle', 'Dates', 'License', 'Your Info', 'Confirm']}
             currentStep={bookingRef ? 5 : step}
           />
         </div>
@@ -253,36 +271,13 @@ function App() {
           </div>
         )}
 
-        {/* Step 3: Personal Information */}
+        {/* Step 3: License Verification (auto-fills personal info) */}
         {step === 3 && !bookingRef && (
           <div>
-            <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Your Information</h2>
-            <div style={{ maxWidth: '600px' }}>
-              <PersonalInfoForm
-                data={{
-                  name: booking.customerName || '',
-                  email: booking.customerEmail || '',
-                  phone: booking.customerPhone || '',
-                  address: booking.customerAddress || '',
-                }}
-                onChange={(field, value) => {
-                  const fieldMap: Record<string, string> = {
-                    name: 'customerName',
-                    email: 'customerEmail',
-                    phone: 'customerPhone',
-                    address: 'customerAddress',
-                  };
-                  handleBookingChange(fieldMap[field], value);
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: License Verification */}
-        {step === 4 && !bookingRef && (
-          <div>
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Driver's License</h2>
+            <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
+              Upload or take a photo of your license and we'll auto-fill your details. You can edit them on the next step.
+            </p>
             <div style={{ maxWidth: '600px' }}>
               <LicenseVerificationForm
                 data={{
@@ -297,6 +292,43 @@ function App() {
                     licenseExpiry: 'licenseExpiry',
                     licenseIssuer: 'licenseIssuer',
                     licenseClass: 'licenseClass',
+                  };
+                  handleBookingChange(fieldMap[field], value);
+                }}
+                onPhotoCapture={(file) => {
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                    const dataUrl = e.target?.result as string;
+                    handleLicenseScan(dataUrl);
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Personal Information (pre-filled from license scan) */}
+        {step === 4 && !bookingRef && (
+          <div>
+            <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Your Information</h2>
+            <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
+              Fields were auto-filled from your license scan. Review and correct if needed.
+            </p>
+            <div style={{ maxWidth: '600px' }}>
+              <PersonalInfoForm
+                data={{
+                  name: booking.customerName || '',
+                  email: booking.customerEmail || '',
+                  phone: booking.customerPhone || '',
+                  address: booking.customerAddress || '',
+                }}
+                onChange={(field, value) => {
+                  const fieldMap: Record<string, string> = {
+                    name: 'customerName',
+                    email: 'customerEmail',
+                    phone: 'customerPhone',
+                    address: 'customerAddress',
                   };
                   handleBookingChange(fieldMap[field], value);
                 }}

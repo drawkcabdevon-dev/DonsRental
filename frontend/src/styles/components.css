@@ -689,3 +689,124 @@ a:hover {
 .opacity-50 { opacity: 0.5; }
 .opacity-75 { opacity: 0.75; }
 .opacity-90 { opacity: 0.9; }
+
+/* ─────────────────────────────────────────────────
+   Mobile Responsiveness
+   ───────────────────────────────────────────────── */
+
+/* Dates & Pricing grid: 2 columns on desktop, stack on mobile */
+@media (max-width: 768px) {
+  .dates-pricing-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Tablet and below */
+@media (max-width: 768px) {
+  /* Responsive text sizes */
+  h1 { font-size: var(--font-size-3xl); }
+  h2 { font-size: var(--font-size-2xl); }
+
+  /* Stack grid layouts */
+  .grid-cols-2 { grid-template-columns: 1fr; }
+
+  /* Progress stepper: horizontal scroll on small screens */
+  .progress-stepper {
+    gap: var(--space-2);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--space-2);
+  }
+  .progress-step {
+    min-width: 70px;
+    flex-shrink: 0;
+  }
+  .progress-label {
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+  }
+  .progress-circle {
+    width: 32px;
+    height: 32px;
+    font-size: var(--font-size-sm);
+  }
+  .progress-step:not(:last-child)::after {
+    top: 16px;
+  }
+
+  /* Stack two-column layouts */
+  .flex-row-on-desktop {
+    flex-direction: column;
+  }
+
+  /* Stack nav buttons vertically */
+  .nav-buttons {
+    flex-direction: column;
+  }
+
+  /* Full-width on mobile */
+  .w-full-on-mobile {
+    width: 100%;
+  }
+
+  /* Reduce main content padding */
+  main {
+    padding: var(--space-6) var(--space-4) !important;
+  }
+
+  /* Card padding reduction */
+  .card {
+    padding: var(--space-4);
+  }
+
+  /* Header adjustments */
+  header h1 {
+    font-size: var(--font-size-2xl) !important;
+  }
+  header p {
+    font-size: var(--font-size-sm) !important;
+  }
+}
+
+/* Phone only */
+@media (max-width: 480px) {
+  h1 { font-size: var(--font-size-2xl); }
+  h2 { font-size: var(--font-size-xl); }
+
+  body {
+    font-size: var(--font-size-sm);
+  }
+
+  .btn {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--font-size-xs);
+  }
+
+  .btn-lg {
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--font-size-sm);
+  }
+
+  .p-2xl {
+    padding: var(--space-6);
+  }
+
+  /* Camera overlay buttons */
+  .camera-capture-btn {
+    bottom: 20px !important;
+    font-size: var(--font-size-sm) !important;
+    padding: var(--space-3) var(--space-4) !important;
+  }
+  .camera-cancel-btn {
+    bottom: 80px !important;
+    font-size: var(--font-size-sm) !important;
+    padding: var(--space-2) var(--space-4) !important;
+  }
+}
+
+/* Landscape + tablet portrait prevention */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

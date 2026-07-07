@@ -120,7 +120,7 @@ export function LicenseVerificationForm({
 
                 const captureBtn = document.createElement('button');
                 captureBtn.textContent = '📷 Capture';
-                captureBtn.className = 'btn btn-primary btn-lg';
+                captureBtn.className = 'btn btn-primary btn-lg camera-capture-btn';
                 captureBtn.style.position = 'fixed';
                 captureBtn.style.bottom = '40px';
                 captureBtn.style.left = '50%';
@@ -129,8 +129,8 @@ export function LicenseVerificationForm({
                 document.body.appendChild(captureBtn);
 
                 const cancelBtn = document.createElement('button');
-                cancelBtn.textContent = 'Cancel';
-                cancelBtn.className = 'btn btn-outline btn-lg';
+                cancelBtn.textContent = '✕ Cancel';
+                cancelBtn.className = 'btn btn-outline btn-lg camera-cancel-btn';
                 cancelBtn.style.position = 'fixed';
                 cancelBtn.style.bottom = '100px';
                 cancelBtn.style.left = '50%';

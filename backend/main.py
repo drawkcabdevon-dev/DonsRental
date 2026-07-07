@@ -37,6 +37,24 @@ class ChatResponse(BaseModel):
     response: str
     booking_ref: str = ""
 
+class BookingRequest(BaseModel):
+    vehicleId: str = ""
+    customerName: str = ""
+    customerEmail: str = ""
+    customerPhone: str = ""
+    customerAddress: str = ""
+    pickupDate: str = ""
+    pickupTime: str = ""
+    returnDate: str = ""
+    returnTime: str = ""
+    dropoffLocation: str = ""
+    licenseNumber: str = ""
+    licenseExpiry: str = ""
+    licenseIssuer: str = ""
+    licenseClass: str = ""
+    totalDays: int = 1
+    totalCost: float = 0
+
 MDS_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
 def _get_token() -> str:
@@ -105,6 +123,37 @@ async def chat(req: ChatRequest):
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "engine_configured": bool(AGENT_ENGINE)}
+
+VEHICLES = [
+    {
+        "id": "v1",
+        "name": "Standard Rental Car",
+        "rate": 120,
+        "seats": 5,
+        "transmission": "automatic",
+        "fuelType": "petrol",
+        "description": "Clean, reliable car for getting around Barbados. 2-day minimum. Weekend & weekly specials available.",
+        "imageUrl": "/dons-car.png",
+        "features": ["Air Conditioning", "2-Day Minimum", "Weekend Specials", "Free Drop-off"],
+    }
+]
+
+@app.get("/api/vehicles")
+async def get_vehicles():
+    return {"vehicles": VEHICLES}
+
+@app.post("/api/bookings")
+async def create_booking(req: BookingRequest):
+    ref = "BK-" + os.urandom(4).hex().upper()
+    logger.info("Booking created: %s by %s (%s)", ref, req.customerName, req.customerEmail)
+    return {
+        "success": True,
+        "bookingId": ref,
+        "vehicleId": req.vehicleId,
+        "customerName": req.customerName,
+        "totalDays": req.totalDays,
+        "totalCost": req.totalCost,
+    }
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 if os.path.isdir(FRONTEND_DIR):

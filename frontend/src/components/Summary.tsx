@@ -40,7 +40,7 @@ export function BookingSummary({ booking, vehicle }: BookingSummaryProps) {
       
       <Card className="bg-bau-black text-white p-2xl border-4 border-bau-yellow">
         <p className="text-sm text-uppercase opacity-75 mb-sm">Total Cost (BBD)</p>
-        <p className="text-4xl font-extrabold text-bau-yellow">${booking.totalCost}</p>
+        <p className="text-4xl font-extrabold text-bau-yellow">Bds${booking.totalCost}</p>
       </Card>
     </div>
   );

@@ -150,9 +150,9 @@ function App() {
       <header style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-8) 0', borderBottom: 'var(--border-thick) solid var(--color-yellow)' }}>
         <div style={{ maxWidth: 'var(--max-width-container)', marginLeft: 'auto', marginRight: 'auto', paddingLeft: 'var(--space-6)', paddingRight: 'var(--space-6)' }}>
           <h1 style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 'var(--font-weight-extrabold)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>
-            🏎️ Don's Rental
+            🏎️ Don's Car Rental
           </h1>
-          <p style={{ fontSize: 'var(--font-size-lg)', opacity: 0.75 }}>Book your vehicle — no calls needed</p>
+          <p style={{ fontSize: 'var(--font-size-lg)', opacity: 0.75 }}>Barbados car rental — book online, no calls needed</p>
         </div>
       </header>
 
@@ -366,7 +366,7 @@ function App() {
       <footer style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-6) 0', borderTop: 'var(--border-thick) solid var(--color-yellow)', marginTop: 'var(--space-16)' }}>
         <div style={{ maxWidth: 'var(--max-width-container)', marginLeft: 'auto', marginRight: 'auto', paddingLeft: 'var(--space-6)', paddingRight: 'var(--space-6)', textAlign: 'center', fontSize: 'var(--font-size-sm)' }}>
           <p style={{ opacity: 0.75 }}>
-            © 2024 Don's Rental. All rights reserved. | Powered by Vertex AI Agent Engine
+            © 2024 Don's Car Rental — Barbados. All rights reserved. | Powered by Vertex AI Agent Engine
           </p>
         </div>
       </footer>

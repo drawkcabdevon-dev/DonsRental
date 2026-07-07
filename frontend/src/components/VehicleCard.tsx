@@ -29,8 +29,8 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
       <h3 className="text-2xl font-bold mb-sm text-uppercase">{vehicle.name}</h3>
       
       <p className="text-2xl font-bold text-bau-yellow mb-lg">
-        ${vehicle.rate}
-        <span className="text-sm font-normal text-bau-gray">/day</span>
+        Bds${vehicle.rate}
+        <span className="text-sm font-normal text-bau-gray">/day (BBD)</span>
       </p>
       
       <p className="text-base mb-lg text-bau-gray">{vehicle.description}</p>
@@ -89,7 +89,7 @@ export function PricingBreakdown({
         </div>
         <div className="flex justify-between text-base">
           <span className="font-semibold">Rate:</span>
-          <span className="font-bold">${dailyRate}/day</span>
+          <span className="font-bold">Bds${dailyRate}/day</span>
         </div>
       </div>
       
@@ -97,7 +97,7 @@ export function PricingBreakdown({
       
       <div className="flex justify-between text-xl">
         <span className="font-extrabold text-uppercase">Total:</span>
-        <span className="font-extrabold text-bau-yellow text-2xl">${totalCost}</span>
+        <span className="font-extrabold text-bau-yellow text-2xl">Bds${totalCost}</span>
       </div>
     </Card>
   );

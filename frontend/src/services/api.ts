@@ -12,51 +12,18 @@ export const api = {
       return data.vehicles || [];
     } catch (error) {
       console.error('API Error:', error);
-      // Return fallback vehicles for demo
+      // Return fallback vehicle from poster
       return [
         {
           id: 'v1',
-          name: 'Compact Sedan',
-          rate: 45,
+          name: 'Standard Rental Car',
+          rate: 120,
           seats: 5,
           transmission: 'automatic',
           fuelType: 'petrol',
-          description: 'Fuel-efficient and easy to park',
-          icon: '🚗',
-          features: ['Air Conditioning', 'USB Charging', 'Bluetooth'],
-        },
-        {
-          id: 'v2',
-          name: 'Mid-Size SUV',
-          rate: 65,
-          seats: 7,
-          transmission: 'automatic',
-          fuelType: 'petrol',
-          description: 'Spacious and comfortable for families',
-          icon: '🚙',
-          features: ['All-Wheel Drive', 'Backup Camera', 'Navigation'],
-        },
-        {
-          id: 'v3',
-          name: 'Premium Sedan',
-          rate: 95,
-          seats: 5,
-          transmission: 'automatic',
-          fuelType: 'petrol',
-          description: 'Luxury and style for special occasions',
-          icon: '🚘',
-          features: ['Leather Seats', 'Sunroof', 'Premium Audio'],
-        },
-        {
-          id: 'v4',
-          name: 'Pickup Truck',
-          rate: 75,
-          seats: 5,
-          transmission: 'automatic',
-          fuelType: 'diesel',
-          description: 'Perfect for cargo and rugged terrain',
-          icon: '🛻',
-          features: ['4WD', 'Towing Package', 'Bed Liner'],
+          description: 'Clean, reliable car for getting around Barbados. 2-day minimum. Weekend & weekly specials available.',
+          imageUrl: '/dons-car.png',
+          features: ['Air Conditioning', '2-Day Minimum', 'Weekend Specials', 'Free Drop-off'],
         },
       ];
     }

@@ -101,9 +101,65 @@ export function LicenseVerificationForm({
           
           <button
             type="button"
-            onClick={() => {
-              // Camera capture logic would go here
-              alert('Camera capture coming soon. For now, use Upload Photo.');
+            onClick={async () => {
+              try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.playsInline = true;
+                video.autoplay = true;
+                video.style.position = 'fixed';
+                video.style.top = '0';
+                video.style.left = '0';
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'cover';
+                video.style.zIndex = '9999';
+                video.style.backgroundColor = 'black';
+                document.body.appendChild(video);
+
+                const captureBtn = document.createElement('button');
+                captureBtn.textContent = '📷 Capture';
+                captureBtn.className = 'btn btn-primary btn-lg';
+                captureBtn.style.position = 'fixed';
+                captureBtn.style.bottom = '40px';
+                captureBtn.style.left = '50%';
+                captureBtn.style.transform = 'translateX(-50%)';
+                captureBtn.style.zIndex = '10000';
+                document.body.appendChild(captureBtn);
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.className = 'btn btn-outline btn-lg';
+                cancelBtn.style.position = 'fixed';
+                cancelBtn.style.bottom = '100px';
+                cancelBtn.style.left = '50%';
+                cancelBtn.style.transform = 'translateX(-50%)';
+                cancelBtn.style.zIndex = '10000';
+                document.body.appendChild(cancelBtn);
+
+                const cleanup = () => {
+                  stream.getTracks().forEach(t => t.stop());
+                  video.remove();
+                  captureBtn.remove();
+                  cancelBtn.remove();
+                };
+
+                captureBtn.onclick = () => {
+                  const canvas = document.createElement('canvas');
+                  canvas.width = video.videoWidth;
+                  canvas.height = video.videoHeight;
+                  canvas.getContext('2d')!.drawImage(video, 0, 0);
+                  const dataUrl = canvas.toDataURL('image/jpeg');
+                  onChange('photoUrl', dataUrl);
+                  onPhotoCapture?.(new File([dataUrl], 'license.jpg', { type: 'image/jpeg' }));
+                  cleanup();
+                };
+
+                cancelBtn.onclick = cleanup;
+              } catch (err) {
+                alert('Camera access denied. Please use Upload Photo instead.');
+              }
             }}
             className="btn btn-outline btn-lg"
           >

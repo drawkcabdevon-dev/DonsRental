@@ -1,12 +1,13 @@
 """
 Don's Rental — Cloud Run Backend
-Proxies requests to Vertex AI Agent Engine.
+Proxies requests to Vertex AI Agent Engine + license OCR via Gemini.
 """
 
 import json
 import logging
 import os
 import re
+import base64
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -18,6 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 AGENT_ENGINE = os.environ.get("AGENT_ENGINE", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
 LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
 
@@ -54,6 +56,9 @@ class BookingRequest(BaseModel):
     licenseClass: str = ""
     totalDays: int = 1
     totalCost: float = 0
+
+class ScanLicenseRequest(BaseModel):
+    image: str
 
 MDS_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
@@ -154,6 +159,66 @@ async def create_booking(req: BookingRequest):
         "totalDays": req.totalDays,
         "totalCost": req.totalCost,
     }
+
+@app.post("/api/scan-license")
+async def scan_license(req: ScanLicenseRequest):
+    """Extract Barbados driver's license fields from an image using Gemini."""
+    if not GEMINI_API_KEY:
+        raise HTTPException(503, "GEMINI_API_KEY not configured")
+
+    image_data = req.image
+    # Strip data URL prefix if present (e.g. "data:image/jpeg;base64,...")
+    if "," in image_data:
+        image_data = image_data.split(",", 1)[1]
+
+    # Validate base64
+    try:
+        base64.b64decode(image_data, validate=True)
+    except Exception:
+        return {"error": "Invalid base64 image data"}
+
+    prompt = """Extract the following fields from this Barbados driver's license image.
+Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
+  "customerName": full name on the license,
+  "licenseNumber": the license/driver number,
+  "licenseExpiry": expiration date,
+  "licenseIssuer": issuing authority (e.g. 'Barbados Licensing Authority'),
+  "licenseClass": license class/type,
+  "customerAddress": address on the license.
+If a field is not visible, set it to null."""
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    body = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {"inline_data": {"mime_type": "image/jpeg", "data": image_data}}
+            ]
+        }]
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(url, json=body)
+            if resp.status_code != 200:
+                logger.error("Gemini API error: %s - %s", resp.status_code, resp.text[:300])
+                return {"error": f"Vision API error ({resp.status_code})"}
+
+            result = resp.json()
+            text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+
+            # Strip markdown code fences
+            text = re.sub(r'^```(?:json)?\s*', '', text)
+            text = re.sub(r'\s*```$', '', text)
+
+            parsed = json.loads(text)
+            logger.info("License scan result: name=%s license=%s", parsed.get("customerName"), parsed.get("licenseNumber"))
+            return parsed
+    except json.JSONDecodeError:
+        return {"raw": text, "error": "Could not parse Gemini response as JSON"}
+    except Exception as e:
+        logger.error("License scan failed: %s", e)
+        return {"error": str(e)}
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 if os.path.isdir(FRONTEND_DIR):

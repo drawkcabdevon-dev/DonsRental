@@ -106,6 +106,6 @@ async def chat(req: ChatRequest):
 async def health():
     return {"status": "ok", "engine_configured": bool(AGENT_ENGINE)}
 
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 if os.path.isdir(FRONTEND_DIR):
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

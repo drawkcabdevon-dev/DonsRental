@@ -15,13 +15,25 @@ const state = {
 
 const $ = id => document.getElementById(id);
 
+function _ymd(d) { return d.toISOString().slice(0, 10); }
+function _addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+
 document.addEventListener('DOMContentLoaded', () => {
   const today = new Date();
-  const ymd = today.toISOString().slice(0, 10);
-  $('puDate').min = $('reDate').min = ymd;
-  $('puDate').value = ymd;
+  const tomorrow = _addDays(today, 1);
+  const dayAfter = _addDays(tomorrow, 1);
+
+  state.puDate = _ymd(tomorrow);
+  state.reDate = _ymd(dayAfter);
+
+  $('puDate').min = _ymd(today);
+  $('puDate').value = state.puDate;
+  $('reDate').min = _ymd(tomorrow);
+  $('reDate').value = state.reDate;
+
   bindEvents();
   fallbackVehicles();
+  updateCost();
 });
 
 function fallbackVehicles() {
@@ -64,9 +76,28 @@ function bindEvents() {
   $('prevBtn').onclick = goPrev;
   $('confirmBtn').onclick = submitBooking;
 
-  $('puDate').onchange = e => { state.puDate = e.target.value; updateCost(); };
+  $('puDate').onchange = e => {
+    state.puDate = e.target.value;
+    const pu = new Date(state.puDate + 'T' + (state.puTime || '09:00'));
+    const reMin = _addDays(pu, 1);
+    $('reDate').min = _ymd(reMin);
+    if (state.reDate <= state.puDate) {
+      state.reDate = _ymd(reMin);
+      $('reDate').value = state.reDate;
+    }
+    updateCost();
+  };
   $('puTime').onchange = e => { state.puTime = e.target.value; };
-  $('reDate').onchange = e => { state.reDate = e.target.value; updateCost(); };
+  $('reDate').onchange = e => {
+    state.reDate = e.target.value;
+    if (state.reDate <= state.puDate) {
+      alert('Return date must be after pickup date.');
+      const pu = new Date(state.puDate + 'T' + (state.puTime || '09:00'));
+      state.reDate = _ymd(_addDays(pu, 1));
+      $('reDate').value = state.reDate;
+    }
+    updateCost();
+  };
   $('reTime').onchange = e => { state.reTime = e.target.value; };
 
   ['cName','cEmail','cPhone','cAddress','lNum','lExpiry','lIssuer','lClass'].forEach(id => {

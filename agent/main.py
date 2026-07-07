@@ -210,6 +210,61 @@ If a field is not visible, set it to null."""
         return {'error': str(e)}
 
 
+def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> dict:
+    """Check if a vehicle is available for the given date range.
+
+    Reads existing bookings from the sheet and checks for date overlaps.
+
+    Args:
+        vehicle_id: Vehicle identifier (e.g. v1, v2).
+        pickup_date: ISO date string (YYYY-MM-DD).
+        return_date: ISO date string (YYYY-MM-DD).
+
+    Returns:
+        Dict with {available: bool, conflicts: [...]}.
+    """
+    sid = _env('SPREADSHEET_ID')
+    try:
+        svc = _get_sheets()
+        if not svc or not sid:
+            return {'available': True, 'conflicts': [], 'note': 'Could not check sheet'}
+
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=sid, range='Bookings!A:V',
+        ).execute()
+        rows = result.get('values', [])
+        if len(rows) < 2:
+            return {'available': True, 'conflicts': []}
+
+        headers = [h.strip().lower() for h in rows[0]]
+        conflicts = []
+        pu = pickup_date.replace('-', '')
+        re = return_date.replace('-', '')
+
+        for row in rows[1:]:
+            obj = {}
+            for i, h in enumerate(headers):
+                obj[h] = row[i] if i < len(row) else ''
+            if obj.get('vehicleid') != vehicle_id:
+                continue
+            existing_pu = obj.get('pickupdate', '').replace('-', '')
+            existing_re = obj.get('returndate', '').replace('-', '')
+            if existing_pu and existing_re:
+                if not (re < existing_pu or pu > existing_re):
+                    conflicts.append({
+                        'existing_booking': obj.get('bookingid', ''),
+                        'pickup': obj.get('pickupdate'),
+                        'return': obj.get('returndate'),
+                        'customer': obj.get('custname', ''),
+                        'status': obj.get('bookingstatus', 'Confirmed'),
+                    })
+
+        return {'available': len(conflicts) == 0, 'conflicts': conflicts}
+    except Exception as e:
+        logging.error(f'Availability check: {e}')
+        return {'available': True, 'conflicts': [], 'note': f'Error: {e}'}
+
+
 def create_booking(
     vehicle_id: str,
     vehicle_name: str,
@@ -258,6 +313,15 @@ def create_booking(
         days  = max(1, (end - start).days + 1)
     except Exception:
         days = 1
+
+    avail = check_availability(vehicle_id, pickup_date, return_date)
+    if not avail.get('available'):
+        msg = f"Vehicle '{vehicle_name}' is not available for those dates."
+        c = avail.get('conflicts', [])
+        if c:
+            msg += f" Existing booking: {c[0].get('pickup')} to {c[0].get('return')} (status: {c[0].get('status', 'Confirmed')})."
+        msg += " Suggest alternative dates or vehicles."
+        return {'booking_id': None, 'success': False, 'message': msg, 'conflicts': c}
 
     rate = 0
     for v in get_vehicles():
@@ -408,8 +472,10 @@ Booking flow:
   4. Collect license info — the customer can provide it manually OR
      upload a photo. If they upload a photo, call scan_license.
   5. Confirm all details with the customer.
-  6. Call create_booking to finalize.
-  7. Tell them the booking reference and that an invoice was emailed.
+   6. Before creating the booking, call check_availability to verify the
+      vehicle is free for those dates. If not available, suggest alternatives.
+   7. Call create_booking to finalize.
+   8. Tell them the booking reference and that an invoice was emailed.
 
 Important: Always confirm with the customer before calling create_booking.
 Be concise and friendly.
@@ -418,5 +484,5 @@ agent = LlmAgent(
     name="rental_booking_agent",
     model="gemini-2.5-flash",
     instruction=_build_instruction,
-    tools=[get_vehicles, scan_license, create_booking],
+    tools=[get_vehicles, scan_license, check_availability, create_booking],
 )

@@ -4,3 +4,4 @@
 agent/
 test_local.py
 deploy-cloudrun.sh
+frontend/node_modules/

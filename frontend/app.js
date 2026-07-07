@@ -141,12 +141,10 @@ function renderStep() {
 }
 
 function validate(step) {
-  switch (step) {
-    case 1: if (!state.selectedVehicle) return alert('Pick a vehicle.'), false;
-    case 2: if (!state.puDate || !state.reDate) return alert('Pick dates.'), false;
-    case 3: if (!state.cName || !state.cEmail || !state.cPhone) return alert('Fill in name, email, phone.'), false;
-    case 4: if (!state.lNum || !state.lExpiry || !state.lIssuer) return alert('Fill in license fields or scan.'), false;
-  }
+  if (step === 1 && !state.selectedVehicle) return alert('Pick a vehicle.'), false;
+  if (step === 2 && (!state.puDate || !state.reDate)) return alert('Pick dates.'), false;
+  if (step === 3 && (!state.cName || !state.cEmail || !state.cPhone)) return alert('Fill in name, email, phone.'), false;
+  if (step === 4 && (!state.lNum || !state.lExpiry || !state.lIssuer)) return alert('Fill in license fields or scan.'), false;
   return true;
 }
 

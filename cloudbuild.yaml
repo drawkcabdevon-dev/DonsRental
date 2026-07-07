@@ -37,14 +37,14 @@ steps:
       - '80'
       - --set-env-vars
       - >-
-        AGENT_ENGINE=${_AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${_REGION}
+        AGENT_ENGINE=${_AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=us-central1
     id: Deploy
     waitFor:
       - Push
 
 substitutions:
-  _SERVICE_NAME: dons-rental
-  _REGION: us-central1
+  _SERVICE_NAME: donsrental
+  _REGION: europe-west1
   _ARTIFACT_REPO: cloud-run-source-deploy
   _AGENT_ENGINE: >-
     projects/450188951493/locations/us-central1/reasoningEngines/8385401789733666816

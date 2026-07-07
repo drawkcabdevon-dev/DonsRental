@@ -38,18 +38,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function fallbackVehicles() {
   state.vehicles = [
-    { id: 'v1', name: 'Economy Sedan', rate: 35, icon: '🚗', desc: 'Compact & fuel-efficient.', image_url: '' },
-    { id: 'v2', name: 'Mid-size SUV', rate: 55, icon: '🚙', desc: 'Spacious ride.', image_url: '' },
-    { id: 'v3', name: 'Pickup Truck', rate: 65, icon: '🛻', desc: 'Haul gear with ease.', image_url: '' },
-    { id: 'v4', name: 'Luxury Sedan', rate: 85, icon: '🚘', desc: 'Premium comfort.', image_url: '' },
+    { id: 'v1', name: 'Economy Sedan', rate: 35, icon: '🚗', desc: 'Compact & fuel-efficient.', image_url: 'https://images.unsplash.com/photo-1550355291-bbee04a92027?w=400&h=250&fit=crop' },
+    { id: 'v2', name: 'Mid-size SUV', rate: 55, icon: '🚙', desc: 'Spacious ride.', image_url: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&h=250&fit=crop' },
+    { id: 'v3', name: 'Pickup Truck', rate: 65, icon: '🛻', desc: 'Haul gear with ease.', image_url: 'https://images.unsplash.com/photo-1583267746897-2cf415887172?w=400&h=250&fit=crop' },
+    { id: 'v4', name: 'Luxury Sedan', rate: 85, icon: '🚘', desc: 'Premium comfort.', image_url: 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400&h=250&fit=crop' },
   ];
   renderVehicles();
+}
+
+function _imgOrIcon(v) {
+  if (!v.image_url) return `<div class="vehicle-icon">${v.icon}</div>`;
+  return `<img src="${v.image_url}" alt="${v.name}" class="vehicle-photo" />`;
 }
 
 function renderVehicles() {
   $('vehicleGrid').innerHTML = state.vehicles.map(v =>
     `<div class="vehicle-card${state.selectedVehicle?.id === v.id ? ' selected' : ''}" data-id="${v.id}">
-      ${v.image_url ? `<img src="${v.image_url}" alt="${v.name}" class="vehicle-photo" />` : `<div class="vehicle-icon">${v.icon}</div>`}
+      ${_imgOrIcon(v)}
       <h3>${v.name}</h3>
       <p class="rate">$${v.rate}<span style="font-weight:400;font-size:.85rem;color:#888">/day</span></p>
       <p class="desc">${v.desc}</p>
@@ -61,6 +66,12 @@ function renderVehicles() {
       document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
       updateCost();
+    });
+  });
+  document.querySelectorAll('.vehicle-photo').forEach(img => {
+    img.addEventListener('error', function() {
+      const v = state.vehicles.find(x => x.name === this.alt);
+      if (v) this.outerHTML = `<div class="vehicle-icon">${v.icon}</div>`;
     });
   });
 }

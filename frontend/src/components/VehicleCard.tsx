@@ -16,12 +16,22 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
       onClick={() => onSelect(vehicle)}
     >
       {vehicle.imageUrl && (
-        <img
-          src={vehicle.imageUrl}
-          alt={vehicle.name}
+        <div
           className="w-full rounded-md mb-lg border-2 border-bau-black"
-          style={{ display: 'block', maxHeight: '500px' }}
-        />
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '500px',
+          }}
+        >
+          <img
+            src={vehicle.imageUrl}
+            alt={vehicle.name}
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+          />
+        </div>
       )}
       {vehicle.icon && (
         <div className="text-5xl text-center mb-lg">{vehicle.icon}</div>

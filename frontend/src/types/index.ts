@@ -14,11 +14,21 @@ export interface Vehicle {
   features: string[];
 }
 
+export interface PricingPackage {
+  id: string;
+  label: string;
+  days: number;
+  totalCost: number;
+  dailyRate: number;
+  description: string;
+}
+
 export interface BookingData {
   step: BookingStep;
   
   // Step 1: Vehicle
   vehicleId?: string;
+  selectedPackage?: string; // '2day' | '5day' | '7day'
   
   // Step 2: Dates & Logistics
   pickupDate?: string;

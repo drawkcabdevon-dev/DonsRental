@@ -1,4 +1,4 @@
-import type { Vehicle } from '../types';
+import type { Vehicle, PricingPackage } from '../types';
 import { Card, Badge } from './index';
 
 interface VehicleCardProps {
@@ -77,6 +77,45 @@ interface PricingBreakdownProps {
   totalDays: number;
   dailyRate: number;
   totalCost: number;
+}
+
+export const PRICING_PACKAGES: PricingPackage[] = [
+  { id: '2day', label: 'Weekend Getaway', days: 2, totalCost: 240, dailyRate: 120, description: '2 days — perfect for a weekend trip around Barbados' },
+  { id: '5day', label: 'Island Explorer', days: 5, totalCost: 460, dailyRate: 92, description: '5 days — explore the whole island at your own pace' },
+  { id: '7day', label: 'Weekly Special', days: 7, totalCost: 650, dailyRate: 93, description: '7 days — best value for a full week in paradise' },
+];
+
+interface PricingPackagesProps {
+  packages: PricingPackage[];
+  selectedId?: string;
+  onSelect: (pkg: PricingPackage) => void;
+}
+
+export function PricingPackages({ packages, selectedId, onSelect }: PricingPackagesProps) {
+  return (
+    <div className="grid grid-cols-3 gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+      {packages.map((pkg) => (
+        <Card
+          key={pkg.id}
+          className={`cursor-pointer transition-fast hover:shadow-lg ${
+            selectedId === pkg.id ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
+          }`}
+          onClick={() => onSelect(pkg)}
+          style={{ padding: 'var(--space-4)', textAlign: 'center' }}
+        >
+          <p className="text-sm font-bold text-uppercase mb-sm" style={{ letterSpacing: '0.05em' }}>{pkg.label}</p>
+          <p className="text-3xl font-extrabold text-bau-yellow mb-sm">Bds${pkg.totalCost}</p>
+          <p className="text-xs text-bau-gray mb-md">Bds${pkg.dailyRate}/day &middot; {pkg.days} days</p>
+          <p className="text-xs text-bau-gray">{pkg.description}</p>
+          {selectedId === pkg.id && (
+            <div className="mt-md pt-md border-t-2 border-bau-black">
+              <p className="text-sm font-bold text-bau-yellow text-uppercase">✓ Selected</p>
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 export function PricingBreakdown({

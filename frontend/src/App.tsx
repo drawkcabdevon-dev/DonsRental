@@ -1,4 +1,4 @@
-import type { BookingData, Vehicle, BookingStep } from './types';
+import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect } from 'react';
 import { api } from './services/api';
 import {
@@ -8,7 +8,7 @@ import {
   Spinner,
   Alert,
 } from './components/index';
-import { VehicleCard, PricingBreakdown } from './components/VehicleCard';
+import { VehicleCard, PricingBreakdown, PricingPackages, PRICING_PACKAGES } from './components/VehicleCard';
 import { PersonalInfoForm, LicenseVerificationForm } from './components/Forms';
 import { BookingSummary, BookingConfirmation } from './components/Summary';
 
@@ -27,6 +27,25 @@ function App() {
     totalDays: 1,
     totalCost: 0,
   });
+
+  // Handle selecting a pricing package → auto-fills dates & cost
+  const handlePackageSelect = (pkg: PricingPackage) => {
+    const today = new Date();
+    const pickup = new Date(today);
+    pickup.setDate(pickup.getDate() + 1); // tomorrow
+    const ret = new Date(pickup);
+    ret.setDate(ret.getDate() + pkg.days - 1);
+
+    setBooking((prev) => ({
+      ...prev,
+      selectedPackage: pkg.id,
+      pickupDate: pickup.toISOString().split('T')[0],
+      returnDate: ret.toISOString().split('T')[0],
+      totalDays: pkg.days,
+      totalCost: pkg.totalCost,
+      vehicleId: prev.vehicleId || 'v1',
+    }));
+  };
 
   // Auto-fill personal info from license scan
   const handleLicenseScan = async (imageData: string) => {
@@ -193,23 +212,37 @@ function App() {
           </div>
         )}
 
-        {/* Step 1: Vehicle Selection */}
+        {/* Step 1: Vehicle + Pricing Packages */}
         {step === 1 && !bookingRef && (
           <div>
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Choose Your Vehicle</h2>
             {loading ? (
               <Spinner message="Loading vehicles..." />
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-6)', marginBottom: 'var(--space-12)' }}>
-                {vehicles.map((vehicle) => (
-                  <VehicleCard
-                    key={vehicle.id}
-                    vehicle={vehicle}
-                    isSelected={booking.vehicleId === vehicle.id}
-                    onSelect={(v) => handleBookingChange('vehicleId', v.id)}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Vehicle card */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-6)', marginBottom: 'var(--space-8)' }}>
+                  {vehicles.map((vehicle) => (
+                    <VehicleCard
+                      key={vehicle.id}
+                      vehicle={vehicle}
+                      isSelected={booking.vehicleId === vehicle.id}
+                      onSelect={(v) => handleBookingChange('vehicleId', v.id)}
+                    />
+                  ))}
+                </div>
+
+                {/* Pricing packages */}
+                <h3 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}>Choose a Package</h3>
+                <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
+                  Select a preset package and we'll auto-set your dates. Or tap Next to choose custom dates.
+                </p>
+                <PricingPackages
+                  packages={PRICING_PACKAGES}
+                  selectedId={booking.selectedPackage}
+                  onSelect={handlePackageSelect}
+                />
+              </>
             )}
           </div>
         )}

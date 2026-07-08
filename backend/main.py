@@ -8,6 +8,8 @@ import logging
 import os
 import re
 import base64
+import smtplib
+import ssl
 from datetime import datetime, date
 from typing import Optional
 
@@ -24,6 +26,9 @@ AGENT_ENGINE = os.environ.get("AGENT_ENGINE", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
 LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "")
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "")
 
 app = FastAPI(title="Don's Rental Backend")
 
@@ -195,6 +200,149 @@ def _log_booking_notification(req: BookingRequest, ref: str):
     except Exception as e:
         logger.warning("Could not write booking log: %s", e)
 
+# ── Google Sheets Integration ──────────────────────────
+
+def _append_to_sheet(req: BookingRequest, ref: str):
+    """Append a booking row to the Google Sheet."""
+    if not SPREADSHEET_ID:
+        logger.info("No SPREADSHEET_ID set — skipping sheet write")
+        return
+
+    try:
+        from google.auth import default
+        from googleapiclient.discovery import build
+
+        creds, _ = default(scopes=['https://www.googleapis.com/auth/spreadsheets'])
+        svc = build('sheets', 'v4', credentials=creds)
+
+        row = [[
+            ref,
+            'Confirmed',
+            datetime.utcnow().isoformat(),
+            req.vehicleId or 'v1',
+            'Standard Rental Car',
+            req.pickupDate or '',
+            req.pickupTime or '',
+            req.returnDate or '',
+            req.returnTime or '',
+            req.customerName or '',
+            req.customerEmail or '',
+            req.customerPhone or '',
+            req.customerAddress or '',
+            req.licenseNumber or '',
+            req.licenseExpiry or '',
+            req.licenseIssuer or '',
+            req.licenseClass or '',
+            'pay_on_pickup',
+            req.totalCost or 0,
+            '',  # invoice_sent_at
+            '',  # notes
+        ]]
+
+        # Ensure the Bookings sheet exists
+        try:
+            spreadsheet = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+            existing = [s['properties']['title'] for s in spreadsheet.get('sheets', [])]
+            if 'Bookings' not in existing:
+                svc.spreadsheets().batchUpdate(
+                    spreadsheetId=SPREADSHEET_ID,
+                    body={'requests': [{'addSheet': {'properties': {'title': 'Bookings'}}}]},
+                ).execute()
+                # Add headers
+                headers = [[
+                    'bookingId','status','createdAt','vehicleId','vehicleName',
+                    'pickupDate','pickupTime','returnDate','returnTime',
+                    'custName','custEmail','custPhone','custAddress',
+                    'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
+                    'paymentMethod','totalAmount','invoiceSentAt','notes',
+                ]]
+                svc.spreadsheets().values().update(
+                    spreadsheetId=SPREADSHEET_ID,
+                    range='Bookings!A1',
+                    valueInputOption='USER_ENTERED',
+                    body={'values': headers},
+                ).execute()
+        except Exception as e:
+            logger.warning("Sheet setup check failed: %s", e)
+
+        svc.spreadsheets().values().append(
+            spreadsheetId=SPREADSHEET_ID,
+            range='Bookings!A:U',
+            valueInputOption='USER_ENTERED',
+            body={'values': row},
+        ).execute()
+        logger.info("✅ Booking %s written to Google Sheet", ref)
+    except Exception as e:
+        logger.warning("Could not write to Google Sheet: %s", e)
+
+
+# ── Email Notification ────────────────────────────────
+
+def _send_notification_email(req: BookingRequest, ref: str):
+    """Send email notification about a new booking."""
+    owner = OWNER_EMAIL or os.environ.get("OWNER_EMAIL", "")
+    if not owner:
+        logger.info("No OWNER_EMAIL set — skipping email notification")
+        return
+
+    subject = f"New Booking: {req.customerName} — {ref}"
+    body_text = f"""
+New Booking Confirmed!
+
+Reference: {ref}
+Customer: {req.customerName}
+Email: {req.customerEmail}
+Phone: {req.customerPhone}
+Pickup: {req.pickupDate} at {req.pickupTime}
+Return: {req.returnDate} at {req.returnTime}
+License: {req.licenseNumber} (exp {req.licenseExpiry})
+Days: {req.totalDays}
+Total: Bds${req.totalCost}
+    """.strip()
+
+    # Try SendGrid first
+    if SENDGRID_API_KEY:
+        try:
+            import sendgrid
+            from sendgrid.helpers.mail import Mail, Email, Content
+
+            sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+            msg = Mail(
+                from_email=Email("bookings@donsrental.com", "Don's Rental"),
+                to_emails=Email(owner),
+                subject=subject,
+                html_content=Content("text/plain", body_text),
+            )
+            sg.client.mail.send.post(request_body=msg.get())
+            logger.info("✅ Email notification sent via SendGrid to %s", owner)
+            return
+        except ImportError:
+            logger.warning("sendgrid library not installed, trying SMTP...")
+        except Exception as e:
+            logger.warning("SendGrid email failed: %s", e)
+
+    # Fallback: SMTP
+    smtp_host = os.environ.get("SMTP_HOST", "")
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASS", "")
+    if smtp_host and smtp_user:
+        try:
+            msg_text = f"Subject: {subject}\n\n{body_text}"
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_user, [owner], msg_text)
+            logger.info("✅ Email notification sent via SMTP to %s", owner)
+            return
+        except Exception as e:
+            logger.warning("SMTP email failed: %s", e)
+    else:
+        logger.info("No SENDGRID_API_KEY or SMTP configured — notification only logged")
+
+    # Always log it
+    logger.info("📧 NOTIFICATION for %s:\n%s", owner, body_text)
+
+
 @app.get("/api/vehicles")
 async def get_vehicles():
     return {"vehicles": VEHICLES}
@@ -266,6 +414,8 @@ async def create_booking(req: BookingRequest):
 
     # Notify
     _log_booking_notification(req, ref)
+    _append_to_sheet(req, ref)
+    _send_notification_email(req, ref)
 
     return {
         "success": True,

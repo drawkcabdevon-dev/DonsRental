@@ -37,7 +37,7 @@ steps:
       - '80'
       - --set-env-vars
       - >-
-        AGENT_ENGINE=${_AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=us-central1
+        AGENT_ENGINE=${_AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=us-central1,SPREADSHEET_ID=${_SPREADSHEET_ID},OWNER_EMAIL=${_OWNER_EMAIL}
     id: Deploy
     waitFor:
       - Push
@@ -67,6 +67,8 @@ substitutions:
   _ARTIFACT_REPO: cloud-run-source-deploy
   _AGENT_ENGINE: >-
     projects/450188951493/locations/us-central1/reasoningEngines/8385401789733666816
+  _SPREADSHEET_ID: 1i8rkv11Zmuv_btAiJNji1MAj9GylHOJZEUucAqqb6-0
+  _OWNER_EMAIL: ''
 
 options:
   machineType: E2_HIGHCPU_8

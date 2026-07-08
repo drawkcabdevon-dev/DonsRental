@@ -12,6 +12,8 @@ import base64
 import logging
 import time
 from datetime import datetime
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 import vertexai
 from google.adk.agents import LlmAgent
@@ -448,6 +450,20 @@ def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
             sg.client.mail.send.post(request_body=alert.get())
         except Exception:
             pass
+
+    topic = _env('NTFY_TOPIC')
+    if topic:
+        try:
+            body = f'New Booking: {name} booked {vehicle} from {pu_d} to {re_d}. Total: ${total}. Ref: {b_id}'
+            req = Request(
+                f'https://ntfy.sh/{topic}',
+                data=body.encode(),
+                headers={'Title': f'New Booking – {name}', 'Priority': 'high'},
+            )
+            urlopen(req, timeout=5)
+        except URLError:
+            pass
+
     return True
 
 

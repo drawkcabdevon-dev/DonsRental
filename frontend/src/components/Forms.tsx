@@ -150,10 +150,19 @@ export function LicenseVerificationForm({
                   canvas.width = video.videoWidth;
                   canvas.height = video.videoHeight;
                   canvas.getContext('2d')!.drawImage(video, 0, 0);
-                  const dataUrl = canvas.toDataURL('image/jpeg');
-                  onChange('photoUrl', dataUrl);
-                  onPhotoCapture?.(new File([dataUrl], 'license.jpg', { type: 'image/jpeg' }));
-                  cleanup();
+                  canvas.toBlob((blob) => {
+                    if (blob) {
+                      const file = new File([blob], 'license.jpg', { type: 'image/jpeg' });
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        const dataUrl = e.target?.result as string;
+                        onChange('photoUrl', dataUrl);
+                        onPhotoCapture?.(file);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                    cleanup();
+                  }, 'image/jpeg');
                 };
 
                 cancelBtn.onclick = cleanup;

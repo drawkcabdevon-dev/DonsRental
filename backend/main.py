@@ -8,6 +8,8 @@ import logging
 import os
 import re
 import base64
+from datetime import datetime, date
+from typing import Optional
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -24,6 +26,9 @@ PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
 LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
 
 app = FastAPI(title="Don's Rental Backend")
+
+# ── In-memory booking store (resets on restart — swap for DB/Sheets in prod) ──
+_bookings: list[dict] = []
 
 app.add_middleware(
     CORSMiddleware,
@@ -143,14 +148,125 @@ VEHICLES = [
     }
 ]
 
+def _parse_date(d: str) -> Optional[date]:
+    try:
+        return datetime.strptime(d, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
+
+def _dates_overlap(a1: date, a2: date, b1: date, b2: date) -> bool:
+    """Check if date range [a1, a2] overlaps with [b1, b2]."""
+    return a1 <= b2 and b1 <= a2
+
+def _log_booking_notification(req: BookingRequest, ref: str):
+    """Log booking details so the owner can see who booked what."""
+    logger.info("=" * 50)
+    logger.info("🆕 NEW BOOKING: %s", ref)
+    logger.info("   Name:     %s", req.customerName)
+    logger.info("   Email:    %s", req.customerEmail)
+    logger.info("   Phone:    %s", req.customerPhone)
+    logger.info("   Vehicle:  %s (%s)", req.vehicleId, req.vehicleId)
+    logger.info("   Pickup:   %s at %s", req.pickupDate, req.pickupTime)
+    logger.info("   Return:   %s at %s", req.returnDate, req.returnTime)
+    logger.info("   License:  %s (exp %s)", req.licenseNumber, req.licenseExpiry)
+    logger.info("   Days:     %d", req.totalDays)
+    logger.info("   Cost:     Bds$%.2f", req.totalCost)
+    logger.info("=" * 50)
+
+    # Write to a log file for persistence
+    log_file = os.environ.get("BOOKING_LOG_FILE", "/tmp/bookings.log")
+    try:
+        with open(log_file, "a") as f:
+            f.write(json.dumps({
+                "ref": ref,
+                "name": req.customerName,
+                "email": req.customerEmail,
+                "phone": req.customerPhone,
+                "vehicle": req.vehicleId,
+                "pickup": req.pickupDate,
+                "pickupTime": req.pickupTime,
+                "return": req.returnDate,
+                "returnTime": req.returnTime,
+                "license": req.licenseNumber,
+                "days": req.totalDays,
+                "cost": req.totalCost,
+                "created": datetime.utcnow().isoformat(),
+            }) + "\n")
+    except Exception as e:
+        logger.warning("Could not write booking log: %s", e)
+
 @app.get("/api/vehicles")
 async def get_vehicles():
     return {"vehicles": VEHICLES}
 
+class CheckAvailabilityRequest(BaseModel):
+    pickupDate: str
+    returnDate: str
+    vehicleId: str = "v1"
+
+@app.post("/api/check-availability")
+async def check_availability(req: CheckAvailabilityRequest):
+    """Check if a vehicle is available for the requested date range."""
+    pickup = _parse_date(req.pickupDate)
+    return_d = _parse_date(req.returnDate)
+    if not pickup or not return_d:
+        raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
+
+    conflicts = []
+    for b in _bookings:
+        bp = _parse_date(b.get("pickupDate", ""))
+        br = _parse_date(b.get("returnDate", ""))
+        if bp and br and b.get("vehicleId", "v1") == req.vehicleId:
+            if _dates_overlap(pickup, return_d, bp, br):
+                conflicts.append({
+                    "existingRef": b.get("bookingId", ""),
+                    "pickupDate": b.get("pickupDate"),
+                    "returnDate": b.get("returnDate"),
+                })
+
+    return {
+        "available": len(conflicts) == 0,
+        "conflicts": conflicts,
+        "pickupDate": req.pickupDate,
+        "returnDate": req.returnDate,
+    }
+
 @app.post("/api/bookings")
 async def create_booking(req: BookingRequest):
     ref = "BK-" + os.urandom(4).hex().upper()
-    logger.info("Booking created: %s by %s (%s)", ref, req.customerName, req.customerEmail)
+
+    # Check availability before booking
+    pickup = _parse_date(req.pickupDate)
+    return_d = _parse_date(req.returnDate)
+    if pickup and return_d:
+        for b in _bookings:
+            bp = _parse_date(b.get("pickupDate", ""))
+            br = _parse_date(b.get("returnDate", ""))
+            if bp and br and b.get("vehicleId", "v1") == req.vehicleId:
+                if _dates_overlap(pickup, return_d, bp, br):
+                    raise HTTPException(409, f"Vehicle not available for those dates. Conflict with booking {b.get('bookingId', '')}.")
+
+    # Store booking
+    booking = {
+        "bookingId": ref,
+        "vehicleId": req.vehicleId or "v1",
+        "customerName": req.customerName,
+        "customerEmail": req.customerEmail,
+        "customerPhone": req.customerPhone,
+        "pickupDate": req.pickupDate,
+        "pickupTime": req.pickupTime,
+        "returnDate": req.returnDate,
+        "returnTime": req.returnTime,
+        "licenseNumber": req.licenseNumber,
+        "totalDays": req.totalDays,
+        "totalCost": req.totalCost,
+        "created": datetime.utcnow().isoformat(),
+    }
+    _bookings.append(booking)
+
+    # Notify
+    _log_booking_notification(req, ref)
+
     return {
         "success": True,
         "bookingId": ref,
@@ -159,6 +275,11 @@ async def create_booking(req: BookingRequest):
         "totalDays": req.totalDays,
         "totalCost": req.totalCost,
     }
+
+@app.get("/api/bookings")
+async def list_bookings():
+    """List all bookings (so the owner can see what's reserved)."""
+    return {"bookings": _bookings}
 
 @app.post("/api/scan-license")
 async def scan_license(req: ScanLicenseRequest):

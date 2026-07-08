@@ -22,7 +22,7 @@ export const api = {
           transmission: 'automatic',
           fuelType: 'petrol',
           description: 'Clean, reliable car for getting around Barbados. 2-day minimum. Weekend & weekly specials available.',
-          imageUrl: '/dons-car.png',
+          imageUrl: '/vehicle.png',
           features: ['Air Conditioning', '2-Day Minimum', 'Weekend Specials', 'Free Drop-off'],
         },
       ];
@@ -58,6 +58,21 @@ export const api = {
         data: { bookingId: ref },
         bookingRef: ref,
       };
+    }
+  },
+
+  // Check availability
+  async checkAvailability(pickupDate: string, returnDate: string, vehicleId: string = 'v1'): Promise<{ available: boolean; conflicts: any[] }> {
+    try {
+      const response = await fetch(`${API_BASE}/check-availability`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pickupDate, returnDate, vehicleId }),
+      });
+      if (!response.ok) return { available: false, conflicts: [] };
+      return await response.json();
+    } catch {
+      return { available: true, conflicts: [] };
     }
   },
 

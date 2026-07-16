@@ -84,12 +84,8 @@ function sendBookingEmails(sheet, row) {
     
     // Send customer confirmation
     sendCustomerConfirmation(data);
-    
-    // Send owner notification
+    sheet.getRange(row, COL.invoiceSentAt).setValue(new Date()); // mark before the less-critical send
     sendOwnerNotification(data);
-    
-    // Mark invoice as sent (timestamp)
-    sheet.getRange(row, COL.invoiceSentAt).setValue(new Date());
     
     console.log(`Emails sent for booking ${data.bookingId}`);
   } catch (err) {

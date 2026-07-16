@@ -14,7 +14,7 @@ const SHEET_NAME = 'Bookings';
 const OWNER_EMAIL = 'devon@onlineverywhere.com';
 const COMPANY_NAME = "Don's Rental";
 const COMPANY_EMAIL = 'bookings@donsrental.com';
-const COMPANY_PHONE = '+1 (246) 268-2842
+const COMPANY_PHONE = '+1 (246) 268-2842';
 
 // Column indices (1-based) matching the sheet headers
 const COL = {

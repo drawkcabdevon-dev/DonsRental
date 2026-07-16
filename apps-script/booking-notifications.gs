@@ -16,23 +16,6 @@ const COMPANY_NAME = "Don's Rental";
 const COMPANY_EMAIL = 'bookings@donsrental.com';
 const COMPANY_PHONE = '+1 (246) 268-2842';
 
-// Try to find the Bookings sheet by name, then by index (2nd tab)
-function getBookingsSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName('Bookings');
-  if (!sheet) {
-    // Fallback: try second tab (index 1)
-    const sheets = ss.getSheets();
-    if (sheets.length > 1) {
-      sheet = sheets[1];
-    }
-  }
-  if (!sheet) {
-    throw new Error('Bookings sheet not found');
-  }
-  return sheet;
-}
-
 // Column indices (1-based) matching the sheet headers
 const COL = {
   bookingId: 1,
@@ -57,6 +40,23 @@ const COL = {
   invoiceSentAt: 20,
   notes: 21
 };
+
+// Try to find the Bookings sheet by name, then by index (2nd tab)
+function getBookingsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Bookings');
+  if (!sheet) {
+    // Fallback: try second tab (index 1)
+    const sheets = ss.getSheets();
+    if (sheets.length > 1) {
+      sheet = sheets[1];
+    }
+  }
+  if (!sheet) {
+    throw new Error('Bookings sheet not found');
+  }
+  return sheet;
+}
 
 /**
  * Main trigger function - runs on every edit
@@ -122,9 +122,6 @@ function sendBookingEmails(row) {
     }
   }
 }
-    sheet.getRange(row, COL.notes).setValue(`Email error: ${err.message}`);
-  }
-}
 
 /**
  * Send booking confirmation to customer
@@ -135,50 +132,34 @@ function sendCustomerConfirmation(data) {
   const htmlBody = `
     <!DOCTYPE html>
     <html>
-    <body style="font-family: Arial, sans-serif; color: #1a1a2e; max-width: 600px; margin: 0 auto;">
-      <div style="background: #0f3460; color: #fff; padding: 24px 32px; border-radius: 12px 12px 0 0;">
-        <h2 style="margin: 0;">${COMPANY_NAME}</h2>
-        <p style="margin: 4px 0 0; opacity: .85;">Booking Confirmation & Invoice</p>
+    <body style="font-family:Arial,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;">
+      <div style="background:#0f3460;color:#fff;padding:24px 32px;border-radius:12px 12px 0 0;">
+        <h2 style="margin:0;">${escapeHtml(COMPANY_NAME)}</h2>
+        <p style="margin:4px 0 0;opacity:.85;">Booking Confirmation & Invoice</p>
       </div>
-      <div style="padding: 24px 32px; border: 1px solid #e0e0e0; border-top: 0; border-radius: 0 0 12px 12px;">
+      <div style="padding:24px 32px;border:1px solid #e0e0e0;border-top:0;border-radius:0 0 12px 12px;">
         <p>Hi <strong>${escapeHtml(data.custName)}</strong>,</p>
         <p>Your booking is confirmed!</p>
-        
-        <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-          <tr>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666;">Reference</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee; font-weight: 700;">${escapeHtml(data.bookingId)}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666;">Vehicle</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${escapeHtml(data.vehicleName)}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666;">Pick-up</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${formatDate(data.pickupDate)} at ${escapeHtml(data.pickupTime)}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666;">Return</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${formatDate(data.returnDate)} at ${escapeHtml(data.returnTime)}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666;">Duration</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">${calculateDays(data.pickupDate, data.returnDate)} day(s)</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px; color: #666;">Total Due</td>
-            <td style="padding: 8px 12px; font-size: 1.15rem; font-weight: 700; color: #0f3460;">Bds$${data.totalAmount}</td>
-          </tr>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Reference</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:700;">${escapeHtml(data.bookingId)}</td></tr>
+          <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Vehicle</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(data.vehicleName)}</td></tr>
+          <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Pick-up</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #eee;">${formatDate(data.pickupDate)} at ${escapeHtml(data.pickupTime)}</td></tr>
+          <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Return</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #eee;">${formatDate(data.returnDate)} at ${escapeHtml(data.returnTime)}</td></tr>
+          <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Duration</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #eee;">${calculateDays(data.pickupDate, data.returnDate)} day(s)</td></tr>
+          <tr><td style="padding:8px 12px;color:#666;">Total Due</td>
+              <td style="padding:8px 12px;font-size:1.15rem;font-weight:700;color:#0f3460;">Bds$${data.totalAmount}</td></tr>
         </table>
-        
         <h3>Payment</h3>
-        <p style="color: #555;">Pay when you pick up the vehicle. We accept cash and card.</p>
-        
-        <h3 style="margin-top: 24px;">License</h3>
-        <p style="color: #555;">${escapeHtml(data.licenseNum)} (exp ${escapeHtml(data.licenseExpiry)}) &bull; ${escapeHtml(data.licenseIssuer)}</p>
-        
-        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
-        <p style="color: #999; font-size: .85rem;">${COMPANY_NAME} &bull; ${COMPANY_PHONE} &bull; ${COMPANY_EMAIL}</p>
+        <p style="color:#555;">Pay when you pick up the vehicle. We accept cash and card.</p>
+        <h3 style="margin-top:24px;">License</h3>
+        <p style="color:#555;">${escapeHtml(data.licenseNum)} (exp ${escapeHtml(data.licenseExpiry)}) &bull; ${escapeHtml(data.licenseIssuer)}</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+        <p style="color:#999;font-size:.85rem;">${escapeHtml(COMPANY_NAME)} &bull; ${escapeHtml(COMPANY_PHONE)} &bull; ${escapeHtml(COMPANY_EMAIL)}</p>
       </div>
     </body>
     </html>
@@ -271,7 +252,7 @@ function escapeHtml(text) {
     .replace(/</g, '<')
     .replace(/>/g, '>')
     .replace(/"/g, '"')
-    .replace(/'/g, ''');
+    .replace(/'/g, '&apos;');
 }
 
 /**
@@ -299,7 +280,7 @@ function setupTriggers() {
  * Test function - run manually to test emails
  */
 function testEmails() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const sheet = getBookingsSheet();
   if (!sheet) {
     console.log('Bookings sheet not found');
     return;
@@ -312,7 +293,7 @@ function testEmails() {
     return;
   }
   
-  sendBookingEmails(sheet, lastRow);
+  sendBookingEmails(lastRow);
   console.log('Test emails sent for row', lastRow);
 }
 
@@ -320,7 +301,7 @@ function testEmails() {
  * Backfill - send emails for all existing confirmed bookings without invoiceSentAt
  */
 function backfillEmails() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const sheet = getBookingsSheet();
   if (!sheet) return;
   
   const lastRow = sheet.getLastRow();
@@ -329,7 +310,7 @@ function backfillEmails() {
     const invoiceSent = sheet.getRange(row, COL.invoiceSentAt).getValue();
     
     if (status === 'Confirmed' && !invoiceSent) {
-      sendBookingEmails(sheet, row);
+      sendBookingEmails(row);
     }
   }
   console.log('Backfill complete');

@@ -18,6 +18,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from google.auth import default as google_default
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,10 +32,28 @@ LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
 SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "")
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
 OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "")
+GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS", "")
 
 app = FastAPI(title="Don's Rental Backend")
 
-# ── In-memory booking store (resets on restart — swap for DB/Sheets in prod) ──
+# ── Google Sheets singleton ─────────────────────────────
+_sheets_svc = None
+
+def _get_sheets():
+    global _sheets_svc
+    if _sheets_svc:
+        return _sheets_svc
+    if GOOGLE_SHEETS_CREDENTIALS:
+        creds = service_account.Credentials.from_service_account_info(
+            json.loads(GOOGLE_SHEETS_CREDENTIALS),
+            scopes=['https://www.googleapis.com/auth/spreadsheets'],
+        )
+    else:
+        creds, _ = google_default(scopes=['https://www.googleapis.com/auth/spreadsheets'])
+    _sheets_svc = build('sheets', 'v4', credentials=creds)
+    return _sheets_svc
+
+# ── In-memory booking store (backed by Google Sheets in prod) ──
 _bookings: list[dict] = []
 
 app.add_middleware(
@@ -139,7 +160,7 @@ async def chat(req: ChatRequest):
 async def health():
     return {"status": "ok", "engine_configured": bool(AGENT_ENGINE)}
 
-VEHICLES = [
+VEHICLES_FALLBACK = [
     {
         "id": "v1",
         "name": "Standard Rental Car",
@@ -152,6 +173,57 @@ VEHICLES = [
         "features": ["Air Conditioning", "2-Day Minimum", "Weekend Specials", "Free Drop-off"],
     }
 ]
+
+def _fetch_vehicles_from_sheet() -> list[dict]:
+    if not SPREADSHEET_ID:
+        return VEHICLES_FALLBACK
+    try:
+        svc = _get_sheets()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID, range='Vehicles!A:G',
+        ).execute()
+        rows = result.get('values', [])
+        if len(rows) < 2:
+            return VEHICLES_FALLBACK
+        headers = [h.strip().lower() for h in rows[0]]
+        vehicles = []
+        for row in rows[1:]:
+            obj = {}
+            for i, h in enumerate(headers):
+                obj[h] = row[i] if i < len(row) else ''
+            if obj.get('id'):
+                try:
+                    obj['rate'] = int(obj.get('rate', 0))
+                except ValueError:
+                    obj['rate'] = 0
+                vehicles.append(obj)
+        return vehicles if vehicles else VEHICLES_FALLBACK
+    except Exception as e:
+        logger.warning("Could not read vehicles from sheet: %s", e)
+        return VEHICLES_FALLBACK
+
+def _fetch_bookings_from_sheet() -> list[dict]:
+    if not SPREADSHEET_ID:
+        return _bookings
+    try:
+        svc = _get_sheets()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID, range='Bookings!A:V',
+        ).execute()
+        rows = result.get('values', [])
+        if len(rows) < 2:
+            return _bookings
+        headers = [h.strip() for h in rows[0]]
+        bookings = []
+        for row in rows[1:]:
+            obj = {}
+            for i, h in enumerate(headers):
+                obj[h] = row[i] if i < len(row) else ''
+            bookings.append(obj)
+        return bookings
+    except Exception as e:
+        logger.warning("Could not read bookings from sheet: %s", e)
+        return _bookings
 
 def _parse_date(d: str) -> Optional[date]:
     try:
@@ -209,11 +281,7 @@ def _append_to_sheet(req: BookingRequest, ref: str):
         return
 
     try:
-        from google.auth import default
-        from googleapiclient.discovery import build
-
-        creds, _ = default(scopes=['https://www.googleapis.com/auth/spreadsheets'])
-        svc = build('sheets', 'v4', credentials=creds)
+        svc = _get_sheets()
 
         row = [[
             ref,
@@ -345,7 +413,7 @@ Total: Bds${req.totalCost}
 
 @app.get("/api/vehicles")
 async def get_vehicles():
-    return {"vehicles": VEHICLES}
+    return {"vehicles": _fetch_vehicles_from_sheet()}
 
 class CheckAvailabilityRequest(BaseModel):
     pickupDate: str
@@ -360,16 +428,18 @@ async def check_availability(req: CheckAvailabilityRequest):
     if not pickup or not return_d:
         raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
 
+    sheet_bookings = _fetch_bookings_from_sheet()
     conflicts = []
-    for b in _bookings:
-        bp = _parse_date(b.get("pickupDate", ""))
-        br = _parse_date(b.get("returnDate", ""))
-        if bp and br and b.get("vehicleId", "v1") == req.vehicleId:
+    for b in sheet_bookings:
+        bp = _parse_date(b.get("pickupDate", "") or b.get("pickupdate", ""))
+        br = _parse_date(b.get("returnDate", "") or b.get("returndate", ""))
+        vid = b.get("vehicleId", "") or b.get("vehicleid", "")
+        if bp and br and vid == req.vehicleId:
             if _dates_overlap(pickup, return_d, bp, br):
                 conflicts.append({
-                    "existingRef": b.get("bookingId", ""),
-                    "pickupDate": b.get("pickupDate"),
-                    "returnDate": b.get("returnDate"),
+                    "existingRef": b.get("bookingId", "") or b.get("bookingid", ""),
+                    "pickupDate": b.get("pickupDate", "") or b.get("pickupdate", ""),
+                    "returnDate": b.get("returnDate", "") or b.get("returndate", ""),
                 })
 
     return {
@@ -387,12 +457,15 @@ async def create_booking(req: BookingRequest):
     pickup = _parse_date(req.pickupDate)
     return_d = _parse_date(req.returnDate)
     if pickup and return_d:
-        for b in _bookings:
-            bp = _parse_date(b.get("pickupDate", ""))
-            br = _parse_date(b.get("returnDate", ""))
-            if bp and br and b.get("vehicleId", "v1") == req.vehicleId:
+        sheet_bookings = _fetch_bookings_from_sheet()
+        for b in sheet_bookings:
+            bp = _parse_date(b.get("pickupDate", "") or b.get("pickupdate", ""))
+            br = _parse_date(b.get("returnDate", "") or b.get("returndate", ""))
+            vid = b.get("vehicleId", "") or b.get("vehicleid", "")
+            if bp and br and vid == req.vehicleId:
                 if _dates_overlap(pickup, return_d, bp, br):
-                    raise HTTPException(409, f"Vehicle not available for those dates. Conflict with booking {b.get('bookingId', '')}.")
+                    ref_id = b.get("bookingId", "") or b.get("bookingid", "")
+                    raise HTTPException(409, f"Vehicle not available for those dates. Conflict with booking {ref_id}.")
 
     # Store booking
     booking = {

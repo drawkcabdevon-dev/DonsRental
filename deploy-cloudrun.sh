@@ -4,6 +4,7 @@ set -euo pipefail
 PROJECT="${PROJECT:-renal-car-booking}"
 REGION="${REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-dons-rental}"
+SPREADSHEET_ID="${SPREADSHEET_ID:-1i8rkv11Zmuv_btAiJNji1MAj9GylHOJZEUucAqqb6-0}"
 
 AGENT_ENGINE="${AGENT_ENGINE:-}"
 if [ -z "$AGENT_ENGINE" ]; then
@@ -29,7 +30,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --memory 512Mi \
   --timeout 300 \
   --concurrency 80 \
-  --set-env-vars "AGENT_ENGINE=${AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${REGION}" \
+  --set-env-vars "AGENT_ENGINE=${AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${REGION},SPREADSHEET_ID=${SPREADSHEET_ID}" \
   --quiet
 
 URL=$(gcloud run services describe "${SERVICE_NAME}" \

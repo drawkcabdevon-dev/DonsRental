@@ -42,26 +42,61 @@ const COL = {
 };
 
 /**
- * Main trigger function - runs on every edit
+ * Trigger handler for manual edits in the UI
  */
-function onEdit(e) {
+function handleBookingEdit(e) {
   const range = e.range;
   const sheet = range.getSheet();
-  
+
   // Only process edits on the Bookings sheet
   if (sheet.getName() !== SHEET_NAME) return;
-  
+
   // Only process new rows (row > 1, assuming row 1 is headers)
   const row = range.getRow();
   if (row <= 1) return;
-  
+
   // Check if this is a new booking (status column was just set to 'Confirmed')
   const status = sheet.getRange(row, COL.status).getValue();
   const invoiceSent = sheet.getRange(row, COL.invoiceSentAt).getValue();
-  
+
   // Only send if status is Confirmed and invoice hasn't been sent yet
   if (status === 'Confirmed' && !invoiceSent) {
     sendBookingEmails(sheet, row);
+  }
+}
+
+/**
+ * Trigger handler for sheet changes (detects rows appended via API)
+ */
+function handleSheetChange(e) {
+  // Get the Bookings sheet
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  if (!sheet) return;
+
+  // Get current last row with data
+  const currentLastRow = sheet.getLastRow();
+
+  // Get previously stored last row from script properties
+  const props = PropertiesService.getScriptProperties();
+  const storedLastRow = parseInt(props.getProperty('lastProcessedRow') || '1', 10);
+
+  // If there are new rows, process them
+  if (currentLastRow > storedLastRow) {
+    for (let row = storedLastRow + 1; row <= currentLastRow; row++) {
+      // Skip header row
+      if (row <= 1) continue;
+
+      const status = sheet.getRange(row, COL.status).getValue();
+      const invoiceSent = sheet.getRange(row, COL.invoiceSentAt).getValue();
+
+      // Only send if status is Confirmed and invoice hasn't been sent yet
+      if (status === 'Confirmed' && !invoiceSent) {
+        sendBookingEmails(sheet, row);
+      }
+    }
+
+    // Update stored last row
+    props.setProperty('lastProcessedRow', currentLastRow.toString());
   }
 }
 
@@ -227,7 +262,7 @@ function calculateDays(pickup, returnDate) {
   if (!pickup || !returnDate) return 1;
   const p = pickup instanceof Date ? pickup : new Date(pickup);
   const r = returnDate instanceof Date ? returnDate : new Date(returnDate);
-  return Math.max(1, Math.ceil((r - p) / (1000 * 60 * 60 * 24)) + 1);
+  return Math.max(1, Math.ceil((r - p) / (1000 * 60 * 60 * 24)));
 }
 
 /**
@@ -236,32 +271,46 @@ function calculateDays(pickup, returnDate) {
 function escapeHtml(text) {
   if (!text) return '';
   return String(text)
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, ''');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
- * Run once to install the trigger
+ * Run once to install the triggers
  */
 function setupTriggers() {
   // Delete existing triggers for this script
   const allTriggers = ScriptApp.getProjectTriggers();
   allTriggers.forEach(t => {
-    if (t.getHandlerFunction() === 'onEdit') {
+    const handlerName = t.getHandlerFunction();
+    if (handlerName === 'onEdit' || handlerName === 'handleBookingEdit' || handlerName === 'handleSheetChange') {
       ScriptApp.deleteTrigger(t);
     }
   });
-  
-  // Create new onEdit trigger
-  ScriptApp.newTrigger('onEdit')
+
+  // Create new onEdit trigger for manual UI edits
+  ScriptApp.newTrigger('handleBookingEdit')
     .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
     .onEdit()
     .create();
-  
-  console.log('Trigger installed successfully');
+
+  // Create onChange trigger for programmatic changes (e.g., API appends)
+  ScriptApp.newTrigger('handleSheetChange')
+    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
+    .onChange()
+    .create();
+
+  // Initialize the last processed row
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  if (sheet) {
+    const lastRow = sheet.getLastRow();
+    PropertiesService.getScriptProperties().setProperty('lastProcessedRow', lastRow.toString());
+  }
+
+  console.log('Triggers installed successfully');
 }
 
 /**

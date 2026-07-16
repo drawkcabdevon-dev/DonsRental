@@ -14,7 +14,24 @@ const SHEET_NAME = 'Bookings';
 const OWNER_EMAIL = 'devon@onlineverywhere.com';
 const COMPANY_NAME = "Don's Rental";
 const COMPANY_EMAIL = 'bookings@donsrental.com';
-const COMPANY_PHONE = '+1 (246) 268-2842
+const COMPANY_PHONE = '+1 (246) 268-2842';
+
+// Try to find the Bookings sheet by name, then by index (2nd tab)
+function getBookingsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Bookings');
+  if (!sheet) {
+    // Fallback: try second tab (index 1)
+    const sheets = ss.getSheets();
+    if (sheets.length > 1) {
+      sheet = sheets[1];
+    }
+  }
+  if (!sheet) {
+    throw new Error('Bookings sheet not found');
+  }
+  return sheet;
+}
 
 // Column indices (1-based) matching the sheet headers
 const COL = {
@@ -49,7 +66,8 @@ function onEdit(e) {
   const sheet = range.getSheet();
   
   // Only process edits on the Bookings sheet
-  if (sheet.getName() !== SHEET_NAME) return;
+  const bookingsSheet = getBookingsSheet();
+  if (sheet.getSheetId() !== bookingsSheet.getSheetId()) return;
   
   // Only process new rows (row > 1, assuming row 1 is headers)
   const row = range.getRow();
@@ -61,15 +79,16 @@ function onEdit(e) {
   
   // Only send if status is Confirmed and invoice hasn't been sent yet
   if (status === 'Confirmed' && !invoiceSent) {
-    sendBookingEmails(sheet, row);
+    sendBookingEmails(row);
   }
 }
 
 /**
  * Send confirmation emails for a booking
  */
-function sendBookingEmails(sheet, row) {
+function sendBookingEmails(row) {
   try {
+    const sheet = getBookingsSheet();
     // Read all booking data
     const data = {};
     Object.entries(COL).forEach(([key, col]) => {
@@ -95,6 +114,14 @@ function sendBookingEmails(sheet, row) {
   } catch (err) {
     console.error('Error sending emails:', err);
     // Log error to sheet notes column
+    try {
+      const sheet = getBookingsSheet();
+      sheet.getRange(row, COL.notes).setValue(`Email error: ${err.message}`);
+    } catch (e) {
+      console.error('Failed to log error to sheet:', e);
+    }
+  }
+}
     sheet.getRange(row, COL.notes).setValue(`Email error: ${err.message}`);
   }
 }

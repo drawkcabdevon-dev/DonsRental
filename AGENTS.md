@@ -57,7 +57,7 @@ python deploy.py --auto
 
 **Step 2 — Deploy Cloud Run backend:**
 ```bash
-export AGENT_ENGINE='projects/.../locations/us-central1/reasoningEngines/...'
+export AGENT_ENGINE='projects/282546523551/locations/us-central1/reasoningEngines/4084942433152925696'
 ./deploy-cloudrun.sh
 # or via Cloud Build (uses cloudbuild.yaml):
 gcloud builds submit
@@ -80,6 +80,6 @@ gcloud builds submit
 
 ## Required env vars
 
-Backend/Agent Agent Engine: `GEMINI_API_KEY`, `SPREADSHEET_ID`, `SENDGRID_API_KEY` (optional), `OWNER_EMAIL` (optional)
-Backend Cloud Run: `AGENT_ENGINE`, `GEMINI_API_KEY`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`
+Backend/Agent Agent Engine: `GEMINI_API_KEY`, `SPREADSHEET_ID`, `GOOGLE_SHEETS_CREDENTIALS` (full JSON), `SENDGRID_API_KEY` (optional), `OWNER_EMAIL` (optional)
+Backend Cloud Run: `AGENT_ENGINE`, `GEMINI_API_KEY`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `GOOGLE_SHEETS_CREDENTIALS`
 Frontend: `VITE_API_BASE` (default `http://localhost:8000/api`)

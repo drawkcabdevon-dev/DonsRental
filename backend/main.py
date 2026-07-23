@@ -10,8 +10,9 @@ import re
 import base64
 import smtplib
 import ssl
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Optional
+import uuid
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -21,6 +22,7 @@ from pydantic import BaseModel
 from google.auth import default as google_default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from google.cloud import storage as gcs_storage
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,6 +35,8 @@ SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "")
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
 OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "")
 GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS", "")
+GCS_BUCKET = os.environ.get("GCS_BUCKET", "donsrental-license-photos")
+GCS_PHOTOS_PREFIX = os.environ.get("GCS_PHOTOS_PREFIX", "license-photos")
 
 app = FastAPI(title="Don's Rental Backend")
 
@@ -52,6 +56,45 @@ def _get_sheets():
         creds, _ = google_default(scopes=['https://www.googleapis.com/auth/spreadsheets'])
     _sheets_svc = build('sheets', 'v4', credentials=creds)
     return _sheets_svc
+
+# ── Google Cloud Storage singleton ─────────────────────
+_gcs_client = None
+
+def _get_gcs():
+    global _gcs_client
+    if _gcs_client:
+        return _gcs_client
+    if GOOGLE_SHEETS_CREDENTIALS:
+        creds = service_account.Credentials.from_service_account_info(
+            json.loads(GOOGLE_SHEETS_CREDENTIALS),
+            scopes=['https://www.googleapis.com/auth/cloud-platform'],
+        )
+        _gcs_client = gcs_storage.Client(credentials=creds)
+    else:
+        _gcs_client = gcs_storage.Client()
+    return _gcs_client
+
+def _upload_to_gcs(image_base64: str, booking_ref: str = "") -> str:
+    """Upload a base64-encoded image to GCS and return its public URL."""
+    if "," in image_base64:
+        image_base64 = image_base64.split(",", 1)[1]
+    image_bytes = base64.b64decode(image_base64)
+    blob_name = f"{GCS_PHOTOS_PREFIX}/{booking_ref or 'pending'}-{uuid.uuid4().hex[:8]}.jpg"
+    try:
+        client = _get_gcs()
+        bucket = client.bucket(GCS_BUCKET)
+        blob = bucket.blob(blob_name)
+        blob.upload_from_string(image_bytes, content_type="image/jpeg")
+        try:
+            blob.make_public()
+            url = blob.public_url
+        except Exception:
+            url = blob.generate_signed_url(expiration=timedelta(days=365), method="GET")
+        logger.info("Photo uploaded to GCS: %s", url)
+        return url
+    except Exception as e:
+        logger.warning("GCS upload failed: %s", e)
+        return ""
 
 # ── In-memory booking store (backed by Google Sheets in prod) ──
 _bookings: list[dict] = []
@@ -87,9 +130,14 @@ class BookingRequest(BaseModel):
     licenseClass: str = ""
     totalDays: int = 1
     totalCost: float = 0
+    licensePhotoUrl: str = ""
 
 class ScanLicenseRequest(BaseModel):
     image: str
+
+class PhotoUploadRequest(BaseModel):
+    image: str
+    bookingRef: str = ""
 
 MDS_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
@@ -305,6 +353,7 @@ def _append_to_sheet(req: BookingRequest, ref: str):
             req.totalCost or 0,
             '',  # invoice_sent_at
             '',  # notes
+            req.licensePhotoUrl or '',  # licensePhotoUrl
         ]]
 
         # Ensure the Bookings sheet exists
@@ -323,6 +372,7 @@ def _append_to_sheet(req: BookingRequest, ref: str):
                     'custName','custEmail','custPhone','custAddress',
                     'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
                     'paymentMethod','totalAmount','invoiceSentAt','notes',
+                    'licensePhotoUrl',
                 ]]
                 svc.spreadsheets().values().update(
                     spreadsheetId=SPREADSHEET_ID,
@@ -335,7 +385,7 @@ def _append_to_sheet(req: BookingRequest, ref: str):
 
         svc.spreadsheets().values().append(
             spreadsheetId=SPREADSHEET_ID,
-            range='Bookings!A:U',
+            range='Bookings!A:V',
             valueInputOption='USER_ENTERED',
             body={'values': row},
         ).execute()
@@ -563,6 +613,16 @@ If a field is not visible, set it to null."""
     except Exception as e:
         logger.error("License scan failed: %s", e)
         return {"error": str(e)}
+
+@app.post("/api/upload-photo")
+async def upload_photo(req: PhotoUploadRequest):
+    """Upload a license photo to GCS and return its public URL."""
+    if not req.image:
+        raise HTTPException(400, "No image provided")
+    url = _upload_to_gcs(req.image, req.bookingRef)
+    if not url:
+        raise HTTPException(500, "Failed to upload photo to GCS")
+    return {"url": url}
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 if os.path.isdir(FRONTEND_DIR):

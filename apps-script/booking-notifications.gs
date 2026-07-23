@@ -89,11 +89,14 @@ function onEdit(e) {
 function sendBookingEmails(row) {
   try {
     const sheet = getBookingsSheet();
+    console.log(`sendBookingEmails: reading row ${row} from sheet "${sheet.getName()}"`);
     // Read all booking data
     const data = {};
     Object.entries(COL).forEach(([key, col]) => {
       data[key] = sheet.getRange(row, col).getValue();
     });
+    
+    console.log(`sendBookingEmails: bookingId=${data.bookingId}, custName=${data.custName}, custEmail=${data.custEmail}`);
     
     // Skip if missing required fields
     if (!data.custEmail || !data.bookingId) {
@@ -127,6 +130,10 @@ function sendBookingEmails(row) {
  * Send booking confirmation to customer
  */
 function sendCustomerConfirmation(data) {
+  if (!data || !data.custName) {
+    console.log('sendCustomerConfirmation: missing data or custName, skipping');
+    return;
+  }
   const subject = `Booking Confirmation — ${COMPANY_NAME} (Ref: ${data.bookingId})`;
   
   const htmlBody = `
@@ -197,6 +204,10 @@ ${COMPANY_NAME} • ${COMPANY_PHONE} • ${COMPANY_EMAIL}
  * Send notification to owner
  */
 function sendOwnerNotification(data) {
+  if (!data || !data.custName) {
+    console.log('sendOwnerNotification: missing data or custName, skipping');
+    return;
+  }
   const subject = `New Booking: ${data.custName} — ${data.vehicleName} (${data.bookingId})`;
   
   const body = `
@@ -248,11 +259,11 @@ function calculateDays(pickup, returnDate) {
 function escapeHtml(text) {
   if (!text) return '';
   return String(text)
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, '&apos;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**

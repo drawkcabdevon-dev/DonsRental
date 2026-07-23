@@ -19,7 +19,7 @@ Edit the constants at the top of the script:
 const OWNER_EMAIL = 'devon@onlineverywhere.com';        // Your notification email
 const COMPANY_NAME = "Don's Rental";
 const COMPANY_EMAIL = 'bookings@donsrental.com';
-const COMPANY_PHONE = '+1 (555) 000-0000';
+const COMPANY_PHONE = '+1 (246) 268-2842';
 ```
 
 ### 4. Save

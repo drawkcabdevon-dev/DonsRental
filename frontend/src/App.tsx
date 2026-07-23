@@ -47,10 +47,14 @@ function App() {
     }));
   };
 
-  // Auto-fill personal info from license scan
+  // Auto-fill personal info from license scan + upload photo to GCS
   const handleLicenseScan = async (imageData: string) => {
     try {
-      const extracted = await api.scanLicense(imageData);
+      // Upload photo to GCS and scan license in parallel
+      const [photoUrl, extracted] = await Promise.all([
+        api.uploadPhoto(imageData),
+        api.scanLicense(imageData),
+      ]);
       if (extracted.customerName || extracted.customerEmail || extracted.customerPhone || extracted.customerAddress) {
         setBooking((prev) => ({
           ...prev,
@@ -58,6 +62,12 @@ function App() {
           customerEmail: extracted.customerEmail || prev.customerEmail,
           customerPhone: extracted.customerPhone || prev.customerPhone,
           customerAddress: extracted.customerAddress || prev.customerAddress,
+          licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
+        }));
+      } else {
+        setBooking((prev) => ({
+          ...prev,
+          licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
         }));
       }
     } catch {

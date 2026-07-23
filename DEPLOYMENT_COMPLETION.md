@@ -1,4 +1,4 @@
-# Deployment Completion Checklist
+# Deployment Completion Guide
 
 ## Current Status
 - ✅ Backend reads/writes Google Sheets (tested locally)
@@ -6,79 +6,89 @@
 - ✅ Python syntax OK
 - ✅ End-to-end test passes (booking → Sheet)
 - ✅ Apps Script created for email notifications
-- ⚠️ **Agent Engine deployment** — needs local `gcloud auth`
-- ⚠️ **Cloud Run deployment** — needs local `gcloud auth`
+- ⚠️ **Cloud Run** — needs `GOOGLE_SHEETS_CREDENTIALS` env var set
 
 ---
 
-## Prerequisites (run once locally)
+## Critical Issue: Missing GOOGLE_SHEETS_CREDENTIALS
+
+The live site at https://rentals.onlineverywhere.com **cannot read/write Google Sheets** because the `GOOGLE_SHEETS_CREDENTIALS` env var is not set in Cloud Run.
+
+**Why:** The `.env` file is gitignored and not deployed. Only env vars passed via `--set-env-vars` are available in Cloud Run.
+
+---
+
+## Step 1: Set GOOGLE_SHEETS_CREDENTIALS in Cloud Run
+
+### Option A: Google Cloud Console (easiest)
+
+1. Go to **https://console.cloud.google.com/run**
+2. Click **donsrental** service
+3. Click **Edit & deploy new revision**
+4. Scroll to **Environment variables**
+5. Click **Add variable**
+6. Name: `GOOGLE_SHEETS_CREDENTIALS`
+7. Value: paste the **entire JSON** from your `.env` file:
 
 ```bash
-# 1. Authenticate gcloud (requires browser)
-gcloud auth login
-gcloud auth application-default login
-gcloud config set project renal-car-booking
-
-# 2. Verify auth works
-gcloud auth list
-gcloud auth application-default print-access-token
+# To get the value, run locally:
+grep GOOGLE_SHEETS_CREDENTIALS .env | cut -d= -f2-
 ```
 
----
+8. Click **Deploy**
 
-## Step 1: Deploy Agent to Vertex AI Agent Engine
-
-```bash
-cd /workspaces/DonsRental/agent
-python deploy.py --auto
-```
-
-**Expected output:**
-```
-Deploying to onlineeverywhere / us-central1...
-Uploading to Agent Engine (this takes ~2 minutes)...
-Requirements: [...]
-✅  DEPLOYED SUCCESSFULLY!
-Resource Name: projects/450188951493/locations/us-central1/reasoningEngines/XXXXXXXXXXXXXX
-```
-
-**Copy the Resource Name** — you'll need it for Cloud Run.
-
----
-
-## Step 2: Deploy Backend to Cloud Run
+### Option B: gcloud CLI (from local machine)
 
 ```bash
 cd /workspaces/DonsRental
-export AGENT_ENGINE="projects/450188951493/locations/us-central1/reasoningEngines/XXXXXXXXXXXXXX"
+
+# Read credentials from .env
+export $(grep GOOGLE_SHEETS_CREDENTIALS .env | xargs)
+
+# Update Cloud Run
+gcloud run services update donsrental \
+  --region=europe-west1 \
+  --update-env-vars=GOOGLE_SHEETS_CREDENTIALS="${GOOGLE_SHEETS_CREDENTIALS}"
+```
+
+### Option C: deploy-cloudrun.sh (from local machine)
+
+```bash
+cd /workspaces/DonsRental
+export AGENT_ENGINE='projects/282546523551/locations/us-central1/reasoningEngines/4084942433152925696'
 ./deploy-cloudrun.sh
 ```
 
-**What this does:**
-- Builds Docker image (frontend + backend)
-- Pushes to Artifact Registry
-- Deploys to Cloud Run with env vars:
-  - `AGENT_ENGINE` (from export)
-  - `SPREADSHEET_ID` (from .env)
-  - `OWNER_EMAIL` (from .env)
-  - `GOOGLE_CLOUD_PROJECT`
-  - `GOOGLE_CLOUD_LOCATION`
+This reads `GOOGLE_SHEETS_CREDENTIALS` from `.env` and passes it to Cloud Run.
 
 ---
 
-## Step 3: Update Cloud Build (optional)
+## Step 2: Create Secret in Secret Manager (for Cloud Build)
 
-If using Cloud Build instead of deploy script:
+Cloud Build uses Secret Manager for sensitive values. Create the secret:
 
 ```bash
-# Update the _AGENT_ENGINE substitution in cloudbuild.yaml
-# Then:
-gcloud builds submit --config cloudbuild.yaml .
+cd /workspaces/DonsRental
+
+# Read credentials from .env
+export $(grep GOOGLE_SHEETS_CREDENTIALS .env | xargs)
+
+# Create the secret (first time only)
+echo -n "${GOOGLE_SHEETS_CREDENTIALS}" | \
+  gcloud secrets create google-sheets-credentials \
+    --data-file=- \
+    --project=renal-car-booking
+
+# If secret already exists, add a new version:
+echo -n "${GOOGLE_SHEETS_CREDENTIALS}" | \
+  gcloud secrets versions add google-sheets-credentials \
+    --data-file=- \
+    --project=renal-car-booking
 ```
 
 ---
 
-## Step 4: Verify Live Deployment
+## Step 3: Verify Live Deployment
 
 ```bash
 # Health check
@@ -90,14 +100,30 @@ curl https://rentals.onlineverywhere.com/api/vehicles
 # Test booking
 curl -X POST https://rentals.onlineverywhere.com/api/bookings \
   -H "Content-Type: application/json" \
-  -d '{"vehicleId":"v1","customerName":"Live Test","customerEmail":"test@example.com","customerPhone":"555-1234","customerAddress":"123 Test St","pickupDate":"2026-08-20","pickupTime":"10:00","returnDate":"2026-08-22","returnTime":"10:00","licenseNumber":"LIVE123","licenseExpiry":"2030-01-01","licenseIssuer":"Barbados Licensing Authority","licenseClass":"B","totalDays":2,"totalCost":240}'
+  -d '{
+    "vehicleId": "v1",
+    "customerName": "Live Test",
+    "customerEmail": "test@example.com",
+    "customerPhone": "555-1234",
+    "customerAddress": "123 Test St",
+    "pickupDate": "2026-08-20",
+    "pickupTime": "10:00",
+    "returnDate": "2026-08-22",
+    "returnTime": "10:00",
+    "licenseNumber": "LIVE123",
+    "licenseExpiry": "2030-01-01",
+    "licenseIssuer": "Barbados Licensing Authority",
+    "licenseClass": "B",
+    "totalDays": 2,
+    "totalCost": 240
+  }'
 ```
 
 **Verify in Sheet:** Check the `Bookings` tab for the new row.
 
 ---
 
-## Step 5: Install Apps Script for Emails
+## Step 4: Install Apps Script for Emails
 
 See `APPS_SCRIPT_SETUP.md` for full instructions.
 
@@ -108,41 +134,35 @@ Quick version:
 
 ---
 
+## Step 5: Deploy Agent to Agent Engine (optional)
+
+This requires browser authentication and must be run from a local machine:
+
+```bash
+cd /workspaces/DonsRental/agent
+
+# Authenticate (requires browser)
+gcloud auth application-default login
+
+# Deploy
+python deploy.py --auto
+
+# Copy the Resource Name from output, then update cloudbuild.yaml:
+# _AGENT_ENGINE: projects/.../locations/us-central1/reasoningEngines/XXXXXXXX
+```
+
+---
+
 ## Environment Variables Reference
 
 | Variable | Set In | Purpose |
 |----------|--------|---------|
-| `GEMINI_API_KEY` | `.env`, Cloud Run secret | License OCR via Gemini |
-| `SPREADSHEET_ID` | `.env`, Cloud Run env | Google Sheet ID |
-| `GOOGLE_SHEETS_CREDENTIALS` | `.env` (JSON) | Service account for Sheets API |
-| `OWNER_EMAIL` | `.env`, Cloud Run env | Booking notifications |
-| `AGENT_ENGINE` | Cloud Run env (deploy time) | Vertex AI Agent Engine resource |
-| `SENDGRID_API_KEY` | `.env` (optional) | Email fallback |
-
----
-
-## Files Created/Modified
-
-| File | Purpose |
-|------|---------|
-| `.env` | All secrets filled |
-| `backend/main.py` | Sheets integration (vehicles, bookings, availability) |
-| `deploy-cloudrun.sh` | Passes `SPREADSHEET_ID`, `OWNER_EMAIL` |
-| `cloudbuild.yaml` | Sets `_OWNER_EMAIL` substitution |
-| `apps-script/booking-notifications.gs` | Sheet-based email notifications |
-| `APPS_SCRIPT_SETUP.md` | This file |
-
----
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| `gcloud auth application-default login` fails | Use personal account, not service account |
-| Cloud Run deploy permission denied | Ensure your user has `Cloud Run Admin`, `Cloud Build Editor` roles |
-| Agent Engine deploy fails | Enable Vertex AI API: `gcloud services enable aiplatform.googleapis.com` |
-| Sheet writes fail (403) | Share Sheet with `dons-rental-sheets@renal-car-booking.iam.gserviceaccount.com` (Editor) |
-| Emails not sending | Check Apps Script trigger installed, Gmail quota not exceeded |
+| `GEMINI_API_KEY` | Secret Manager | License OCR via Gemini |
+| `SPREADSHEET_ID` | Cloud Run env | Google Sheet ID |
+| `GOOGLE_SHEETS_CREDENTIALS` | Secret Manager or Cloud Run env | Service account JSON |
+| `OWNER_EMAIL` | Cloud Run env | Booking notifications |
+| `AGENT_ENGINE` | Cloud Run env | Vertex AI Agent Engine resource |
+| `VITE_API_BASE` | Frontend build | API URL (default: http://localhost:8000/api) |
 
 ---
 
@@ -150,12 +170,13 @@ Quick version:
 
 ```bash
 # Check Cloud Run service
-gcloud run services describe donsrental --region=us-central1 --project=renal-car-booking
+gcloud run services describe donsrental --region=europe-west1 --project=renal-car-booking
 
 # View logs
-gcloud run services logs read donsrental --region=us-central1 --project=renal-car-booking --limit=50
+gcloud run services logs read donsrental --region=europe-west1 --project=renal-car-booking --limit=50
 
-# Re-deploy backend only
+# Re-deploy backend
+export AGENT_ENGINE='projects/282546523551/locations/us-central1/reasoningEngines/4084942433152925696'
 ./deploy-cloudrun.sh
 
 # Test local backend with .env
@@ -172,3 +193,16 @@ import uvicorn
 uvicorn.run('main:app', host='0.0.0.0', port=8000)
 "
 ```
+
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `403 Forbidden` on Sheet API | Share Sheet with `dons-rental-sheets@renal-car-booking.iam.gserviceaccount.com` (Editor) |
+| Bookings not writing to Sheet | Set `GOOGLE_SHEETS_CREDENTIALS` in Cloud Run (see Step 1) |
+| Vehicles showing hardcoded | Same as above — Sheets not connected |
+| Emails not sending | Check Apps Script trigger installed, Gmail quota not exceeded |
+| `gcloud auth` fails | Use personal account, not service account |
+| Cloud Run deploy permission | Ensure your user has `Cloud Run Admin` role |

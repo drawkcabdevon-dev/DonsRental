@@ -50,18 +50,19 @@ function App() {
   // Auto-fill personal info from license scan + upload photo to GCS
   const handleLicenseScan = async (imageData: string) => {
     try {
-      // Upload photo to GCS and scan license in parallel
-      const [photoUrl, extracted] = await Promise.all([
+      const [photoResult, extracted] = await Promise.allSettled([
         api.uploadPhoto(imageData),
         api.scanLicense(imageData),
       ]);
-      if (extracted.customerName || extracted.customerEmail || extracted.customerPhone || extracted.customerAddress) {
+      const photoUrl = photoResult.status === 'fulfilled' ? photoResult.value : '';
+      const extractedData = extracted.status === 'fulfilled' ? extracted.value : {};
+      if (extractedData.customerName || extractedData.customerEmail || extractedData.customerPhone || extractedData.customerAddress) {
         setBooking((prev) => ({
           ...prev,
-          customerName: extracted.customerName || prev.customerName,
-          customerEmail: extracted.customerEmail || prev.customerEmail,
-          customerPhone: extracted.customerPhone || prev.customerPhone,
-          customerAddress: extracted.customerAddress || prev.customerAddress,
+          customerName: extractedData.customerName || prev.customerName,
+          customerEmail: extractedData.customerEmail || prev.customerEmail,
+          customerPhone: extractedData.customerPhone || prev.customerPhone,
+          customerAddress: extractedData.customerAddress || prev.customerAddress,
           licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
         }));
       } else {
@@ -70,11 +71,8 @@ function App() {
           licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
         }));
       }
-    } catch (err) {
-      // Surface upload error to user
-      const message = err instanceof Error ? err.message : 'Failed to upload license photo';
-      setError(message);
-      throw err;
+    } catch {
+      // Silent fail — user can type manually on next step
     }
   };
 

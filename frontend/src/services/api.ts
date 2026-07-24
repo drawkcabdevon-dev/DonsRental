@@ -92,4 +92,19 @@ export const api = {
       return {};
     }
   },
+
+  // Upload license photo to GCS
+  async uploadPhoto(imageData: string, bookingRef?: string): Promise<string> {
+    const response = await fetch(`${API_BASE}/upload-photo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageData, bookingRef: bookingRef || '' }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Photo upload failed' }));
+      throw new Error(error.detail || 'Photo upload failed');
+    }
+    const data = await response.json();
+    return data.url || '';
+  },
 };

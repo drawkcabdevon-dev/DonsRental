@@ -41,19 +41,12 @@ const COL = {
   notes: 21
 };
 
-// Try to find the Bookings sheet by name, then by index (2nd tab)
+// Find the Bookings sheet by name - fail if not found
 function getBookingsSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName('Bookings');
+  const sheet = ss.getSheetByName('Bookings');
   if (!sheet) {
-    // Fallback: try second tab (index 1)
-    const sheets = ss.getSheets();
-    if (sheets.length > 1) {
-      sheet = sheets[1];
-    }
-  }
-  if (!sheet) {
-    throw new Error('Bookings sheet not found');
+    throw new Error('Bookings sheet not found - named "Bookings" sheet must exist');
   }
   return sheet;
 }
@@ -64,22 +57,36 @@ function getBookingsSheet() {
 function onEdit(e) {
   const range = e.range;
   const sheet = range.getSheet();
-  
+
   // Only process edits on the Bookings sheet
   const bookingsSheet = getBookingsSheet();
   if (sheet.getSheetId() !== bookingsSheet.getSheetId()) return;
-  
-  // Only process new rows (row > 1, assuming row 1 is headers)
-  const row = range.getRow();
-  if (row <= 1) return;
-  
-  // Check if this is a new booking (status column was just set to 'Confirmed')
-  const status = sheet.getRange(row, COL.status).getValue();
-  const invoiceSent = sheet.getRange(row, COL.invoiceSentAt).getValue();
-  
-  // Only send if status is Confirmed and invoice hasn't been sent yet
-  if (status === 'Confirmed' && !invoiceSent) {
-    sendBookingEmails(row);
+
+  // Get the range of edited cells
+  const startRow = range.getRow();
+  const numRows = range.getNumRows();
+  const startCol = range.getColumn();
+  const numCols = range.getNumColumns();
+
+  // Check if the status column is in the edited range
+  const statusColInRange = startCol <= COL.status && COL.status < startCol + numCols;
+  if (!statusColInRange) return;
+
+  // Process each row in the edited range
+  for (let i = 0; i < numRows; i++) {
+    const row = startRow + i;
+
+    // Skip header row
+    if (row <= 1) continue;
+
+    // Check if this is a new booking (status column was just set to 'Confirmed')
+    const status = sheet.getRange(row, COL.status).getValue();
+    const invoiceSent = sheet.getRange(row, COL.invoiceSentAt).getValue();
+
+    // Only send if status is Confirmed and invoice hasn't been sent yet
+    if (status === 'Confirmed' && !invoiceSent) {
+      sendBookingEmails(row);
+    }
   }
 }
 
@@ -96,7 +103,7 @@ function sendBookingEmails(row) {
       data[key] = sheet.getRange(row, col).getValue();
     });
     
-    console.log(`sendBookingEmails: bookingId=${data.bookingId}, custName=${data.custName}, custEmail=${data.custEmail}`);
+    console.log(`sendBookingEmails: bookingId=${data.bookingId}`);
     
     // Skip if missing required fields
     if (!data.custEmail || !data.bookingId) {

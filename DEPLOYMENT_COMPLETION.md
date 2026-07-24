@@ -40,10 +40,10 @@ grep GOOGLE_SHEETS_CREDENTIALS .env | cut -d= -f2-
 ### Option B: gcloud CLI (from local machine)
 
 ```bash
-cd /workspaces/DonsRental
+cd <repo-root>
 
-# Read credentials from .env
-export $(grep GOOGLE_SHEETS_CREDENTIALS .env | xargs)
+# Read credentials from .env (safe parsing for JSON values)
+export GOOGLE_SHEETS_CREDENTIALS=$(grep -E '^GOOGLE_SHEETS_CREDENTIALS=' .env | sed 's/^GOOGLE_SHEETS_CREDENTIALS=//')
 
 # Update Cloud Run
 gcloud run services update donsrental \
@@ -54,7 +54,7 @@ gcloud run services update donsrental \
 ### Option C: deploy-cloudrun.sh (from local machine)
 
 ```bash
-cd /workspaces/DonsRental
+cd <repo-root>
 export AGENT_ENGINE='projects/282546523551/locations/us-central1/reasoningEngines/4084942433152925696'
 ./deploy-cloudrun.sh
 ```
@@ -63,17 +63,18 @@ This reads `GOOGLE_SHEETS_CREDENTIALS` from `.env` and passes it to Cloud Run.
 
 ---
 
-## Step 2: Create Secret in Secret Manager (for Cloud Build)
+## Step 2: Create Secrets in Secret Manager (for Cloud Build & Cloud Run)
 
-Cloud Build uses Secret Manager for sensitive values. Create the secret:
+Cloud Build and Cloud Run use Secret Manager for sensitive values. Create the secrets:
 
 ```bash
-cd /workspaces/DonsRental
+cd <repo-root>
 
-# Read credentials from .env
-export $(grep GOOGLE_SHEETS_CREDENTIALS .env | xargs)
+# Read credentials from .env (safe parsing for JSON values)
+export GOOGLE_SHEETS_CREDENTIALS=$(grep -E '^GOOGLE_SHEETS_CREDENTIALS=' .env | sed 's/^GOOGLE_SHEETS_CREDENTIALS=//')
+export GEMINI_API_KEY=$(grep -E '^GEMINI_API_KEY=' .env | sed 's/^GEMINI_API_KEY=//')
 
-# Create the secret (first time only)
+# Create google-sheets-credentials secret (first time only)
 echo -n "${GOOGLE_SHEETS_CREDENTIALS}" | \
   gcloud secrets create google-sheets-credentials \
     --data-file=- \
@@ -84,6 +85,39 @@ echo -n "${GOOGLE_SHEETS_CREDENTIALS}" | \
   gcloud secrets versions add google-sheets-credentials \
     --data-file=- \
     --project=renal-car-booking
+
+# Create gemini-api-key secret and add version 2 (matching cloudbuild.yaml reference)
+echo -n "${GEMINI_API_KEY}" | \
+  gcloud secrets create gemini-api-key \
+    --data-file=- \
+    --project=renal-car-booking
+
+# Add version 2 if needed
+echo -n "${GEMINI_API_KEY}" | \
+  gcloud secrets versions add gemini-api-key \
+    --data-file=- \
+    --project=renal-car-booking
+```
+
+### Grant Secret Access to Cloud Run Service Account
+
+The Cloud Run service must be able to read these secrets. Grant the `secretAccessor` role:
+
+```bash
+# Get the Cloud Run service account (usually the default compute service account)
+PROJECT_NUMBER=$(gcloud projects describe renal-car-booking --format='value(projectNumber)')
+SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+# Grant access to secrets
+gcloud secrets add-iam-policy-binding google-sheets-credentials \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project=renal-car-booking
+
+gcloud secrets add-iam-policy-binding gemini-api-key \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project=renal-car-booking
 ```
 
 ---
@@ -139,7 +173,7 @@ Quick version:
 This requires browser authentication and must be run from a local machine:
 
 ```bash
-cd /workspaces/DonsRental/agent
+cd <repo-root>/agent
 
 # Authenticate (requires browser)
 gcloud auth application-default login
@@ -162,6 +196,8 @@ python deploy.py --auto
 | `GOOGLE_SHEETS_CREDENTIALS` | Secret Manager or Cloud Run env | Service account JSON |
 | `OWNER_EMAIL` | Cloud Run env | Booking notifications |
 | `AGENT_ENGINE` | Cloud Run env | Vertex AI Agent Engine resource |
+| `GCS_BUCKET` | Cloud Run env | GCS bucket for license photos |
+| `GCS_PHOTOS_PREFIX` | Cloud Run env | Path prefix for license photos in bucket |
 | `VITE_API_BASE` | Frontend build | API URL (default: http://localhost:8000/api) |
 
 ---
@@ -180,7 +216,7 @@ export AGENT_ENGINE='projects/282546523551/locations/us-central1/reasoningEngine
 ./deploy-cloudrun.sh
 
 # Test local backend with .env
-cd /workspaces/DonsRental && python -c "
+cd <repo-root> && python -c "
 import os
 with open('.env') as f:
     for line in f:

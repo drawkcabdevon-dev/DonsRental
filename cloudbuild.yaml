@@ -37,7 +37,7 @@ steps:
       - '80'
       - --set-secrets
       - >-
-        GEMINI_API_KEY=gemini-api-key:2,GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:1
+        GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:latest
       - --set-env-vars
       - >-
         AGENT_ENGINE=${_AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=us-central1,SPREADSHEET_ID=${_SPREADSHEET_ID},OWNER_EMAIL=${_OWNER_EMAIL},GCS_BUCKET=${_GCS_BUCKET},GCS_PHOTOS_PREFIX=${_GCS_PHOTOS_PREFIX}

@@ -34,18 +34,20 @@ See `DEPLOYMENT_COMPLETION.md` for step-by-step instructions.
 ## Quick Start (Local)
 
 ```bash
-# 1. Install dependencies
-cd backend && pip install -r requirements.txt
-cd ../frontend && npm install
-
-# 2. Set up .env (copy from .env.example and fill in values)
+# 1. Set up .env (copy from .env.example and fill in values)
 cp .env.example .env
 
-# 3. Run backend
-cd backend && uvicorn main:app --reload --port 8000
+# 2. Install backend dependencies
+(cd backend && pip install -r requirements.txt)
 
-# 4. Run frontend (separate terminal)
-cd frontend && npm run dev
+# 3. Install frontend dependencies
+(cd frontend && npm install)
+
+# 4. Run backend (from repository root)
+(cd backend && uvicorn main:app --reload --port 8000)
+
+# 5. Run frontend in separate terminal (from repository root)
+(cd frontend && npm run dev)
 ```
 
 ## Environment Variables
@@ -55,8 +57,10 @@ cd frontend && npm run dev
 | `GEMINI_API_KEY` | Yes | License OCR via Gemini API |
 | `SPREADSHEET_ID` | Yes | Google Sheet ID |
 | `GOOGLE_SHEETS_CREDENTIALS` | Yes | Service account JSON (full, one line) |
-| `OWNER_EMAIL` | Yes | Booking notification emails |
+| `OWNER_EMAIL` | No | Booking notification emails |
 | `AGENT_ENGINE` | Yes | Vertex AI Agent Engine resource |
+| `GCS_BUCKET` | Yes | GCS bucket for license photos |
+| `GCS_PHOTOS_PREFIX` | Yes | Path prefix for license photos in bucket |
 | `SENDGRID_API_KEY` | No | Email fallback (optional) |
 | `VITE_API_BASE` | No | Frontend API URL (default: http://localhost:8000/api) |
 

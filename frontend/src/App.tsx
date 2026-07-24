@@ -70,8 +70,11 @@ function App() {
           licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
         }));
       }
-    } catch {
-      // Silent fail — user can type manually on next step
+    } catch (err) {
+      // Surface upload error to user
+      const message = err instanceof Error ? err.message : 'Failed to upload license photo';
+      setError(message);
+      throw err;
     }
   };
 

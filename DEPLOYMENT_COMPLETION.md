@@ -6,123 +6,41 @@
 - ✅ Python syntax OK
 - ✅ End-to-end test passes (booking → Sheet)
 - ✅ Apps Script created for email notifications
-- ⚠️ **Cloud Run** — needs `GOOGLE_SHEETS_CREDENTIALS` env var set
+- ✅ GCS photo upload working (signed URLs)
+- ✅ Secrets managed via Secret Manager
 
 ---
 
-## Critical Issue: Missing GOOGLE_SHEETS_CREDENTIALS
+## How Secrets Work Now
 
-The live site at https://rentals.onlineverywhere.com **cannot read/write Google Sheets** because the `GOOGLE_SHEETS_CREDENTIALS` env var is not set in Cloud Run.
+Both `GEMINI_API_KEY` and `GOOGLE_SHEETS_CREDENTIALS` are stored in **Secret Manager** and injected into Cloud Run at deploy time via `--set-secrets` in `cloudbuild.yaml`. You do **NOT** need to set these as plain env vars.
 
-**Why:** The `.env` file is gitignored and not deployed. Only env vars passed via `--set-env-vars` are available in Cloud Run.
-
----
-
-## Step 1: Set GOOGLE_SHEETS_CREDENTIALS in Cloud Run
-
-### Option A: Google Cloud Console (easiest)
-
-1. Go to **https://console.cloud.google.com/run**
-2. Click **donsrental** service
-3. Click **Edit & deploy new revision**
-4. Scroll to **Environment variables**
-5. Click **Add variable**
-6. Name: `GOOGLE_SHEETS_CREDENTIALS`
-7. Value: paste the **entire JSON** from your `.env` file:
-
-```bash
-# To get the value, run locally:
-grep GOOGLE_SHEETS_CREDENTIALS .env | cut -d= -f2-
-```
-
-8. Click **Deploy**
-
-### Option B: gcloud CLI (from local machine)
-
-```bash
-cd <repo-root>
-
-# Read credentials from .env (safe parsing for JSON values)
-export GOOGLE_SHEETS_CREDENTIALS=$(grep -E '^GOOGLE_SHEETS_CREDENTIALS=' .env | sed 's/^GOOGLE_SHEETS_CREDENTIALS=//')
-
-# Update Cloud Run
-gcloud run services update donsrental \
-  --region=europe-west1 \
-  --update-env-vars=GOOGLE_SHEETS_CREDENTIALS="${GOOGLE_SHEETS_CREDENTIALS}"
-```
-
-### Option C: deploy-cloudrun.sh (from local machine)
-
-```bash
-cd <repo-root>
-export AGENT_ENGINE='projects/282546523551/locations/us-central1/reasoningEngines/4084942433152925696'
-./deploy-cloudrun.sh
-```
-
-This reads `GOOGLE_SHEETS_CREDENTIALS` from `.env` and passes it to Cloud Run.
+| Secret | Secret Manager Name | Used By |
+|--------|-------------------|---------|
+| Gemini API Key | `gemini-api-key` | License OCR |
+| Sheets Credentials | `google-sheets-credentials` | Google Sheets read/write |
 
 ---
 
-## Step 2: Create Secrets in Secret Manager (for Cloud Build & Cloud Run)
-
-Cloud Build and Cloud Run use Secret Manager for sensitive values. Create the secrets:
+## Step 1: Deploy (the only step you need)
 
 ```bash
-cd <repo-root>
-
-# Read credentials from .env (safe parsing for JSON values)
-export GOOGLE_SHEETS_CREDENTIALS=$(grep -E '^GOOGLE_SHEETS_CREDENTIALS=' .env | sed 's/^GOOGLE_SHEETS_CREDENTIALS=//')
-export GEMINI_API_KEY=$(grep -E '^GEMINI_API_KEY=' .env | sed 's/^GEMINI_API_KEY=//')
-
-# Create google-sheets-credentials secret (first time only)
-echo -n "${GOOGLE_SHEETS_CREDENTIALS}" | \
-  gcloud secrets create google-sheets-credentials \
-    --data-file=- \
-    --project=renal-car-booking
-
-# If secret already exists, add a new version:
-echo -n "${GOOGLE_SHEETS_CREDENTIALS}" | \
-  gcloud secrets versions add google-sheets-credentials \
-    --data-file=- \
-    --project=renal-car-booking
-
-# Create gemini-api-key secret and add version 2 (matching cloudbuild.yaml reference)
-echo -n "${GEMINI_API_KEY}" | \
-  gcloud secrets create gemini-api-key \
-    --data-file=- \
-    --project=renal-car-booking
-
-# Add version 2 if needed
-echo -n "${GEMINI_API_KEY}" | \
-  gcloud secrets versions add gemini-api-key \
-    --data-file=- \
-    --project=renal-car-booking
+cd DonsRental
+git checkout main
+git pull
+gcloud auth login
+SHORT_SHA=$(git rev-parse --short HEAD)
+gcloud builds submit --config=cloudbuild.yaml --substitutions=SHORT_SHA="$SHORT_SHA"
 ```
 
-### Grant Secret Access to Cloud Run Service Account
-
-The Cloud Run service must be able to read these secrets. Grant the `secretAccessor` role:
-
-```bash
-# Get the Cloud Run service account (usually the default compute service account)
-PROJECT_NUMBER=$(gcloud projects describe renal-car-booking --format='value(projectNumber)')
-SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-
-# Grant access to secrets
-gcloud secrets add-iam-policy-binding google-sheets-credentials \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project=renal-car-booking
-
-gcloud secrets add-iam-policy-binding gemini-api-key \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project=renal-car-booking
-```
+Cloud Build will:
+1. Build the Docker image (frontend + backend)
+2. Push to Artifact Registry
+3. Deploy to Cloud Run with secrets from Secret Manager
 
 ---
 
-## Step 3: Verify Live Deployment
+## Step 2: Verify Live Deployment
 
 ```bash
 # Health check
@@ -131,33 +49,18 @@ curl https://rentals.onlineverywhere.com/api/health
 # Vehicles (should come from Sheet)
 curl https://rentals.onlineverywhere.com/api/vehicles
 
-# Test booking
-curl -X POST https://rentals.onlineverywhere.com/api/bookings \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vehicleId": "v1",
-    "customerName": "Live Test",
-    "customerEmail": "test@example.com",
-    "customerPhone": "555-1234",
-    "customerAddress": "123 Test St",
-    "pickupDate": "2026-08-20",
-    "pickupTime": "10:00",
-    "returnDate": "2026-08-22",
-    "returnTime": "10:00",
-    "licenseNumber": "LIVE123",
-    "licenseExpiry": "2030-01-01",
-    "licenseIssuer": "Barbados Licensing Authority",
-    "licenseClass": "B",
-    "totalDays": 2,
-    "totalCost": 240
-  }'
+# Test upload-photo
+python3 -c "
+import base64, json
+jpeg = bytes([0xFF,0xD8,0xFF,0xE0,0x00,0x10,0x4A,0x46,0x49,0x46,0x00,0x01,0x01,0x00,0x00,0x01,0x00,0x01,0x00,0x00,0xFF,0xD9])
+b64 = base64.b64encode(jpeg).decode()
+print(json.dumps({'image': b64}))
+" | curl -s -X POST https://rentals.onlineverywhere.com/api/upload-photo -H "Content-Type: application/json" -d @-
 ```
-
-**Verify in Sheet:** Check the `Bookings` tab for the new row.
 
 ---
 
-## Step 4: Install Apps Script for Emails
+## Step 3: Install Apps Script for Emails
 
 See `APPS_SCRIPT_SETUP.md` for full instructions.
 
@@ -168,37 +71,45 @@ Quick version:
 
 ---
 
-## Step 5: Deploy Agent to Agent Engine (optional)
-
-This requires browser authentication and must be run from a local machine:
-
-```bash
-cd <repo-root>/agent
-
-# Authenticate (requires browser)
-gcloud auth application-default login
-
-# Deploy
-python deploy.py --auto
-
-# Copy the Resource Name from output, then update cloudbuild.yaml:
-# _AGENT_ENGINE: projects/.../locations/us-central1/reasoningEngines/XXXXXXXX
-```
-
----
-
 ## Environment Variables Reference
 
 | Variable | Set In | Purpose |
 |----------|--------|---------|
 | `GEMINI_API_KEY` | Secret Manager | License OCR via Gemini |
 | `SPREADSHEET_ID` | Cloud Run env | Google Sheet ID |
-| `GOOGLE_SHEETS_CREDENTIALS` | Secret Manager or Cloud Run env | Service account JSON |
+| `GOOGLE_SHEETS_CREDENTIALS` | Secret Manager | Service account JSON |
 | `OWNER_EMAIL` | Cloud Run env | Booking notifications |
 | `AGENT_ENGINE` | Cloud Run env | Vertex AI Agent Engine resource |
 | `GCS_BUCKET` | Cloud Run env | GCS bucket for license photos |
-| `GCS_PHOTOS_PREFIX` | Cloud Run env | Path prefix for license photos in bucket |
-| `VITE_API_BASE` | Frontend build | API URL (default: http://localhost:8000/api) |
+| `GCS_PHOTOS_PREFIX` | Cloud Run env | Path prefix for photos in bucket |
+
+---
+
+## One-Time Setup (already done)
+
+These were configured during initial setup. Only needed once per project:
+
+### Create Secret Manager secrets
+```bash
+# From .env file
+echo -n "$GEMINI_API_KEY" | gcloud secrets create gemini-api-key --data-file=- --project=renal-car-booking
+echo -n "$GOOGLE_SHEETS_CREDENTIALS" | gcloud secrets create google-sheets-credentials --data-file=- --project=renal-car-booking
+```
+
+### Grant Cloud Run SA access to secrets
+```bash
+PROJECT_NUMBER=$(gcloud projects describe renal-car-booking --format='value(projectNumber)')
+SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+gcloud secrets add-iam-policy-binding gemini-api-key --member="serviceAccount:$SA" --role=roles/secretmanager.secretAccessor --project=renal-car-booking
+gcloud secrets add-iam-policy-binding google-sheets-credentials --member="serviceAccount:$SA" --role=roles/secretmanager.secretAccessor --project=renal-car-booking
+```
+
+### Grant Cloud Build SA access to secrets
+```bash
+CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+gcloud secrets add-iam-policy-binding gemini-api-key --member="serviceAccount:$CB_SA" --role=roles/secretmanager.secretAccessor --project=renal-car-booking
+gcloud secrets add-iam-policy-binding google-sheets-credentials --member="serviceAccount:$CB_SA" --role=roles/secretmanager.secretAccessor --project=renal-car-booking
+```
 
 ---
 
@@ -210,24 +121,6 @@ gcloud run services describe donsrental --region=europe-west1 --project=renal-ca
 
 # View logs
 gcloud run services logs read donsrental --region=europe-west1 --project=renal-car-booking --limit=50
-
-# Re-deploy backend
-export AGENT_ENGINE='projects/282546523551/locations/us-central1/reasoningEngines/4084942433152925696'
-./deploy-cloudrun.sh
-
-# Test local backend with .env
-cd <repo-root> && python -c "
-import os
-with open('.env') as f:
-    for line in f:
-        line = line.strip()
-        if line and not line.startswith('#') and '=' in line:
-            k, v = line.split('=', 1)
-            os.environ[k] = v
-os.chdir('backend')
-import uvicorn
-uvicorn.run('main:app', host='0.0.0.0', port=8000)
-"
 ```
 
 ---
@@ -237,8 +130,8 @@ uvicorn.run('main:app', host='0.0.0.0', port=8000)
 | Issue | Solution |
 |-------|----------|
 | `403 Forbidden` on Sheet API | Share Sheet with `dons-rental-sheets@renal-car-booking.iam.gserviceaccount.com` (Editor) |
-| Bookings not writing to Sheet | Set `GOOGLE_SHEETS_CREDENTIALS` in Cloud Run (see Step 1) |
+| Bookings not writing to Sheet | Check Secret Manager secrets exist and Cloud Run SA has access |
 | Vehicles showing hardcoded | Same as above — Sheets not connected |
 | Emails not sending | Check Apps Script trigger installed, Gmail quota not exceeded |
-| `gcloud auth` fails | Use personal account, not service account |
+| `gcloud auth` fails | Run `gcloud auth login` with personal account |
 | Cloud Run deploy permission | Ensure your user has `Cloud Run Admin` role |

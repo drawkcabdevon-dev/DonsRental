@@ -56,7 +56,7 @@ tools = agent.tools if hasattr(agent, 'tools') else []
 print(f"   Tools: {len(tools)}")
 for t in tools:
     print(f"     - {t.__name__}")
-assert len(tools) == 3, "Expected 3 tools"
+assert len(tools) == 4, "Expected 4 tools"
 print("  ✅  PASS")
 
 print("\n" + "=" * 60)

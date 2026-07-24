@@ -16,6 +16,10 @@ import uuid
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
+# Load .env file in development (not available in Cloud Run)
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
+
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles

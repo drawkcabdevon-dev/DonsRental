@@ -1,6 +1,6 @@
 import type { Vehicle, BookingData, ApiResponse } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export const api = {
   // Get available vehicles

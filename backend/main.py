@@ -79,6 +79,60 @@ def _get_gcs():
         _gcs_client = gcs_storage.Client()
     return _gcs_client
 
+# ── Google Calendar singleton ─────────────────────────
+_calendar_svc = None
+CALENDAR_ID = os.environ.get("GOOGLE_CALENDAR_ID", "primary")
+
+def _get_calendar():
+    global _calendar_svc
+    if _calendar_svc:
+        return _calendar_svc
+    if GOOGLE_SHEETS_CREDENTIALS:
+        creds = service_account.Credentials.from_service_account_info(
+            json.loads(GOOGLE_SHEETS_CREDENTIALS),
+            scopes=['https://www.googleapis.com/auth/calendar'],
+        )
+    else:
+        creds, _ = google_default(scopes=['https://www.googleapis.com/auth/calendar'])
+    _calendar_svc = build('calendar', 'v3', credentials=creds)
+    return _calendar_svc
+
+def _add_to_calendar(req: BookingRequest, ref: str):
+    """Add a booking as an event to Google Calendar."""
+    if not GOOGLE_SHEETS_CREDENTIALS:
+        logger.info("No credentials configured — skipping calendar event")
+        return None
+    try:
+        svc = _get_calendar()
+        pickup_dt = f"{req.pickupDate}T{req.pickupTime or '09:00'}:00"
+        return_dt = f"{req.returnDate}T{req.returnTime or '17:00'}:00"
+        event = {
+            'summary': f'{ref} — {req.customerName}',
+            'description': (
+                f'Booking: {ref}\n'
+                f'Customer: {req.customerName}\n'
+                f'Email: {req.customerEmail}\n'
+                f'Phone: {req.customerPhone}\n'
+                f'Vehicle: {req.vehicleId}\n'
+                f'License: {req.licenseNumber}\n'
+                f'Days: {req.totalDays} | Total: Bds${req.totalCost}'
+            ),
+            'start': {
+                'dateTime': pickup_dt,
+                'timeZone': 'America/Barbados',
+            },
+            'end': {
+                'dateTime': return_dt,
+                'timeZone': 'America/Barbados',
+            },
+        }
+        created = svc.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+        logger.info("Calendar event created: %s", created.get('htmlLink'))
+        return created.get('id')
+    except Exception as e:
+        logger.warning("Calendar event failed: %s", e)
+        return None
+
 def _upload_to_gcs(image_base64: str, booking_ref: str = "") -> str:
     """Upload a base64-encoded image to GCS and return its blob path (private object key)."""
     # Parse data URL and extract base64 data
@@ -577,6 +631,7 @@ async def create_booking(req: BookingRequest):
     _log_booking_notification(req, ref)
     _append_to_sheet(req, ref)
     _send_notification_email(req, ref)
+    _add_to_calendar(req, ref)
 
     return {
         "success": True,

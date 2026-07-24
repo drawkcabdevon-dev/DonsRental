@@ -56,6 +56,14 @@ function App() {
       ]);
       const photoUrl = photoResult.status === 'fulfilled' ? photoResult.value : '';
       const extractedData = extracted.status === 'fulfilled' ? extracted.value : {};
+
+      if (photoResult.status === 'rejected') {
+        console.warn('Photo upload failed:', photoResult.reason);
+      }
+      if (extracted.status === 'rejected') {
+        console.warn('License scan failed:', extracted.reason);
+      }
+
       if (extractedData.customerName || extractedData.customerEmail || extractedData.customerPhone || extractedData.customerAddress) {
         setBooking((prev) => ({
           ...prev,

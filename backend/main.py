@@ -109,9 +109,10 @@ def _upload_to_gcs(image_base64: str, booking_ref: str = "") -> str:
         blob = bucket.blob(blob_name)
         # Add explicit timeout to upload operation (30 seconds)
         blob.upload_from_string(image_bytes, content_type=content_type, timeout=30)
-        # Keep blob private - return only the object path/key
-        logger.info("Photo uploaded to GCS (private): %s", blob_name)
-        return blob_name
+        # Return a signed URL (7 days) so the link in Sheets is viewable
+        url = blob.generate_signed_url(expiration=timedelta(days=7), method="GET")
+        logger.info("Photo uploaded to GCS: %s", blob_name)
+        return url
     except Exception as e:
         logger.error("GCS upload failed: %s", e)
         raise

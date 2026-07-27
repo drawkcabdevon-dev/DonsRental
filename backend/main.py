@@ -528,6 +528,32 @@ def _append_to_sheet(req: BookingRequest, ref: str):
         logger.warning("Could not write to Google Sheet: %s", e)
 
 
+def _update_photo_url_in_sheet(booking_ref: str, photo_url: str):
+    """Update the licensePhotoUrl column for a booking in the Sheet."""
+    if not SPREADSHEET_ID or not booking_ref:
+        return
+    try:
+        svc = _get_sheets()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID,
+            range='Bookings!A2:A',
+        ).execute()
+        rows = result.get('values', [])
+        for i, row in enumerate(rows):
+            if row and row[0] == booking_ref:
+                row_num = i + 2
+                svc.spreadsheets().values().update(
+                    spreadsheetId=SPREADSHEET_ID,
+                    range=f'Bookings!V{row_num}',
+                    valueInputOption='USER_ENTERED',
+                    body={'values': [[photo_url]]},
+                ).execute()
+                logger.info("✅ Photo URL updated for booking %s", booking_ref)
+                return
+        logger.warning("Booking %s not found in sheet for photo update", booking_ref)
+    except Exception as e:
+        logger.warning("Could not update photo URL in sheet: %s", e)
+
 
 @app.get("/api/vehicles")
 async def get_vehicles():
@@ -715,6 +741,11 @@ async def upload_photo(req: PhotoUploadRequest):
         # Run blocking GCS upload in thread pool to avoid blocking event loop
         loop = asyncio.get_event_loop()
         blob_path = await loop.run_in_executor(_executor, _upload_to_gcs, req.image, req.bookingRef)
+        
+        # Update the photo URL in the Sheet if we have a booking reference
+        if req.bookingRef:
+            await loop.run_in_executor(_executor, _update_photo_url_in_sheet, req.bookingRef, blob_path)
+        
         return {"url": blob_path}
     except ValueError as e:
         raise HTTPException(400, str(e))

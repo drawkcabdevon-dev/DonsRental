@@ -543,7 +543,7 @@ async def check_availability(req: CheckAvailabilityRequest):
     """Check if a vehicle is available for the requested date range."""
     pickup = _parse_date(req.pickupDate)
     return_d = _parse_date(req.returnDate)
-    if not pickup or return_d:
+    if not pickup or not return_d:
         raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
 
     # Check existing bookings from Sheet

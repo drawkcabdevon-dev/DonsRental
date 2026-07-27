@@ -270,35 +270,37 @@ function App() {
           <div>
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Select Dates & Pricing</h2>
             
-            <div className="dates-pricing-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-6)' }}>
+            <div className="dates-pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-6)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-                <Input
-                  label="Pick-up Date *"
-                  variant="date"
-                  value={booking.pickupDate}
-                  onChange={(e) => handleBookingChange('pickupDate', e.target.value)}
-                />
-                
-                <Input
-                  label="Pick-up Time *"
-                  variant="time"
-                  value={booking.pickupTime}
-                  onChange={(e) => handleBookingChange('pickupTime', e.target.value)}
-                />
-                
-                <Input
-                  label="Return Date *"
-                  variant="date"
-                  value={booking.returnDate}
-                  onChange={(e) => handleBookingChange('returnDate', e.target.value)}
-                />
-                
-                <Input
-                  label="Return Time *"
-                  variant="time"
-                  value={booking.returnTime}
-                  onChange={(e) => handleBookingChange('returnTime', e.target.value)}
-                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
+                  <Input
+                    label="Pick-up Date *"
+                    variant="date"
+                    value={booking.pickupDate}
+                    onChange={(e) => handleBookingChange('pickupDate', e.target.value)}
+                  />
+                  
+                  <Input
+                    label="Pick-up Time *"
+                    variant="time"
+                    value={booking.pickupTime}
+                    onChange={(e) => handleBookingChange('pickupTime', e.target.value)}
+                  />
+                  
+                  <Input
+                    label="Return Date *"
+                    variant="date"
+                    value={booking.returnDate}
+                    onChange={(e) => handleBookingChange('returnDate', e.target.value)}
+                  />
+                  
+                  <Input
+                    label="Return Time *"
+                    variant="time"
+                    value={booking.returnTime}
+                    onChange={(e) => handleBookingChange('returnTime', e.target.value)}
+                  />
+                </div>
                 
                 <Input
                   label="Drop-off Location"
@@ -308,16 +310,30 @@ function App() {
                 />
               </div>
               
-              <div>
-                {selectedVehicle && (
+              {/* Calendar embed */}
+              <div style={{ marginTop: 'var(--space-6)' }}>
+                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}>📅 Availability Calendar</h3>
+                <p style={{ marginBottom: 'var(--space-4)', color: 'var(--color-dark-gray)' }}>
+                  Check available dates before booking. Blocked dates show existing reservations and maintenance.
+                </p>
+                <iframe
+                  src="https://calendar.google.com/calendar/embed?src=c_93b81d190fa2b719fee43b8f9e2335d20b29c0d2dc63dff3b96aa3f091d53450%40group.calendar.google.com&ctz=America%2FBarbados"
+                  style={{ width: '100%', height: '400px', border: 0, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+                  frameBorder="0"
+                  scrolling="no"
+                />
+              </div>
+              
+              {selectedVehicle && (
+                <div style={{ marginTop: 'var(--space-6)' }}>
                   <PricingBreakdown
                     vehicleName={selectedVehicle.name}
                     totalDays={calculateTotalDays()}
                     dailyRate={selectedVehicle.rate}
                     totalCost={calculateTotalCost()}
                   />
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )}

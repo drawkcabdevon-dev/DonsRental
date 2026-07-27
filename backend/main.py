@@ -376,6 +376,30 @@ def _dates_overlap(a1: date, a2: date, b1: date, b2: date) -> bool:
     """Check if date range [a1, a2] overlaps with [b1, b2]."""
     return a1 <= b2 and b1 <= a2
 
+def _fetch_calendar_events(start_date: str, end_date: str) -> list:
+    """Fetch events from Google Calendar for the given date range."""
+    try:
+        svc = _get_calendar()
+        # Time range for the query
+        time_min = f"{start_date}T00:00:00-04:00"  # Barbados timezone
+        time_max = f"{end_date}T23:59:59-04:00"
+        
+        events_result = svc.events().list(
+            calendarId=CALENDAR_ID,
+            timeMin=time_min,
+            timeMax=time_max,
+            singleEvents=True,
+            orderBy='startTime',
+            maxResults=100,
+        ).execute()
+        
+        events = events_result.get('items', [])
+        logger.info("Fetched %d calendar events for %s to %s", len(events), start_date, end_date)
+        return events
+    except Exception as e:
+        logger.warning("Could not fetch calendar events: %s", e)
+        return []
+
 def _log_booking_notification(req: BookingRequest, ref: str):
     """Log booking details so the owner can see who booked what."""
     logger.info("=" * 50)
@@ -519,9 +543,10 @@ async def check_availability(req: CheckAvailabilityRequest):
     """Check if a vehicle is available for the requested date range."""
     pickup = _parse_date(req.pickupDate)
     return_d = _parse_date(req.returnDate)
-    if not pickup or not return_d:
+    if not pickup or return_d:
         raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
 
+    # Check existing bookings from Sheet
     sheet_bookings = _fetch_bookings_from_sheet()
     conflicts = []
     for b in sheet_bookings:
@@ -531,10 +556,33 @@ async def check_availability(req: CheckAvailabilityRequest):
         if bp and br and vid == req.vehicleId:
             if _dates_overlap(pickup, return_d, bp, br):
                 conflicts.append({
+                    "type": "booking",
                     "existingRef": b.get("bookingId", "") or b.get("bookingid", ""),
                     "pickupDate": b.get("pickupDate", "") or b.get("pickupdate", ""),
                     "returnDate": b.get("returnDate", "") or b.get("returndate", ""),
                 })
+
+    # Check Google Calendar events (maintenance, blocked dates, etc.)
+    cal_events = _fetch_calendar_events(req.pickupDate, req.returnDate)
+    for event in cal_events:
+        start = event.get('start', {})
+        end = event.get('end', {})
+        
+        # Handle all-day events
+        if 'date' in start:
+            ev_start = _parse_date(start['date'])
+            ev_end = _parse_date(end['date'])
+        else:
+            ev_start = _parse_date(start.get('dateTime', '')[:10])
+            ev_end = _parse_date(end.get('dateTime', '')[:10])
+        
+        if ev_start and ev_end and _dates_overlap(pickup, return_d, ev_start, ev_end):
+            conflicts.append({
+                "type": "calendar",
+                "summary": event.get('summary', 'Blocked'),
+                "start": start.get('date') or start.get('dateTime', ''),
+                "end": end.get('date') or end.get('dateTime', ''),
+            })
 
     return {
         "available": len(conflicts) == 0,

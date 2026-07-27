@@ -97,6 +97,28 @@ def _get_calendar():
     _calendar_svc = build('calendar', 'v3', credentials=creds)
     return _calendar_svc
 
+
+class BookingRequest(BaseModel):
+    vehicleId: str = ""
+    customerName: str = ""
+    customerEmail: str = ""
+    customerPhone: str = ""
+    customerAddress: str = ""
+    pickupDate: str = ""
+    pickupTime: str = ""
+    returnDate: str = ""
+    returnTime: str = ""
+    dropoffLocation: str = ""
+    licenseNumber: str = ""
+    licenseExpiry: str = ""
+    licenseIssuer: str = ""
+    licenseClass: str = ""
+    totalDays: int = 1
+    totalCost: float = 0
+    licensePhotoUrl: str = ""
+
+class ScanLicenseRequest(BaseModel):
+    image: str
 def _add_to_calendar(req: BookingRequest, ref: str):
     """Add a booking as an event to Google Calendar."""
     if not GOOGLE_SHEETS_CREDENTIALS:

@@ -4,9 +4,10 @@ import { Card } from './index';
 interface BookingSummaryProps {
   booking: BookingData;
   vehicle?: Vehicle;
+  capturedPhotoPreview?: string | null;
 }
 
-export function BookingSummary({ booking, vehicle }: BookingSummaryProps) {
+export function BookingSummary({ booking, vehicle, capturedPhotoPreview }: BookingSummaryProps) {
   const reviewItems = [
     { label: 'Vehicle', value: vehicle?.name || booking.vehicleId },
     { label: 'Pickup Date', value: booking.pickupDate },
@@ -37,7 +38,20 @@ export function BookingSummary({ booking, vehicle }: BookingSummaryProps) {
           ))}
         </div>
       </Card>
-      
+
+      {/* License Photo Preview */}
+      {capturedPhotoPreview && (
+        <Card className="border-4 border-bau-yellow">
+          <h3 className="text-2xl font-bold text-uppercase mb-lg">📸 License Photo</h3>
+          <p className="text-sm text-bau-gray mb-md">Your license photo will be uploaded after booking confirmation.</p>
+          <img
+            src={capturedPhotoPreview}
+            alt="Captured license"
+            style={{ maxHeight: '200px', borderRadius: '8px', border: '2px solid var(--color-yellow)', display: 'block', margin: '0 auto' }}
+          />
+        </Card>
+      )}
+
       <Card className="bg-bau-black text-white p-2xl border-4 border-bau-yellow">
         <p className="text-sm text-uppercase opacity-75 mb-sm">Total Cost (BBD)</p>
         <p className="text-4xl font-extrabold text-bau-yellow">Bds${booking.totalCost}</p>
@@ -49,9 +63,10 @@ export function BookingSummary({ booking, vehicle }: BookingSummaryProps) {
 interface BookingConfirmationProps {
   bookingRef: string;
   email: string;
+  photoUrl?: string;
 }
 
-export function BookingConfirmation({ bookingRef, email }: BookingConfirmationProps) {
+export function BookingConfirmation({ bookingRef, email, photoUrl }: BookingConfirmationProps) {
   return (
     <div className="text-center space-y-lg">
       <div className="text-6xl">✓</div>
@@ -64,6 +79,18 @@ export function BookingConfirmation({ bookingRef, email }: BookingConfirmationPr
           A confirmation email has been sent to <span className="font-bold">{email}</span>
         </p>
       </Card>
+
+      {photoUrl && (
+        <Card className="border-4 border-bau-yellow bg-bau-off-white">
+          <p className="text-sm text-bau-gray text-uppercase font-semibold mb-md">📸 License Photo Uploaded</p>
+          <img
+            src={photoUrl}
+            alt="License"
+            style={{ maxHeight: '200px', borderRadius: '8px', border: '2px solid var(--color-yellow)', display: 'block', margin: '0 auto' }}
+          />
+          <p className="text-xs text-bau-gray mt-sm">Securely stored for your booking record</p>
+        </Card>
+      )}
       
       <div className="bg-bau-light-gray border-2 border-bau-black p-lg rounded-lg">
         <p className="text-sm text-bau-gray mb-md">📧 Check your email for:</p>

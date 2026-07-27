@@ -18,6 +18,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [bookingRef, setBookingRef] = useState('');
+  const [capturedImageData, setCapturedImageData] = useState<string | null>(null);
+  const [capturedPhotoPreview, setCapturedPhotoPreview] = useState<string | null>(null);
 
   const [booking, setBooking] = useState<BookingData>({
     step: 1,
@@ -47,36 +49,23 @@ function App() {
     }));
   };
 
-  // Auto-fill personal info from license scan + upload photo to GCS
+  // Auto-fill personal info from license scan (no upload yet — upload happens at Step 5)
   const handleLicenseScan = async (imageData: string) => {
     try {
-      const [photoResult, extracted] = await Promise.allSettled([
-        api.uploadPhoto(imageData),
-        api.scanLicense(imageData),
-      ]);
-      const photoUrl = photoResult.status === 'fulfilled' ? photoResult.value : '';
-      const extractedData = extracted.status === 'fulfilled' ? extracted.value : {};
+      // Store raw image data for later upload (at Step 5)
+      setCapturedImageData(imageData);
+      setCapturedPhotoPreview(imageData);
 
-      if (photoResult.status === 'rejected') {
-        console.warn('Photo upload failed:', photoResult.reason);
-      }
-      if (extracted.status === 'rejected') {
-        console.warn('License scan failed:', extracted.reason);
-      }
+      // Only scan the license — don't upload yet
+      const extracted = await api.scanLicense(imageData);
 
-      if (extractedData.customerName || extractedData.customerEmail || extractedData.customerPhone || extractedData.customerAddress) {
+      if (extracted.customerName || extracted.customerEmail || extracted.customerPhone || extracted.customerAddress) {
         setBooking((prev) => ({
           ...prev,
-          customerName: extractedData.customerName || prev.customerName,
-          customerEmail: extractedData.customerEmail || prev.customerEmail,
-          customerPhone: extractedData.customerPhone || prev.customerPhone,
-          customerAddress: extractedData.customerAddress || prev.customerAddress,
-          licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
-        }));
-      } else {
-        setBooking((prev) => ({
-          ...prev,
-          licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
+          customerName: extracted.customerName || prev.customerName,
+          customerEmail: extracted.customerEmail || prev.customerEmail,
+          customerPhone: extracted.customerPhone || prev.customerPhone,
+          customerAddress: extracted.customerAddress || prev.customerAddress,
         }));
       }
     } catch {
@@ -155,7 +144,7 @@ function App() {
     if (step < 5) {
       setStep((step + 1) as BookingStep);
     } else {
-      // Submit booking
+      // Step 5 → submit booking, then upload photo with bookingRef
       setLoading(true);
       try {
         const bookingData = {
@@ -166,8 +155,18 @@ function App() {
 
         const response = await api.createBooking(bookingData);
         if (response.success && response.bookingRef) {
+          // Upload the captured license photo with the new bookingRef
+          let photoUrl = booking.licensePhotoUrl || '';
+          if (capturedImageData) {
+            try {
+              photoUrl = await api.uploadPhoto(capturedImageData, response.bookingRef);
+              setBooking((prev) => ({ ...prev, licensePhotoUrl: photoUrl }));
+            } catch (photoErr) {
+              console.warn('Photo upload failed after booking:', photoErr);
+              // Non-fatal — booking already created
+            }
+          }
           setBookingRef(response.bookingRef);
-          setStep(5);
         } else {
           setError(response.error || 'Failed to create booking');
         }
@@ -217,8 +216,8 @@ function App() {
         {/* Progress Stepper */}
         <div style={{ marginBottom: 'var(--space-12)' }}>
           <ProgressStepper
-            steps={['Vehicle', 'Dates', 'License', 'Your Info', 'Confirm']}
-            currentStep={bookingRef ? 5 : step}
+            steps={['Vehicle', 'Dates', 'License', 'Your Info', 'Review', 'Confirmed']}
+            currentStep={bookingRef ? 6 : step}
           />
         </div>
 
@@ -328,7 +327,7 @@ function App() {
           <div>
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Driver's License</h2>
             <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
-              Upload or take a photo of your license and we'll auto-fill your details. You can edit them on the next step.
+              Upload or take a photo of your license and we'll auto-fill your details. You can review and confirm on the final step.
             </p>
             <div style={{ maxWidth: '600px' }}>
               <LicenseVerificationForm
@@ -337,6 +336,7 @@ function App() {
                   licenseExpiry: booking.licenseExpiry || '',
                   licenseIssuer: booking.licenseIssuer || '',
                   licenseClass: booking.licenseClass || '',
+                  photoUrl: capturedPhotoPreview || undefined,
                 }}
                 onChange={(field, value) => {
                   const fieldMap: Record<string, string> = {
@@ -389,7 +389,7 @@ function App() {
           </div>
         )}
 
-        {/* Step 5: Confirmation */}
+        {/* Step 5: Confirmation — review + photo preview before submit */}
         {step === 5 && !bookingRef && (
           <div style={{ maxWidth: '600px' }}>
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Review & Confirm</h2>
@@ -400,6 +400,7 @@ function App() {
                 totalCost: calculateTotalCost(),
               }}
               vehicle={selectedVehicle}
+              capturedPhotoPreview={capturedPhotoPreview}
             />
           </div>
         )}
@@ -407,7 +408,11 @@ function App() {
         {/* Success State */}
         {bookingRef && (
           <div style={{ maxWidth: '600px' }}>
-            <BookingConfirmation bookingRef={bookingRef} email={booking.customerEmail || ''} />
+            <BookingConfirmation
+              bookingRef={bookingRef}
+              email={booking.customerEmail || ''}
+              photoUrl={booking.licensePhotoUrl || ''}
+            />
           </div>
         )}
 

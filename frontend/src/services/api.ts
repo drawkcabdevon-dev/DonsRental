@@ -31,34 +31,23 @@ export const api = {
 
   // Submit booking
   async createBooking(booking: BookingData): Promise<ApiResponse<{ bookingId: string }>> {
-    try {
-      const response = await fetch(`${API_BASE}/bookings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(booking),
-      });
+    const response = await fetch(`${API_BASE}/bookings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(booking),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Booking failed');
-      }
-
-      const data = await response.json();
-      return {
-        success: true,
-        data,
-        bookingRef: data.bookingId || 'BK-' + Date.now(),
-      };
-    } catch (error) {
-      // Fallback: simulate success for demo if backend is unreachable
-      console.warn('Backend booking failed, using demo mode:', error);
-      const ref = 'BK-DEMO-' + Date.now().toString(36).toUpperCase();
-      return {
-        success: true,
-        data: { bookingId: ref },
-        bookingRef: ref,
-      };
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Booking failed' }));
+      throw new Error(error.detail || error.message || 'Booking failed');
     }
+
+    const data = await response.json();
+    return {
+      success: true,
+      data,
+      bookingRef: data.bookingId || 'BK-' + Date.now(),
+    };
   },
 
   // Check availability

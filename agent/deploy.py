@@ -48,7 +48,6 @@ def interactive_setup():
 
     print('\n--- Required Keys ---')
     env['GEMINI_API_KEY'] = getpass('Gemini API Key (https://aistudio.google.com): ').strip()
-    env['SENDGRID_API_KEY'] = getpass('SendGrid API Key (https://sendgrid.com): ').strip()
     env['SPREADSHEET_ID'] = input('Google Sheet ID (from sheet URL): ').strip()
 
     print('\n--- Google Sheets Service Account ---')
@@ -90,11 +89,8 @@ def deploy(env_vars: dict):
         'GEMINI_API_KEY': env_vars.get('GEMINI_API_KEY', os.environ.get('GEMINI_API_KEY', '')),
         'SPREADSHEET_ID': env_vars.get('SPREADSHEET_ID', os.environ.get('SPREADSHEET_ID', '')),
         'GOOGLE_SHEETS_CREDENTIALS': env_vars.get('GOOGLE_SHEETS_CREDENTIALS', os.environ.get('GOOGLE_SHEETS_CREDENTIALS', '')),
-        'SENDGRID_API_KEY': env_vars.get('SENDGRID_API_KEY', os.environ.get('SENDGRID_API_KEY', '')),
         'COMPANY_NAME': env_vars.get('COMPANY_NAME', os.environ.get('COMPANY_NAME', "Don's Rental")),
-        'COMPANY_EMAIL': env_vars.get('COMPANY_EMAIL', os.environ.get('COMPANY_EMAIL', '')),
         'COMPANY_PHONE': env_vars.get('COMPANY_PHONE', os.environ.get('COMPANY_PHONE', '')),
-        'OWNER_EMAIL': env_vars.get('OWNER_EMAIL', os.environ.get('OWNER_EMAIL', '')),
     }
     agent_env = {k: v for k, v in agent_env.items() if v}
 
@@ -137,17 +133,14 @@ if __name__ == '__main__':
     if auto:
         env = {
             'GEMINI_API_KEY': os.environ.get('GEMINI_API_KEY', ''),
-            'SENDGRID_API_KEY': os.environ.get('SENDGRID_API_KEY', ''),
             'SPREADSHEET_ID': os.environ.get('SPREADSHEET_ID', ''),
             'GOOGLE_SHEETS_CREDENTIALS': os.environ.get('GOOGLE_SHEETS_CREDENTIALS', ''),
             'COMPANY_NAME': os.environ.get('COMPANY_NAME', "Don's Rental"),
-            'COMPANY_EMAIL': os.environ.get('COMPANY_EMAIL', ''),
             'COMPANY_PHONE': os.environ.get('COMPANY_PHONE', ''),
-            'OWNER_EMAIL': os.environ.get('OWNER_EMAIL', ''),
             'PROJECT': os.environ.get('VERTEX_AI_PROJECT', PROJECT),
             'LOCATION': os.environ.get('VERTEX_AI_LOCATION', LOCATION),
         }
-        missing = [k for k, v in env.items() if not v and k not in ('COMPANY_PHONE', 'OWNER_EMAIL', 'COMPANY_EMAIL', 'GOOGLE_SHEETS_CREDENTIALS', 'SENDGRID_API_KEY')]
+        missing = [k for k, v in env.items() if not v and k not in ('COMPANY_PHONE', 'GOOGLE_SHEETS_CREDENTIALS')]
         if missing:
             print(f'Missing required env vars: {", ".join(missing)}')
             sys.exit(1)

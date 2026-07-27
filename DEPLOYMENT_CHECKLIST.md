@@ -1,4 +1,4 @@
-# Deployment Completion Checklist
+# Deployment Checklist
 
 ## Prerequisites (run locally, one-time)
 
@@ -15,17 +15,54 @@ gcloud auth application-default print-access-token
 
 ---
 
-## Step 1: Deploy Agent to Vertex AI Agent Engine
+## Step 1: Create Secret Manager Secrets (one-time)
 
 ```bash
-cd /workspaces/DonsRental/agent
-python deploy.py --auto
+# Gemini API Key (get from https://aistudio.google.com)
+echo -n "your-gemini-api-key" | gcloud secrets create gemini-api-key --data-file=- --project=renal-car-booking
+
+# Google Sheets Credentials (service account JSON)
+echo -n '{"type":"service_account",...}' | gcloud secrets create google-sheets-credentials --data-file=- --project=renal-car-booking
+
+# Google Calendar ID
+echo -n "c_93b81d190fa2b719fee43b8f9e2335d20b29c0d2dc63dff3b96aa3f091d53450@group.calendar.google.com" | gcloud secrets create google-calendar-id --data-file=- --project=renal-car-booking
+```
+
+---
+
+## Step 2: Grant Secret Access to Cloud Run & Cloud Build
+
+```bash
+PROJECT_NUMBER=$(gcloud projects describe renal-car-booking --format='value(projectNumber)')
+SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+
+for secret in gemini-api-key google-sheets-credentials google-calendar-id; do
+  gcloud secrets add-iam-policy-binding $secret --member="serviceAccount:$SA" --role=roles/secretmanager.secretAccessor --project=renal-car-booking
+  gcloud secrets add-iam-policy-binding $secret --member="serviceAccount:$CB_SA" --role=roles/secretmanager.secretAccessor --project=renal-car-booking
+done
+```
+
+---
+
+## Step 3: Grant Calendar Access to Service Account
+
+1. Open [Google Calendar](https://calendar.google.com)
+2. Settings → Settings for my calendars → select your calendar
+3. **Share with specific people** → add `dons-rental-sheets@renal-car-booking.iam.gserviceaccount.com`
+4. Give it **Make changes to events** permission
+
+---
+
+## Step 4: Deploy Agent to Vertex AI Agent Engine
+
+```bash
+cd /tmp/DonsRental/agent
+python3 deploy.py --auto
 ```
 
 **Expected output:**
 ```
-Deploying to onlineeverywhere / us-central1...
-Uploading to Agent Engine (this takes ~2 minutes)...
 ✅  DEPLOYED SUCCESSFULLY!
 Resource Name: projects/450188951493/locations/us-central1/reasoningEngines/XXXXXXXXXXXXXX
 ```
@@ -34,61 +71,47 @@ Resource Name: projects/450188951493/locations/us-central1/reasoningEngines/XXXX
 
 ---
 
-## Step 2: Deploy Backend to Cloud Run
+## Step 5: Deploy Backend to Cloud Run
 
 ```bash
-cd /workspaces/DonsRental
+cd /tmp/DonsRental
 export AGENT_ENGINE="projects/450188951493/locations/us-central1/reasoningEngines/XXXXXXXXXXXXXX"
 ./deploy-cloudrun.sh
 ```
 
 **Expected output:**
 ```
-================================================
- Don's Rental — Cloud Run Deploy
- Project:    renal-car-booking
- Region:     us-central1
- Service:    dons-rental
- Agent Eng:  projects/.../reasoningEngines/XXXXXXXXXXXXXX
-================================================
-
 ✅  DEPLOYED!
-   URL: https://dons-rental-XXXXXXXXXXXXXX-uc.a.run.app
+   URL: https://rentals.onlineverywhere.com
 ```
 
 ---
 
-## Step 3: Verify Deployment
+## Step 6: Verify Deployment
 
 ```bash
 # Health check
-curl https://dons-rental-XXXXXXXXXXXXXX-uc.a.run.app/api/health
+curl https://rentals.onlineverywhere.com/api/health
 
 # Vehicles (should read from Sheet)
-curl https://dons-rental-XXXXXXXXXXXXXX-uc.a.run.app/api/vehicles
+curl https://rentals.onlineverywhere.com/api/vehicles
 
 # Test booking
-curl -X POST https://dons-rental-XXXXXXXXXXXXXX-uc.a.run.app/api/bookings \
+curl -X POST https://rentals.onlineverywhere.com/api/bookings \
   -H "Content-Type: application/json" \
   -d '{"vehicleId":"v1","customerName":"Test User","customerEmail":"test@example.com","customerPhone":"555-1234","customerAddress":"123 Test St","pickupDate":"2026-08-20","pickupTime":"10:00","returnDate":"2026-08-22","returnTime":"10:00","licenseNumber":"TEST123","licenseExpiry":"2030-01-01","licenseIssuer":"Barbados Licensing Authority","licenseClass":"B","totalDays":2,"totalCost":240}'
 ```
 
 ---
 
-## Step 4: Install Apps Script for Email Notifications
+## Step 7: Install Apps Script for Email Notifications
 
 1. Open Google Sheet: https://docs.google.com/spreadsheets/d/1i8rkv11Zmuv_btAiJNji1MAj9GylHOJZEUucAqqb6-0/edit
 2. **Extensions > Apps Script**
-3. Paste contents of `apps-script/booking-notifications.gs`
+3. Delete any existing code, paste contents of `apps-script/booking-notifications.gs`
 4. Save (Ctrl+S), name: "Don's Rental Notifications"
-5. Run `setupTriggers()` ▶️ → approve permissions
-5. Test: add a row to `Bookings` tab with `status=Confirmed` and `custEmail=your@email.com`
-
----
-
-## Step 5: Update cloudbuild.yaml (optional, for CI/CD)
-
-After Step 1, update the `_AGENT_ENGINE` substitution in `cloudbuild.yaml` with the new resource name.
+5. Run `setupTriggers()` → approve permissions
+6. Test: add a row to `Bookings` tab with `status=Confirmed` and `custEmail=your@email.com`
 
 ---
 
@@ -96,11 +119,22 @@ After Step 1, update the `_AGENT_ENGINE` substitution in `cloudbuild.yaml` with 
 
 | Component | URL/Location |
 |-----------|-------------|
+| Live App | https://rentals.onlineverywhere.com |
 | Google Sheet | https://docs.google.com/spreadsheets/d/1i8rkv11Zmuv_btAiJNji1MAj9GylHOJZEUucAqqb6-0/edit |
 | Apps Script | Extensions > Apps Script (in Sheet) |
-| Cloud Run Console | https://console.cloud.google.com/run/detail/us-central1/dons-rental |
+| Cloud Run Console | https://console.cloud.google.com/run/detail/europe-west1/donsrental |
 | Vertex AI Agent Engine | https://console.cloud.google.com/vertex-ai/agents/reasoning-engines |
-| .env file | `/workspaces/DonsRental/.env` (DO NOT COMMIT) |
+| Secret Manager | https://console.cloud.google.com/security/secret-manager?project=renal-car-booking |
+
+---
+
+## Secrets in Secret Manager
+
+| Secret | Purpose |
+|--------|---------|
+| `gemini-api-key` | License OCR via Gemini |
+| `google-sheets-credentials` | Service account JSON for Sheets/Calendar |
+| `google-calendar-id` | Google Calendar ID for availability |
 
 ---
 
@@ -110,14 +144,8 @@ After Step 1, update the `_AGENT_ENGINE` substitution in `cloudbuild.yaml` with 
 |-------|-----|
 | "Default credentials not found" | Run `gcloud auth application-default login` |
 | "Permission denied on Cloud Run" | Ensure you're using YOUR gcloud auth, not service account |
-| Agent deploy fails on requirements | Add `cloudpickle` to agent/requirements.txt |
-| Emails not sending from Apps Script | Check Gmail quota (100/day free), verify `OWNER_EMAIL` |
-| Sheet not updating | Verify service account `dons-rental-sheets@renal-car-booking.iam.gserviceaccount.com` has Editor access |
-
----
-
-## Files Created/Modified
-
-- `apps-script/booking-notifications.gs` — Email notifications via Apps Script
-- `APPS_SCRIPT_SETUP.md` — Detailed Apps Script installation guide
-- `DEPLOYMENT_CHECKLIST.md` — This file
+| Agent deploy fails | Add `cloudpickle` to agent/requirements.txt |
+| Emails not sending | Check Apps Script trigger installed, Gmail quota not exceeded |
+| Sheet not updating | Verify service account has Editor access to Sheet |
+| Calendar events not showing | Verify service account has "Make changes to events" on Calendar |
+| `gcloud auth` fails | Run `gcloud auth login` with personal account |

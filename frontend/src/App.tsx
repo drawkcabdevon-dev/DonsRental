@@ -19,6 +19,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [bookingRef, setBookingRef] = useState('');
+  const [capturedImageData, setCapturedImageData] = useState<string | null>(null);
+  const [capturedPhotoPreview, setCapturedPhotoPreview] = useState<string | null>(null);
 
   const [booking, setBooking] = useState<BookingData>({
     step: 1,
@@ -48,22 +50,15 @@ function App() {
     }));
   };
 
-  // Auto-fill personal info from license scan + upload photo to GCS
+  // Auto-fill personal info from license scan (no upload yet — upload happens at Step 5)
   const handleLicenseScan = async (imageData: string) => {
     try {
-      const [photoResult, extracted] = await Promise.allSettled([
-        api.uploadPhoto(imageData),
-        api.scanLicense(imageData),
-      ]);
-      const photoUrl = photoResult.status === 'fulfilled' ? photoResult.value : '';
-      const extractedData = extracted.status === 'fulfilled' ? extracted.value : {};
+      // Store raw image data for later upload (at Step 5)
+      setCapturedImageData(imageData);
+      setCapturedPhotoPreview(imageData);
 
-      if (photoResult.status === 'rejected') {
-        console.warn('Photo upload failed:', photoResult.reason);
-      }
-      if (extracted.status === 'rejected') {
-        console.warn('License scan failed:', extracted.reason);
-      }
+      // Only scan the license — don't upload yet
+      const extracted = await api.scanLicense(imageData);
 
       // Only auto-fill fields that exist on a driver's license
       // (name, address, license number, expiry, issuer, class)
@@ -168,7 +163,7 @@ function App() {
     if (step < 5) {
       setStep((step + 1) as BookingStep);
     } else {
-      // Submit booking
+      // Step 5 → submit booking, then upload photo with bookingRef
       setLoading(true);
       try {
         const bookingData = {
@@ -179,11 +174,23 @@ function App() {
 
         const response = await api.createBooking(bookingData);
         if (response.success && response.bookingRef) {
+          // Upload the captured license photo with the new bookingRef
+          let photoUrl = booking.licensePhotoUrl || '';
+          if (capturedImageData) {
+            try {
+              photoUrl = await api.uploadPhoto(capturedImageData, response.bookingRef);
+              setBooking((prev) => ({ ...prev, licensePhotoUrl: photoUrl }));
+            } catch (photoErr) {
+              console.warn('Photo upload failed after booking:', photoErr);
+              // Non-fatal — booking already created
+            }
+          }
           setBookingRef(response.bookingRef);
-          setStep(5);
         } else {
           setError(response.error || 'Failed to create booking');
         }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create booking');
       } finally {
         setLoading(false);
       }
@@ -230,8 +237,8 @@ function App() {
         {/* Progress Stepper */}
         <div style={{ marginBottom: 'var(--space-12)' }}>
           <ProgressStepper
-            steps={['Vehicle', 'Dates', 'License', 'Your Info', 'Confirm']}
-            currentStep={bookingRef ? 5 : step}
+            steps={['Vehicle', 'Dates', 'License', 'Your Info', 'Review', 'Confirmed']}
+            currentStep={bookingRef ? 6 : step}
           />
         </div>
 
@@ -312,35 +319,37 @@ function App() {
           <div>
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Select Dates & Pricing</h2>
             
-            <div className="dates-pricing-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-6)' }}>
+            <div className="dates-pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-6)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-                <Input
-                  label="Pick-up Date *"
-                  variant="date"
-                  value={booking.pickupDate}
-                  onChange={(e) => handleBookingChange('pickupDate', e.target.value)}
-                />
-                
-                <Input
-                  label="Pick-up Time *"
-                  variant="time"
-                  value={booking.pickupTime}
-                  onChange={(e) => handleBookingChange('pickupTime', e.target.value)}
-                />
-                
-                <Input
-                  label="Return Date *"
-                  variant="date"
-                  value={booking.returnDate}
-                  onChange={(e) => handleBookingChange('returnDate', e.target.value)}
-                />
-                
-                <Input
-                  label="Return Time *"
-                  variant="time"
-                  value={booking.returnTime}
-                  onChange={(e) => handleBookingChange('returnTime', e.target.value)}
-                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
+                  <Input
+                    label="Pick-up Date *"
+                    variant="date"
+                    value={booking.pickupDate}
+                    onChange={(e) => handleBookingChange('pickupDate', e.target.value)}
+                  />
+                  
+                  <Input
+                    label="Pick-up Time *"
+                    variant="time"
+                    value={booking.pickupTime}
+                    onChange={(e) => handleBookingChange('pickupTime', e.target.value)}
+                  />
+                  
+                  <Input
+                    label="Return Date *"
+                    variant="date"
+                    value={booking.returnDate}
+                    onChange={(e) => handleBookingChange('returnDate', e.target.value)}
+                  />
+                  
+                  <Input
+                    label="Return Time *"
+                    variant="time"
+                    value={booking.returnTime}
+                    onChange={(e) => handleBookingChange('returnTime', e.target.value)}
+                  />
+                </div>
                 
                 <Input
                   label="Drop-off Location"
@@ -350,16 +359,30 @@ function App() {
                 />
               </div>
               
-              <div>
-                {selectedVehicle && (
+              {/* Calendar embed */}
+              <div style={{ marginTop: 'var(--space-6)' }}>
+                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}>📅 Availability Calendar</h3>
+                <p style={{ marginBottom: 'var(--space-4)', color: 'var(--color-dark-gray)' }}>
+                  Check available dates before booking. Blocked dates show existing reservations and maintenance.
+                </p>
+                <iframe
+                  src="https://calendar.google.com/calendar/embed?src=c_93b81d190fa2b719fee43b8f9e2335d20b29c0d2dc63dff3b96aa3f091d53450%40group.calendar.google.com&ctz=America%2FBarbados"
+                  style={{ width: '100%', height: '400px', border: 0, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+                  frameBorder="0"
+                  scrolling="no"
+                />
+              </div>
+              
+              {selectedVehicle && (
+                <div style={{ marginTop: 'var(--space-6)' }}>
                   <PricingBreakdown
                     vehicleName={selectedVehicle.name}
                     totalDays={calculateTotalDays()}
                     dailyRate={selectedVehicle.rate}
                     totalCost={calculateTotalCost()}
                   />
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -369,7 +392,7 @@ function App() {
           <div>
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Driver's License</h2>
             <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
-              Upload or take a photo of your license and we'll auto-fill your details. You can edit them on the next step.
+              Upload or take a photo of your license and we'll auto-fill your details. You can review and confirm on the final step.
             </p>
             <div style={{ maxWidth: '600px' }}>
               <LicenseVerificationForm
@@ -378,6 +401,7 @@ function App() {
                   licenseExpiry: booking.licenseExpiry || '',
                   licenseIssuer: booking.licenseIssuer || '',
                   licenseClass: booking.licenseClass || '',
+                  photoUrl: capturedPhotoPreview || undefined,
                 }}
                 onChange={(field, value) => {
                   const fieldMap: Record<string, string> = {
@@ -430,7 +454,7 @@ function App() {
           </div>
         )}
 
-        {/* Step 5: Confirmation */}
+        {/* Step 5: Confirmation — review + photo preview before submit */}
         {step === 5 && !bookingRef && (
           <div style={{ maxWidth: '600px' }}>
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Review & Confirm</h2>
@@ -441,6 +465,7 @@ function App() {
                 totalCost: calculateTotalCost(),
               }}
               vehicle={selectedVehicle}
+              capturedPhotoPreview={capturedPhotoPreview}
             />
           </div>
         )}
@@ -448,7 +473,11 @@ function App() {
         {/* Success State */}
         {bookingRef && (
           <div style={{ maxWidth: '600px' }}>
-            <BookingConfirmation bookingRef={bookingRef} email={booking.customerEmail || ''} />
+            <BookingConfirmation
+              bookingRef={bookingRef}
+              email={booking.customerEmail || ''}
+              photoUrl={booking.licensePhotoUrl || ''}
+            />
           </div>
         )}
 

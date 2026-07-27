@@ -280,18 +280,40 @@ function setupTriggers() {
   // Delete existing triggers for this script
   const allTriggers = ScriptApp.getProjectTriggers();
   allTriggers.forEach(t => {
-    if (t.getHandlerFunction() === 'onEdit') {
-      ScriptApp.deleteTrigger(t);
-    }
+    ScriptApp.deleteTrigger(t);
   });
   
-  // Create new onEdit trigger
-  ScriptApp.newTrigger('onEdit')
-    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
-    .onEdit()
+  // Time-driven trigger: check for new bookings every 5 minutes
+  // This catches bookings written via API (onEdit doesn't fire for API writes)
+  ScriptApp.newTrigger('checkNewBookings')
+    .timeBased()
+    .everyMinutes(5)
     .create();
   
-  console.log('Trigger installed successfully');
+  console.log('Trigger installed: checkNewBookings runs every 5 minutes');
+}
+
+/**
+ * Time-driven trigger: scans for Confirmed bookings without invoiceSentAt
+ */
+function checkNewBookings() {
+  const sheet = getBookingsSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return;
+  
+  // Read all data at once for efficiency
+  const data = sheet.getRange(2, 1, lastRow - 1, COL.notes).getValues();
+  
+  for (let i = 0; i < data.length; i++) {
+    const row = i + 2;
+    const status = data[i][COL.status - 1];
+    const invoiceSent = data[i][COL.invoiceSentAt - 1];
+    
+    if (status === 'Confirmed' && !invoiceSent) {
+      console.log('checkNewBookings: found unprocessed booking at row ' + row);
+      sendBookingEmails(row);
+    }
+  }
 }
 
 /**

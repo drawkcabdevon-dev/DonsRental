@@ -8,8 +8,6 @@ import logging
 import os
 import re
 import base64
-import smtplib
-import ssl
 from datetime import datetime, date, timedelta
 from typing import Optional
 import uuid
@@ -34,8 +32,6 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
 LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
 SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "")
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
-OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "")
 GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS", "")
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "donsrental-license-photos")
 GCS_PHOTOS_PREFIX = os.environ.get("GCS_PHOTOS_PREFIX", "license-photos")
@@ -508,72 +504,6 @@ def _append_to_sheet(req: BookingRequest, ref: str):
         logger.warning("Could not write to Google Sheet: %s", e)
 
 
-# ── Email Notification ────────────────────────────────
-
-def _send_notification_email(req: BookingRequest, ref: str):
-    """Send email notification about a new booking."""
-    owner = OWNER_EMAIL or os.environ.get("OWNER_EMAIL", "")
-    if not owner:
-        logger.info("No OWNER_EMAIL set — skipping email notification")
-        return
-
-    subject = f"New Booking: {req.customerName} — {ref}"
-    body_text = f"""
-New Booking Confirmed!
-
-Reference: {ref}
-Customer: {req.customerName}
-Email: {req.customerEmail}
-Phone: {req.customerPhone}
-Pickup: {req.pickupDate} at {req.pickupTime}
-Return: {req.returnDate} at {req.returnTime}
-License: {req.licenseNumber} (exp {req.licenseExpiry})
-Days: {req.totalDays}
-Total: Bds${req.totalCost}
-    """.strip()
-
-    # Try SendGrid first
-    if SENDGRID_API_KEY:
-        try:
-            import sendgrid
-            from sendgrid.helpers.mail import Mail, Email, Content
-
-            sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
-            msg = Mail(
-                from_email=Email("bookings@donsrental.com", "Don's Rental"),
-                to_emails=Email(owner),
-                subject=subject,
-                html_content=Content("text/plain", body_text),
-            )
-            sg.client.mail.send.post(request_body=msg.get())
-            logger.info("✅ Email notification sent via SendGrid to %s", owner)
-            return
-        except ImportError:
-            logger.warning("sendgrid library not installed, trying SMTP...")
-        except Exception as e:
-            logger.warning("SendGrid email failed: %s", e)
-
-    # Fallback: SMTP
-    smtp_host = os.environ.get("SMTP_HOST", "")
-    smtp_user = os.environ.get("SMTP_USER", "")
-    smtp_pass = os.environ.get("SMTP_PASS", "")
-    if smtp_host and smtp_user:
-        try:
-            msg_text = f"Subject: {subject}\n\n{body_text}"
-            ctx = ssl.create_default_context()
-            with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
-                server.login(smtp_user, smtp_pass)
-                server.sendmail(smtp_user, [owner], msg_text)
-            logger.info("✅ Email notification sent via SMTP to %s", owner)
-            return
-        except Exception as e:
-            logger.warning("SMTP email failed: %s", e)
-    else:
-        logger.info("No SENDGRID_API_KEY or SMTP configured — notification only logged")
-
-    # Always log it
-    logger.info("📧 NOTIFICATION for %s:\n%s", owner, body_text)
-
 
 @app.get("/api/vehicles")
 async def get_vehicles():
@@ -652,7 +582,6 @@ async def create_booking(req: BookingRequest):
     # Notify
     _log_booking_notification(req, ref)
     _append_to_sheet(req, ref)
-    _send_notification_email(req, ref)
     _add_to_calendar(req, ref)
 
     return {

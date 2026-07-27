@@ -101,42 +101,6 @@ def _get_calendar():
     _calendar_svc = build('calendar', 'v3', credentials=creds)
     return _calendar_svc
 
-def _add_to_calendar(req: BookingRequest, ref: str):
-    """Add a booking as an event to Google Calendar."""
-    if not GOOGLE_SHEETS_CREDENTIALS:
-        logger.info("No credentials configured — skipping calendar event")
-        return None
-    try:
-        svc = _get_calendar()
-        pickup_dt = f"{req.pickupDate}T{req.pickupTime or '09:00'}:00"
-        return_dt = f"{req.returnDate}T{req.returnTime or '17:00'}:00"
-        event = {
-            'summary': f'{ref} — {req.customerName}',
-            'description': (
-                f'Booking: {ref}\n'
-                f'Customer: {req.customerName}\n'
-                f'Email: {req.customerEmail}\n'
-                f'Phone: {req.customerPhone}\n'
-                f'Vehicle: {req.vehicleId}\n'
-                f'License: {req.licenseNumber}\n'
-                f'Days: {req.totalDays} | Total: Bds${req.totalCost}'
-            ),
-            'start': {
-                'dateTime': pickup_dt,
-                'timeZone': 'America/Barbados',
-            },
-            'end': {
-                'dateTime': return_dt,
-                'timeZone': 'America/Barbados',
-            },
-        }
-        created = svc.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        logger.info("Calendar event created: %s", created.get('htmlLink'))
-        return created.get('id')
-    except Exception as e:
-        logger.warning("Calendar event failed: %s", e)
-        return None
-
 def _upload_to_gcs(image_base64: str, booking_ref: str = "") -> str:
     """Upload a base64-encoded image to GCS and return its blob path (private object key)."""
     # Parse data URL and extract base64 data
@@ -217,6 +181,43 @@ class ScanLicenseRequest(BaseModel):
 class PhotoUploadRequest(BaseModel):
     image: str
     bookingRef: str = ""
+
+# ── Google Calendar Integration ──────────────────────────
+def _add_to_calendar(req: BookingRequest, ref: str):
+    """Add a booking as an event to Google Calendar."""
+    if not GOOGLE_SHEETS_CREDENTIALS:
+        logger.info("No credentials configured — skipping calendar event")
+        return None
+    try:
+        svc = _get_calendar()
+        pickup_dt = f"{req.pickupDate}T{req.pickupTime or '09:00'}:00"
+        return_dt = f"{req.returnDate}T{req.returnTime or '17:00'}:00"
+        event = {
+            'summary': f'{ref} — {req.customerName}',
+            'description': (
+                f'Booking: {ref}\n'
+                f'Customer: {req.customerName}\n'
+                f'Email: {req.customerEmail}\n'
+                f'Phone: {req.customerPhone}\n'
+                f'Vehicle: {req.vehicleId}\n'
+                f'License: {req.licenseNumber}\n'
+                f'Days: {req.totalDays} | Total: Bds${req.totalCost}'
+            ),
+            'start': {
+                'dateTime': pickup_dt,
+                'timeZone': 'America/Barbados',
+            },
+            'end': {
+                'dateTime': return_dt,
+                'timeZone': 'America/Barbados',
+            },
+        }
+        created = svc.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+        logger.info("Calendar event created: %s", created.get('htmlLink'))
+        return created.get('id')
+    except Exception as e:
+        logger.warning("Calendar event failed: %s", e)
+        return None
 
 MDS_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 

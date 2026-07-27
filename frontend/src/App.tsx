@@ -7,6 +7,7 @@ import {
   Input,
   Spinner,
   Alert,
+  ChatWidget,
 } from './components/index';
 import { VehicleCard, PricingBreakdown, PricingPackages, PRICING_PACKAGES } from './components/VehicleCard';
 import { PersonalInfoForm, LicenseVerificationForm } from './components/Forms';
@@ -64,13 +65,25 @@ function App() {
         console.warn('License scan failed:', extracted.reason);
       }
 
-      if (extractedData.customerName || extractedData.customerEmail || extractedData.customerPhone || extractedData.customerAddress) {
+      // Only auto-fill fields that exist on a driver's license
+      // (name, address, license number, expiry, issuer, class)
+      const hasLicenseData =
+        extractedData.customerName ||
+        extractedData.customerAddress ||
+        extractedData.licenseNumber ||
+        extractedData.licenseExpiry ||
+        extractedData.licenseIssuer ||
+        extractedData.licenseClass;
+
+      if (hasLicenseData) {
         setBooking((prev) => ({
           ...prev,
           customerName: extractedData.customerName || prev.customerName,
-          customerEmail: extractedData.customerEmail || prev.customerEmail,
-          customerPhone: extractedData.customerPhone || prev.customerPhone,
           customerAddress: extractedData.customerAddress || prev.customerAddress,
+          licenseNumber: extractedData.licenseNumber || prev.licenseNumber,
+          licenseExpiry: extractedData.licenseExpiry || prev.licenseExpiry,
+          licenseIssuer: extractedData.licenseIssuer || prev.licenseIssuer,
+          licenseClass: extractedData.licenseClass || prev.licenseClass,
           licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
         }));
       } else {
@@ -228,6 +241,34 @@ function App() {
             <Alert type="error" title="Error">
               {error}
             </Alert>
+          </div>
+        )}
+
+        {/* Chat Banner - Alternative booking method */}
+        {!bookingRef && step === 1 && (
+          <div style={{ 
+            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)', 
+            color: 'white', 
+            padding: 'var(--space-6)', 
+            borderRadius: 'var(--radius-lg)', 
+            marginBottom: 'var(--space-8)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 'var(--space-4)'
+          }}>
+            <div>
+              <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-2)' }}>
+                💬 Prefer to chat?
+              </h3>
+              <p style={{ opacity: 0.9, marginBottom: 0 }}>
+                Talk to our AI booking assistant to book your rental naturally. Ask questions, get recommendations, and complete your booking through conversation.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ background: 'transparent', borderColor: 'white', color: 'white' }}>
+              Open Chat Assistant
+            </Button>
           </div>
         )}
 
@@ -445,6 +486,9 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Chat Widget */}
+      <ChatWidget />
 
       {/* Footer */}
       <footer style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-6) 0', borderTop: 'var(--border-thick) solid var(--color-yellow)', marginTop: 'var(--space-16)' }}>

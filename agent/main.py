@@ -169,8 +169,8 @@ def scan_license(image_base64: str) -> dict:
         image_base64: Base64-encoded JPEG image (with or without data:image prefix).
 
     Returns:
-        Dict with keys: name, licenseNumber, expiryDate, issuingAuthority,
-        dateOfBirth, address, licenseClass (null if not visible).
+        Dict with keys: customerName, licenseNumber, licenseExpiry, licenseIssuer,
+        customerAddress, licenseClass (null if not visible).
     """
     client = _get_genai()
     if not client:
@@ -185,15 +185,14 @@ def scan_license(image_base64: str) -> dict:
         return {'error': 'Invalid base64 image data'}
 
     try:
-        prompt = """Extract the following fields from this driver's license image.
+        prompt = """Extract the following fields from this Barbados driver's license image.
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
-  "name": full name,
+  "customerName": full name on the license,
   "licenseNumber": the license/driver number,
-  "expiryDate": expiration date,
-  "issuingAuthority": issuing state/agency,
-  "dateOfBirth": date of birth,
-  "address": address,
-  "licenseClass": class/type.
+  "licenseExpiry": expiration date,
+  "licenseIssuer": issuing authority (e.g. "Barbados Licensing Authority"),
+  "customerAddress": address on the license,
+  "licenseClass": license class/type.
 If a field is not visible, set it to null."""
         response = client.models.generate_content(
             model='gemini-1.5-flash',

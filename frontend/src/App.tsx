@@ -170,6 +170,8 @@ function App() {
         } else {
           setError(response.error || 'Failed to create booking');
         }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create booking');
       } finally {
         setLoading(false);
       }

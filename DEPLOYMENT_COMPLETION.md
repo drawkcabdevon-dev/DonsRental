@@ -48,13 +48,13 @@ Cloud Build will:
 
 ```bash
 # Health check
-curl https://donsrental-wof62rve3a-ew.a.run.app/api/health
+curl https://rentals.onlineverywhere.com/api/health
 
 # Vehicles (should come from Sheet)
-curl https://donsrental-wof62rve3a-ew.a.run.app/api/vehicles
+curl https://rentals.onlineverywhere.com/api/vehicles
 
 # Test availability check (includes calendar events)
-curl -X POST https://donsrental-wof62rve3a-ew.a.run.app/api/check-availability \
+curl -X POST https://rentals.onlineverywhere.com/api/check-availability \
   -H "Content-Type: application/json" \
   -d '{"pickupDate":"2026-08-20","returnDate":"2026-08-22","vehicleId":"v1"}'
 ```

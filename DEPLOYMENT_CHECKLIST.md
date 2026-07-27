@@ -82,7 +82,7 @@ export AGENT_ENGINE="projects/450188951493/locations/us-central1/reasoningEngine
 **Expected output:**
 ```
 ✅  DEPLOYED!
-   URL: https://donsrental-XXXXXXXXXXXXXX-ew.a.run.app
+   URL: https://rentals.onlineverywhere.com
 ```
 
 ---
@@ -91,13 +91,13 @@ export AGENT_ENGINE="projects/450188951493/locations/us-central1/reasoningEngine
 
 ```bash
 # Health check
-curl https://donsrental-XXXXXXXXXXXXXX-ew.a.run.app/api/health
+curl https://rentals.onlineverywhere.com/api/health
 
 # Vehicles (should read from Sheet)
-curl https://donsrental-XXXXXXXXXXXXXX-ew.a.run.app/api/vehicles
+curl https://rentals.onlineverywhere.com/api/vehicles
 
 # Test booking
-curl -X POST https://donsrental-XXXXXXXXXXXXXX-ew.a.run.app/api/bookings \
+curl -X POST https://rentals.onlineverywhere.com/api/bookings \
   -H "Content-Type: application/json" \
   -d '{"vehicleId":"v1","customerName":"Test User","customerEmail":"test@example.com","customerPhone":"555-1234","customerAddress":"123 Test St","pickupDate":"2026-08-20","pickupTime":"10:00","returnDate":"2026-08-22","returnTime":"10:00","licenseNumber":"TEST123","licenseExpiry":"2030-01-01","licenseIssuer":"Barbados Licensing Authority","licenseClass":"B","totalDays":2,"totalCost":240}'
 ```
@@ -119,7 +119,7 @@ curl -X POST https://donsrental-XXXXXXXXXXXXXX-ew.a.run.app/api/bookings \
 
 | Component | URL/Location |
 |-----------|-------------|
-| Live App | https://donsrental-wof62rve3a-ew.a.run.app |
+| Live App | https://rentals.onlineverywhere.com |
 | Google Sheet | https://docs.google.com/spreadsheets/d/1i8rkv11Zmuv_btAiJNji1MAj9GylHOJZEUucAqqb6-0/edit |
 | Apps Script | Extensions > Apps Script (in Sheet) |
 | Cloud Run Console | https://console.cloud.google.com/run/detail/europe-west1/donsrental |

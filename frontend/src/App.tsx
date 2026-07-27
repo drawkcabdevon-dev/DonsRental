@@ -63,28 +63,28 @@ function App() {
       // Only auto-fill fields that exist on a driver's license
       // (name, address, license number, expiry, issuer, class)
       const hasLicenseData =
-        extractedData.customerName ||
-        extractedData.customerAddress ||
-        extractedData.licenseNumber ||
-        extractedData.licenseExpiry ||
-        extractedData.licenseIssuer ||
-        extractedData.licenseClass;
+        extracted.customerName ||
+        extracted.customerAddress ||
+        extracted.licenseNumber ||
+        extracted.licenseExpiry ||
+        extracted.licenseIssuer ||
+        extracted.licenseClass;
 
       if (hasLicenseData) {
         setBooking((prev) => ({
           ...prev,
-          customerName: extractedData.customerName || prev.customerName,
-          customerAddress: extractedData.customerAddress || prev.customerAddress,
-          licenseNumber: extractedData.licenseNumber || prev.licenseNumber,
-          licenseExpiry: extractedData.licenseExpiry || prev.licenseExpiry,
-          licenseIssuer: extractedData.licenseIssuer || prev.licenseIssuer,
-          licenseClass: extractedData.licenseClass || prev.licenseClass,
-          licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
+          customerName: extracted.customerName || prev.customerName,
+          customerAddress: extracted.customerAddress || prev.customerAddress,
+          licenseNumber: extracted.licenseNumber || prev.licenseNumber,
+          licenseExpiry: extracted.licenseExpiry || prev.licenseExpiry,
+          licenseIssuer: extracted.licenseIssuer || prev.licenseIssuer,
+          licenseClass: extracted.licenseClass || prev.licenseClass,
+          licensePhotoUrl: imageData || prev.licensePhotoUrl,
         }));
       } else {
         setBooking((prev) => ({
           ...prev,
-          licensePhotoUrl: photoUrl || prev.licensePhotoUrl,
+          licensePhotoUrl: imageData || prev.licensePhotoUrl,
         }));
       }
     } catch {

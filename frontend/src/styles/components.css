@@ -501,6 +501,24 @@ a:hover {
   outline-offset: 2px;
 }
 
+/* Focus styles for interactive elements */
+.cursor-pointer:focus-visible {
+  outline: 3px solid var(--color-yellow);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(255, 204, 0, 0.25);
+}
+
+/* Skip link styles */
+a:focus-visible {
+  outline: 3px solid var(--color-yellow);
+  outline-offset: 2px;
+}
+
+/* Heading focus for step navigation */
+h2:focus-visible {
+  outline: none;
+}
+
 .transition-fast {
   transition: all var(--transition-fast);
 }

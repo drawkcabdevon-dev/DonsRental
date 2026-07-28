@@ -12,13 +12,14 @@ from datetime import datetime, date, timedelta
 from typing import Optional
 import uuid
 import asyncio
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from google.auth import default as google_default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -113,6 +114,34 @@ class BookingRequest(BaseModel):
     totalCost: float = 0
     licensePhotoUrl: str = ""
 
+    @field_validator("customerEmail")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if v and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
+            raise ValueError("Invalid email address")
+        return v
+
+    @field_validator("customerName")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Customer name is required")
+        return v.strip()
+
+    @field_validator("customerPhone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Phone number is required")
+        return v.strip()
+
+    @field_validator("pickupDate", "returnDate")
+    @classmethod
+    def validate_date_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Date is required")
+        return v
+
 class ScanLicenseRequest(BaseModel):
     image: str
 def _add_to_calendar(req: BookingRequest, ref: str):
@@ -190,7 +219,7 @@ def _upload_to_gcs(image_base64: str, booking_ref: str = "") -> str:
         raise
 
 # ── In-memory booking store (backed by Google Sheets in prod) ──
-_bookings: list[dict] = []
+_bookings: list[dict] = []  # Deprecated — Sheet is source of truth
 
 app.add_middleware(
     CORSMiddleware,
@@ -199,34 +228,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Simple in-memory rate limiter ──────────────────────
+class RateLimiter:
+    """Token-bucket rate limiter. Allows `max_requests` per `window_seconds` per IP."""
+    def __init__(self, max_requests: int = 30, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._hits: dict[str, list[float]] = defaultdict(list)
+
+    def _client_ip(self, request: Request) -> str:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        return request.client.host if request.client else "unknown"
+
+    def is_allowed(self, request: Request) -> bool:
+        ip = self._client_ip(request)
+        now = datetime.utcnow().timestamp()
+        window_start = now - self.window_seconds
+        self._hits[ip] = [t for t in self._hits[ip] if t > window_start]
+        if len(self._hits[ip]) >= self.max_requests:
+            return False
+        self._hits[ip].append(now)
+        return True
+
+_rate_limiter = RateLimiter(max_requests=30, window_seconds=60)
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # Only rate-limit mutation endpoints (POST), skip GETs and health checks
+    if request.method == "POST" and not request.url.path.startswith("/api/health"):
+        if not _rate_limiter.is_allowed(request):
+            raise HTTPException(429, "Too many requests. Please try again shortly.")
+    return await call_next(request)
+
 class ChatRequest(BaseModel):
     message: str
 
 class ChatResponse(BaseModel):
     response: str
     booking_ref: str = ""
-
-class BookingRequest(BaseModel):
-    vehicleId: str = ""
-    customerName: str = ""
-    customerEmail: str = ""
-    customerPhone: str = ""
-    customerAddress: str = ""
-    pickupDate: str = ""
-    pickupTime: str = ""
-    returnDate: str = ""
-    returnTime: str = ""
-    dropoffLocation: str = ""
-    licenseNumber: str = ""
-    licenseExpiry: str = ""
-    licenseIssuer: str = ""
-    licenseClass: str = ""
-    totalDays: int = 1
-    totalCost: float = 0
-    licensePhotoUrl: str = ""
-
-class ScanLicenseRequest(BaseModel):
-    image: str
 
 class PhotoUploadRequest(BaseModel):
     image: str
@@ -345,7 +386,7 @@ def _fetch_vehicles_from_sheet() -> list[dict]:
 
 def _fetch_bookings_from_sheet() -> list[dict]:
     if not SPREADSHEET_ID:
-        return _bookings
+        return []
     try:
         svc = _get_sheets()
         result = svc.spreadsheets().values().get(
@@ -353,7 +394,7 @@ def _fetch_bookings_from_sheet() -> list[dict]:
         ).execute()
         rows = result.get('values', [])
         if len(rows) < 2:
-            return _bookings
+            return []
         headers = [h.strip() for h in rows[0]]
         bookings = []
         for row in rows[1:]:
@@ -364,7 +405,7 @@ def _fetch_bookings_from_sheet() -> list[dict]:
         return bookings
     except Exception as e:
         logger.warning("Could not read bookings from sheet: %s", e)
-        return _bookings
+        return []
 
 def _parse_date(d: str) -> Optional[date]:
     try:
@@ -621,9 +662,13 @@ async def check_availability(req: CheckAvailabilityRequest):
 async def create_booking(req: BookingRequest):
     ref = "BK-" + os.urandom(4).hex().upper()
 
-    # Check availability before booking
+    # Validate dates
     pickup = _parse_date(req.pickupDate)
     return_d = _parse_date(req.returnDate)
+    if not pickup or not return_d:
+        raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
+    if return_d < pickup:
+        raise HTTPException(400, "Return date must be after pickup date.")
     if pickup and return_d:
         sheet_bookings = _fetch_bookings_from_sheet()
         for b in sheet_bookings:
@@ -651,7 +696,6 @@ async def create_booking(req: BookingRequest):
         "totalCost": req.totalCost,
         "created": datetime.utcnow().isoformat(),
     }
-    _bookings.append(booking)
 
     # Notify
     _log_booking_notification(req, ref)
@@ -669,8 +713,43 @@ async def create_booking(req: BookingRequest):
 
 @app.get("/api/bookings")
 async def list_bookings():
-    """List all bookings (so the owner can see what's reserved)."""
-    return {"bookings": _bookings}
+    """List all bookings from the Google Sheet."""
+    return {"bookings": _fetch_bookings_from_sheet()}
+
+@app.delete("/api/bookings/{booking_id}")
+async def cancel_booking(booking_id: str):
+    """Cancel a booking — removes from Sheet and Calendar."""
+    # Find and delete from Sheet
+    if SPREADSHEET_ID:
+        try:
+            svc = _get_sheets()
+            result = svc.spreadsheets().values().get(
+                spreadsheetId=SPREADSHEET_ID, range='Bookings!A:V',
+            ).execute()
+            rows = result.get('values', [])
+            if len(rows) >= 2:
+                for i, row in enumerate(rows[1:], start=2):
+                    if row and row[0] == booking_id:
+                        svc.spreadsheets().batchUpdate(
+                            spreadsheetId=SPREADSHEET_ID,
+                            body={'requests': [{'deleteDimension': {'range': {'sheetId': 613814778, 'dimension': 'ROWS', 'startIndex': i - 1, 'endIndex': i}}}]}
+                        ).execute()
+                        break
+        except Exception as e:
+            logger.warning("Failed to delete from sheet: %s", e)
+
+    # Find and delete from Calendar
+    try:
+        svc = _get_calendar()
+        events = svc.events().list(
+            calendarId=CALENDAR_ID, q=booking_id, singleEvents=True
+        ).execute()
+        for event in events.get('items', []):
+            svc.events().delete(calendarId=CALENDAR_ID, eventId=event['id']).execute()
+    except Exception as e:
+        logger.warning("Failed to delete from calendar: %s", e)
+
+    return {"success": True, "message": f"Booking {booking_id} canceled"}
 
 @app.post("/api/scan-license")
 async def scan_license(req: ScanLicenseRequest):
@@ -687,7 +766,7 @@ async def scan_license(req: ScanLicenseRequest):
     try:
         base64.b64decode(image_data, validate=True)
     except Exception:
-        return {"error": "Invalid base64 image data"}
+        raise HTTPException(400, "Invalid base64 image data")
 
     prompt = """Extract the following fields from this Barbados driver's license image.
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
@@ -714,7 +793,7 @@ If a field is not visible, set it to null."""
             resp = await client.post(url, json=body)
             if resp.status_code != 200:
                 logger.error("Gemini API error: %s - %s", resp.status_code, resp.text[:300])
-                return {"error": f"Vision API error ({resp.status_code})"}
+                raise HTTPException(502, f"Vision API error ({resp.status_code})")
 
             result = resp.json()
             text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
@@ -727,10 +806,12 @@ If a field is not visible, set it to null."""
             logger.info("License scan result: name=%s license=%s", parsed.get("customerName"), parsed.get("licenseNumber"))
             return parsed
     except json.JSONDecodeError:
-        return {"raw": text, "error": "Could not parse Gemini response as JSON"}
+        raise HTTPException(502, "Could not parse vision API response as JSON")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("License scan failed: %s", e)
-        return {"error": str(e)}
+        raise HTTPException(500, f"License scan failed: {e}")
 
 @app.post("/api/upload-photo")
 async def upload_photo(req: PhotoUploadRequest):

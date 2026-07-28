@@ -35,7 +35,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --timeout 300 \
   --concurrency 80 \
   --set-env-vars "AGENT_ENGINE=${AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=us-central1,SPREADSHEET_ID=${SPREADSHEET_ID},OWNER_EMAIL=${OWNER_EMAIL}" \
-  --set-secrets "GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:latest" \
+  --set-secrets "GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:latest,GOOGLE_CALENDAR_ID=google-calendar-id:latest" \
   --quiet
 
 URL=$(gcloud run services describe "${SERVICE_NAME}" \

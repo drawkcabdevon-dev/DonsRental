@@ -25,11 +25,12 @@ export function Button({
     <button
       className={`${baseClass} ${variantClass} ${sizeClass} ${className}`}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       {...props}
     >
       {isLoading ? (
         <>
-          <div className="spinner-sm" style={{ display: 'inline-block' }}>
+          <div className="spinner-sm" style={{ display: 'inline-block' }} aria-hidden="true">
             <div className="spinner-circle" style={{ width: '16px', height: '16px' }} />
           </div>
           Loading...
@@ -59,7 +60,11 @@ export function Input({
   ...props
 }: InputProps) {
   const inputId = id || `input-${Math.random().toString(36).slice(2)}`;
-  
+  const errorId = `${inputId}-error`;
+  const hintId = `${inputId}-hint`;
+  const isRequired = label?.includes('*');
+  const describedBy = error ? errorId : hint ? hintId : undefined;
+
   return (
     <div className="form-group">
       {label && (
@@ -72,10 +77,13 @@ export function Input({
         type={variant}
         className={`form-input ${error ? 'border-error' : ''} ${className}`}
         style={error ? { borderColor: 'var(--color-error)' } : {}}
+        aria-required={isRequired || undefined}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={describedBy}
         {...props}
       />
-      {error && <div className="form-error">{error}</div>}
-      {hint && !error && <div className="form-hint">{hint}</div>}
+      {error && <div id={errorId} className="form-error" role="alert">{error}</div>}
+      {hint && !error && <div id={hintId} className="form-hint">{hint}</div>}
     </div>
   );
 }
@@ -96,7 +104,11 @@ export function Textarea({
   ...props
 }: TextareaProps) {
   const textareaId = id || `textarea-${Math.random().toString(36).slice(2)}`;
-  
+  const errorId = `${textareaId}-error`;
+  const hintId = `${textareaId}-hint`;
+  const isRequired = label?.includes('*');
+  const describedBy = error ? errorId : hint ? hintId : undefined;
+
   return (
     <div className="form-group">
       {label && (
@@ -108,10 +120,13 @@ export function Textarea({
         id={textareaId}
         className={`form-textarea ${error ? 'border-error' : ''} ${className}`}
         style={error ? { borderColor: 'var(--color-error)' } : {}}
+        aria-required={isRequired || undefined}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={describedBy}
         {...props}
       />
-      {error && <div className="form-error">{error}</div>}
-      {hint && !error && <div className="form-hint">{hint}</div>}
+      {error && <div id={errorId} className="form-error" role="alert">{error}</div>}
+      {hint && !error && <div id={hintId} className="form-hint">{hint}</div>}
     </div>
   );
 }
@@ -178,17 +193,26 @@ interface ProgressStepperProps {
 
 export function ProgressStepper({ steps, currentStep, className = '' }: ProgressStepperProps) {
   return (
-    <div className={`progress-stepper ${className}`}>
-      {steps.map((step, index) => (
-        <div
-          key={index}
-          className={`progress-step ${index < currentStep ? 'active' : ''} ${index < currentStep - 1 ? 'completed' : ''}`}
-        >
-          <div className="progress-circle">{index + 1}</div>
-          <p className="progress-label">{step}</p>
-        </div>
-      ))}
-    </div>
+    <nav aria-label="Booking progress" className={`progress-stepper ${className}`} role="navigation">
+      {steps.map((step, index) => {
+        const isCurrent = index + 1 === currentStep;
+        const isCompleted = index < currentStep - 1;
+        return (
+          <div
+            key={index}
+            className={`progress-step ${isCurrent ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
+          >
+            <div
+              className="progress-circle"
+              aria-current={isCurrent ? 'step' : undefined}
+            >
+              {isCompleted ? '✓' : index + 1}
+            </div>
+            <p className="progress-label">{step}</p>
+          </div>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -201,8 +225,8 @@ interface SpinnerProps {
 
 export function Spinner({ size = 'md', message, className = '' }: SpinnerProps) {
   return (
-    <div className={`spinner spinner-${size} ${className}`}>
-      <div className="spinner-circle" />
+    <div className={`spinner spinner-${size} ${className}`} role="status" aria-live="polite">
+      <div className="spinner-circle" aria-hidden="true" />
       {message && <p className="spinner-message">{message}</p>}
     </div>
   );

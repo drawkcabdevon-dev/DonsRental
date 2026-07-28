@@ -52,34 +52,30 @@ export const api = {
 
   // Check availability
   async checkAvailability(pickupDate: string, returnDate: string, vehicleId: string = 'v1'): Promise<{ available: boolean; conflicts: any[] }> {
-    try {
-      const response = await fetch(`${API_BASE}/check-availability`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pickupDate, returnDate, vehicleId }),
-      });
-      if (!response.ok) return { available: false, conflicts: [] };
-      return await response.json();
-    } catch {
-      return { available: true, conflicts: [] };
+    const response = await fetch(`${API_BASE}/check-availability`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pickupDate, returnDate, vehicleId }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Availability check failed' }));
+      throw new Error(error.detail || 'Availability check failed');
     }
+    return await response.json();
   },
 
   // Scan and verify license
   async scanLicense(imageData: string): Promise<Partial<BookingData>> {
-    try {
-      const response = await fetch(`${API_BASE}/scan-license`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageData }),
-      });
-
-      if (!response.ok) throw new Error('License scan failed');
-      return await response.json();
-    } catch (error) {
-      console.error('License scan error:', error);
-      return {};
+    const response = await fetch(`${API_BASE}/scan-license`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageData }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'License scan failed' }));
+      throw new Error(error.detail || 'License scan failed');
     }
+    return await response.json();
   },
 
   // Upload license photo to GCS

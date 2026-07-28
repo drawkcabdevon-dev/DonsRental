@@ -202,8 +202,7 @@ ${COMPANY_NAME} • ${COMPANY_PHONE} • ${COMPANY_EMAIL}
     subject: subject,
     htmlBody: htmlBody,
     textBody: textBody,
-    name: COMPANY_NAME,
-    replyTo: COMPANY_EMAIL
+    name: COMPANY_NAME
   });
 }
 
@@ -338,6 +337,28 @@ function testEmails() {
 }
 
 /**
+ * Test external email delivery - send a test email to the specified address
+ */
+function testExternalEmail(email) {
+  if (!email) {
+    console.log('Usage: testExternalEmail("email@example.com")');
+    return;
+  }
+  
+  const subject = 'Test Email — Don\'s Rental';
+  const body = 'This is a test email from Don\'s Rental to verify external email delivery.';
+  
+  MailApp.sendEmail({
+    to: email,
+    subject: subject,
+    body: body,
+    name: 'Don\'s Rental'
+  });
+  
+  console.log('Test email sent to ' + email);
+}
+
+/**
  * Backfill - send emails for all existing confirmed bookings without invoiceSentAt
  */
 function backfillEmails() {
@@ -354,4 +375,51 @@ function backfillEmails() {
     }
   }
   console.log('Backfill complete');
+}
+
+/**
+ * Diagnostic - check trigger status and run a manual check
+ */
+function diagnoseEmails() {
+  console.log('=== Email Diagnostics ===');
+  
+  // Check triggers
+  const triggers = ScriptApp.getProjectTriggers();
+  console.log('Triggers found: ' + triggers.length);
+  triggers.forEach((t, i) => {
+    console.log(`  Trigger ${i + 1}: ${t.getHandlerFunction()} - ${t.getEventType()} - next run: ${t.getNextExecutionTrigger()}`);
+  });
+  
+  // Check sheet
+  const sheet = getBookingsSheet();
+  if (!sheet) {
+    console.log('ERROR: Bookings sheet not found');
+    return;
+  }
+  
+  const lastRow = sheet.getLastRow();
+  console.log('Sheet rows: ' + lastRow);
+  
+  if (lastRow <= 1) {
+    console.log('No bookings in sheet');
+    return;
+  }
+  
+  // Check each row
+  const data = sheet.getRange(2, 1, lastRow - 1, COL.notes).getValues();
+  for (let i = 0; i < data.length; i++) {
+    const row = i + 2;
+    const bookingId = data[i][COL.bookingId - 1];
+    const status = data[i][COL.status - 1];
+    const invoiceSent = data[i][COL.invoiceSentAt - 1];
+    const email = data[i][COL.custEmail - 1];
+    
+    console.log(`Row ${row}: ${bookingId} | status=${status} | invoiceSent=${invoiceSent || 'empty'} | email=${email}`);
+    
+    if (status === 'Confirmed' && !invoiceSent && email) {
+      console.log(`  → Would send email to ${email}`);
+    }
+  }
+  
+  console.log('=== End Diagnostics ===');
 }

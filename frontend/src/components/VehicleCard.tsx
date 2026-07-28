@@ -8,12 +8,24 @@ interface VehicleCardProps {
 }
 
 export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect(vehicle);
+    }
+  };
+
   return (
     <Card
       className={`cursor-pointer transition-fast hover:shadow-lg ${
         isSelected ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
       }`}
       onClick={() => onSelect(vehicle)}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="radio"
+      aria-checked={isSelected}
+      aria-label={`${vehicle.name} - Bds$${vehicle.rate} per day`}
     >
       {vehicle.imageUrl && (
         <div
@@ -28,7 +40,7 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
         >
           <img
             src={vehicle.imageUrl}
-            alt={vehicle.name}
+            alt={`${vehicle.name} rental car`}
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
           />
         </div>
@@ -93,27 +105,40 @@ interface PricingPackagesProps {
 
 export function PricingPackages({ packages, selectedId, onSelect }: PricingPackagesProps) {
   return (
-    <div className="grid grid-cols-3 gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-      {packages.map((pkg) => (
-        <Card
-          key={pkg.id}
-          className={`cursor-pointer transition-fast hover:shadow-lg ${
-            selectedId === pkg.id ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
-          }`}
-          onClick={() => onSelect(pkg)}
-          style={{ padding: 'var(--space-4)', textAlign: 'center' }}
-        >
-          <p className="text-sm font-bold text-uppercase mb-sm" style={{ letterSpacing: '0.05em' }}>{pkg.label}</p>
-          <p className="text-3xl font-extrabold text-bau-yellow mb-sm">Bds${pkg.totalCost}</p>
-          <p className="text-xs text-bau-gray mb-md">Bds${pkg.dailyRate}/day &middot; {pkg.days} days</p>
-          <p className="text-xs text-bau-gray">{pkg.description}</p>
-          {selectedId === pkg.id && (
-            <div className="mt-md pt-md border-t-2 border-bau-black">
-              <p className="text-sm font-bold text-bau-yellow text-uppercase">✓ Selected</p>
-            </div>
-          )}
-        </Card>
-      ))}
+    <div className="grid grid-cols-3 gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }} role="radiogroup" aria-label="Pricing packages">
+      {packages.map((pkg) => {
+        const isSelected = selectedId === pkg.id;
+        return (
+          <Card
+            key={pkg.id}
+            className={`cursor-pointer transition-fast hover:shadow-lg ${
+              isSelected ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
+            }`}
+            onClick={() => onSelect(pkg)}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelect(pkg);
+              }
+            }}
+            tabIndex={0}
+            role="radio"
+            aria-checked={isSelected}
+            aria-label={`${pkg.label} - ${pkg.days} days, Bds$${pkg.totalCost} total`}
+            style={{ padding: 'var(--space-4)', textAlign: 'center' }}
+          >
+            <p className="text-sm font-bold text-uppercase mb-sm" style={{ letterSpacing: '0.05em' }}>{pkg.label}</p>
+            <p className="text-3xl font-extrabold text-bau-yellow mb-sm">Bds${pkg.totalCost}</p>
+            <p className="text-xs text-bau-gray mb-md">Bds${pkg.dailyRate}/day &middot; {pkg.days} days</p>
+            <p className="text-xs text-bau-gray">{pkg.description}</p>
+            {isSelected && (
+              <div className="mt-md pt-md border-t-2 border-bau-black">
+                <p className="text-sm font-bold text-bau-yellow text-uppercase">✓ Selected</p>
+              </div>
+            )}
+          </Card>
+        );
+      })}
     </div>
   );
 }

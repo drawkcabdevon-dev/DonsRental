@@ -215,32 +215,50 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  suggestions?: string[];
 }
+
+function parseSuggestions(text: string): { clean: string; suggestions: string[] } {
+  const match = text.match(/\[SUGGESTIONS\]\s*(.+?)$/m);
+  if (match) {
+    const suggestions = match[1].split('|').map(s => s.trim()).filter(Boolean);
+    const clean = text.replace(/\[SUGGESTIONS\]\s*.+?$/m, '').trim();
+    return { clean, suggestions };
+  }
+  return { clean: text, suggestions: [] };
+}
+
+const INITIAL_GREETING = "Hi! I'm Don's Rental booking assistant. I can help you book a car in Barbados. What dates do you need a car for?";
+const INITIAL_SUGGESTIONS = [
+  "I need a car for specific dates",
+  "What's the daily rate?",
+  "Tell me about the car",
+];
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: 'Hi! I\'m your Don\'s Rental booking assistant. How can I help you today?', timestamp: new Date() }
+    { role: 'assistant', content: INITIAL_GREETING, timestamp: new Date(), suggestions: INITIAL_SUGGESTIONS }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
-    const userMessage = input.trim();
+  const sendMessage = async (text?: string) => {
+    const msg = text || input.trim();
+    if (!msg || isLoading) return;
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage, timestamp: new Date() }]);
+    setMessages(prev => [...prev, { role: 'user', content: msg, timestamp: new Date() }]);
     setIsLoading(true);
 
     try {
-      const { response, bookingRef } = await api.chat(userMessage);
-      setMessages(prev => [...prev, { role: 'assistant', content: response, timestamp: new Date() }]);
-      // If booking was created, could trigger something here
+      const { response, bookingRef } = await api.chat(msg);
+      const { clean, suggestions } = parseSuggestions(response);
+      setMessages(prev => [...prev, { role: 'assistant', content: clean, timestamp: new Date(), suggestions }]);
       if (bookingRef) {
         console.log('Booking created:', bookingRef);
       }
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.', timestamp: new Date() }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.', timestamp: new Date(), suggestions: INITIAL_SUGGESTIONS }]);
     } finally {
       setIsLoading(false);
     }
@@ -253,6 +271,10 @@ export function ChatWidget() {
     }
   };
 
+  // Get suggestions from the last assistant message
+  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+  const activeSuggestions = lastAssistant?.suggestions || [];
+
   return (
     <div className={`chat-widget ${isOpen ? 'open' : ''}`}>
       <button
@@ -264,9 +286,7 @@ export function ChatWidget() {
           {isOpen ? (
             <path d="M18 6L6 18M6 6l12 12" />
           ) : (
-            <>
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </>
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           )}
         </svg>
         {!isOpen && messages.some(m => m.role === 'assistant') && <span className="chat-badge">1</span>}
@@ -290,7 +310,23 @@ export function ChatWidget() {
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="chat-message assistant">
+              <div className="message-bubble">
+                <p className="typing-dots">...</p>
+              </div>
+            </div>
+          )}
         </div>
+        {activeSuggestions.length > 0 && !isLoading && (
+          <div className="chat-suggestions">
+            {activeSuggestions.map((s, i) => (
+              <button key={i} className="suggestion-chip" onClick={() => sendMessage(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="chat-input-area">
           <textarea
             value={input}
@@ -303,7 +339,7 @@ export function ChatWidget() {
           />
           <button
             className="chat-send"
-            onClick={sendMessage}
+            onClick={() => sendMessage()}
             disabled={!input.trim() || isLoading}
             aria-label="Send message"
           >

@@ -92,4 +92,20 @@ export const api = {
     const data = await response.json();
     return data.url || '';
   },
+
+  // Chat with the booking agent
+  async chat(message: string): Promise<{ response: string; bookingRef: string }> {
+    try {
+      const response = await fetch(`${API_BASE}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+      if (!response.ok) throw new Error('Chat failed');
+      return await response.json();
+    } catch (error) {
+      console.error('Chat error:', error);
+      return { response: 'Sorry, I\'m having trouble connecting. Please try again.', bookingRef: '' };
+    }
+  },
 };

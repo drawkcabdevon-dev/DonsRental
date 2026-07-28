@@ -8,11 +8,12 @@ import logging
 import os
 import re
 import base64
+import smtplib
+import ssl
 from datetime import datetime, date, timedelta
 from typing import Optional
 import uuid
 import asyncio
-from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 # Load .env file in development (not available in Cloud Run)
@@ -20,10 +21,10 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from google.auth import default as google_default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -37,6 +38,8 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
 LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
 SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "")
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "")
 GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS", "")
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "donsrental-license-photos")
 GCS_PHOTOS_PREFIX = os.environ.get("GCS_PHOTOS_PREFIX", "license-photos")
@@ -98,55 +101,6 @@ def _get_calendar():
     _calendar_svc = build('calendar', 'v3', credentials=creds)
     return _calendar_svc
 
-class BookingRequest(BaseModel):
-    vehicleId: str = ""
-    customerName: str = ""
-    customerEmail: str = ""
-    customerPhone: str = ""
-    customerAddress: str = ""
-    pickupDate: str = ""
-    pickupTime: str = ""
-    returnDate: str = ""
-    returnTime: str = ""
-    dropoffLocation: str = ""
-    licenseNumber: str = ""
-    licenseExpiry: str = ""
-    licenseIssuer: str = ""
-    licenseClass: str = ""
-    totalDays: int = 1
-    totalCost: float = 0
-    licensePhotoUrl: str = ""
-
-    @field_validator("customerEmail")
-    @classmethod
-    def validate_email(cls, v: str) -> str:
-        if v and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
-            raise ValueError("Invalid email address")
-        return v
-
-    @field_validator("customerName")
-    @classmethod
-    def validate_name(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Customer name is required")
-        return v.strip()
-
-    @field_validator("customerPhone")
-    @classmethod
-    def validate_phone(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Phone number is required")
-        return v.strip()
-
-    @field_validator("pickupDate", "returnDate")
-    @classmethod
-    def validate_date_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Date is required")
-        return v
-
-class ScanLicenseRequest(BaseModel):
-    image: str
 def _add_to_calendar(req: BookingRequest, ref: str):
     """Add a booking as an event to Google Calendar."""
     if not GOOGLE_SHEETS_CREDENTIALS:
@@ -222,7 +176,7 @@ def _upload_to_gcs(image_base64: str, booking_ref: str = "") -> str:
         raise
 
 # ── In-memory booking store (backed by Google Sheets in prod) ──
-_bookings: list[dict] = []  # Deprecated — Sheet is source of truth
+_bookings: list[dict] = []
 
 app.add_middleware(
     CORSMiddleware,
@@ -231,40 +185,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Simple in-memory rate limiter ──────────────────────
-class RateLimiter:
-    """Token-bucket rate limiter. Allows `max_requests` per `window_seconds` per IP."""
-    def __init__(self, max_requests: int = 30, window_seconds: int = 60):
-        self.max_requests = max_requests
-        self.window_seconds = window_seconds
-        self._hits: dict[str, list[float]] = defaultdict(list)
-
-    def _client_ip(self, request: Request) -> str:
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
-
-    def is_allowed(self, request: Request) -> bool:
-        ip = self._client_ip(request)
-        now = datetime.utcnow().timestamp()
-        window_start = now - self.window_seconds
-        self._hits[ip] = [t for t in self._hits[ip] if t > window_start]
-        if len(self._hits[ip]) >= self.max_requests:
-            return False
-        self._hits[ip].append(now)
-        return True
-
-_rate_limiter = RateLimiter(max_requests=30, window_seconds=60)
-
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    # Only rate-limit mutation endpoints (POST), skip GETs and health checks
-    if request.method == "POST" and not request.url.path.startswith("/api/health"):
-        if not _rate_limiter.is_allowed(request):
-            raise HTTPException(429, "Too many requests. Please try again shortly.")
-    return await call_next(request)
-
 class ChatRequest(BaseModel):
     message: str
 
@@ -272,46 +192,31 @@ class ChatResponse(BaseModel):
     response: str
     booking_ref: str = ""
 
+class BookingRequest(BaseModel):
+    vehicleId: str = ""
+    customerName: str = ""
+    customerEmail: str = ""
+    customerPhone: str = ""
+    customerAddress: str = ""
+    pickupDate: str = ""
+    pickupTime: str = ""
+    returnDate: str = ""
+    returnTime: str = ""
+    dropoffLocation: str = ""
+    licenseNumber: str = ""
+    licenseExpiry: str = ""
+    licenseIssuer: str = ""
+    licenseClass: str = ""
+    totalDays: int = 1
+    totalCost: float = 0
+    licensePhotoUrl: str = ""
+
+class ScanLicenseRequest(BaseModel):
+    image: str
+
 class PhotoUploadRequest(BaseModel):
     image: str
     bookingRef: str = ""
-
-# ── Google Calendar Integration ──────────────────────────
-def _add_to_calendar(req: BookingRequest, ref: str):
-    """Add a booking as an event to Google Calendar."""
-    if not GOOGLE_SHEETS_CREDENTIALS:
-        logger.info("No credentials configured — skipping calendar event")
-        return None
-    try:
-        svc = _get_calendar()
-        pickup_dt = f"{req.pickupDate}T{req.pickupTime or '09:00'}:00"
-        return_dt = f"{req.returnDate}T{req.returnTime or '17:00'}:00"
-        event = {
-            'summary': f'{ref} — {req.customerName}',
-            'description': (
-                f'Booking: {ref}\n'
-                f'Customer: {req.customerName}\n'
-                f'Email: {req.customerEmail}\n'
-                f'Phone: {req.customerPhone}\n'
-                f'Vehicle: {req.vehicleId}\n'
-                f'License: {req.licenseNumber}\n'
-                f'Days: {req.totalDays} | Total: Bds${req.totalCost}'
-            ),
-            'start': {
-                'dateTime': pickup_dt,
-                'timeZone': 'America/Barbados',
-            },
-            'end': {
-                'dateTime': return_dt,
-                'timeZone': 'America/Barbados',
-            },
-        }
-        created = svc.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        logger.info("Calendar event created: %s", created.get('htmlLink'))
-        return created.get('id')
-    except Exception as e:
-        logger.warning("Calendar event failed: %s", e)
-        return None
 
 MDS_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
@@ -426,7 +331,7 @@ def _fetch_vehicles_from_sheet() -> list[dict]:
 
 def _fetch_bookings_from_sheet() -> list[dict]:
     if not SPREADSHEET_ID:
-        return []
+        return _bookings
     try:
         svc = _get_sheets()
         result = svc.spreadsheets().values().get(
@@ -434,7 +339,7 @@ def _fetch_bookings_from_sheet() -> list[dict]:
         ).execute()
         rows = result.get('values', [])
         if len(rows) < 2:
-            return []
+            return _bookings
         headers = [h.strip() for h in rows[0]]
         bookings = []
         for row in rows[1:]:
@@ -445,7 +350,7 @@ def _fetch_bookings_from_sheet() -> list[dict]:
         return bookings
     except Exception as e:
         logger.warning("Could not read bookings from sheet: %s", e)
-        return []
+        return _bookings
 
 def _parse_date(d: str) -> Optional[date]:
     try:
@@ -456,30 +361,6 @@ def _parse_date(d: str) -> Optional[date]:
 def _dates_overlap(a1: date, a2: date, b1: date, b2: date) -> bool:
     """Check if date range [a1, a2] overlaps with [b1, b2]."""
     return a1 <= b2 and b1 <= a2
-
-def _fetch_calendar_events(start_date: str, end_date: str) -> list:
-    """Fetch events from Google Calendar for the given date range."""
-    try:
-        svc = _get_calendar()
-        # Time range for the query
-        time_min = f"{start_date}T00:00:00-04:00"  # Barbados timezone
-        time_max = f"{end_date}T23:59:59-04:00"
-        
-        events_result = svc.events().list(
-            calendarId=CALENDAR_ID,
-            timeMin=time_min,
-            timeMax=time_max,
-            singleEvents=True,
-            orderBy='startTime',
-            maxResults=100,
-        ).execute()
-        
-        events = events_result.get('items', [])
-        logger.info("Fetched %d calendar events for %s to %s", len(events), start_date, end_date)
-        return events
-    except Exception as e:
-        logger.warning("Could not fetch calendar events: %s", e)
-        return []
 
 def _log_booking_notification(req: BookingRequest, ref: str):
     """Log booking details so the owner can see who booked what."""
@@ -609,31 +490,71 @@ def _append_to_sheet(req: BookingRequest, ref: str):
         logger.warning("Could not write to Google Sheet: %s", e)
 
 
-def _update_photo_url_in_sheet(booking_ref: str, photo_url: str):
-    """Update the licensePhotoUrl column for a booking in the Sheet."""
-    if not SPREADSHEET_ID or not booking_ref:
+# ── Email Notification ────────────────────────────────
+
+def _send_notification_email(req: BookingRequest, ref: str):
+    """Send email notification about a new booking."""
+    owner = OWNER_EMAIL or os.environ.get("OWNER_EMAIL", "")
+    if not owner:
+        logger.info("No OWNER_EMAIL set — skipping email notification")
         return
-    try:
-        svc = _get_sheets()
-        result = svc.spreadsheets().values().get(
-            spreadsheetId=SPREADSHEET_ID,
-            range='Bookings!A2:A',
-        ).execute()
-        rows = result.get('values', [])
-        for i, row in enumerate(rows):
-            if row and row[0] == booking_ref:
-                row_num = i + 2
-                svc.spreadsheets().values().update(
-                    spreadsheetId=SPREADSHEET_ID,
-                    range=f'Bookings!V{row_num}',
-                    valueInputOption='USER_ENTERED',
-                    body={'values': [[photo_url]]},
-                ).execute()
-                logger.info("✅ Photo URL updated for booking %s", booking_ref)
-                return
-        logger.warning("Booking %s not found in sheet for photo update", booking_ref)
-    except Exception as e:
-        logger.warning("Could not update photo URL in sheet: %s", e)
+
+    subject = f"New Booking: {req.customerName} — {ref}"
+    body_text = f"""
+New Booking Confirmed!
+
+Reference: {ref}
+Customer: {req.customerName}
+Email: {req.customerEmail}
+Phone: {req.customerPhone}
+Pickup: {req.pickupDate} at {req.pickupTime}
+Return: {req.returnDate} at {req.returnTime}
+License: {req.licenseNumber} (exp {req.licenseExpiry})
+Days: {req.totalDays}
+Total: Bds${req.totalCost}
+    """.strip()
+
+    # Try SendGrid first
+    if SENDGRID_API_KEY:
+        try:
+            import sendgrid
+            from sendgrid.helpers.mail import Mail, Email, Content
+
+            sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+            msg = Mail(
+                from_email=Email("bookings@donsrental.com", "Don's Rental"),
+                to_emails=Email(owner),
+                subject=subject,
+                html_content=Content("text/plain", body_text),
+            )
+            sg.client.mail.send.post(request_body=msg.get())
+            logger.info("✅ Email notification sent via SendGrid to %s", owner)
+            return
+        except ImportError:
+            logger.warning("sendgrid library not installed, trying SMTP...")
+        except Exception as e:
+            logger.warning("SendGrid email failed: %s", e)
+
+    # Fallback: SMTP
+    smtp_host = os.environ.get("SMTP_HOST", "")
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASS", "")
+    if smtp_host and smtp_user:
+        try:
+            msg_text = f"Subject: {subject}\n\n{body_text}"
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP_SSL(smtp_host, 465, timeout=15) as server:
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_user, [owner], msg_text)
+            logger.info("✅ Email notification sent via SMTP to %s", owner)
+            return
+        except Exception as e:
+            logger.warning("SMTP email failed: %s", e)
+    else:
+        logger.info("No SENDGRID_API_KEY or SMTP configured — notification only logged")
+
+    # Always log it
+    logger.info("📧 NOTIFICATION for %s:\n%s", owner, body_text)
 
 
 @app.get("/api/vehicles")
@@ -653,7 +574,6 @@ async def check_availability(req: CheckAvailabilityRequest):
     if not pickup or not return_d:
         raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
 
-    # Check existing bookings from Sheet
     sheet_bookings = _fetch_bookings_from_sheet()
     conflicts = []
     for b in sheet_bookings:
@@ -663,33 +583,10 @@ async def check_availability(req: CheckAvailabilityRequest):
         if bp and br and vid == req.vehicleId:
             if _dates_overlap(pickup, return_d, bp, br):
                 conflicts.append({
-                    "type": "booking",
                     "existingRef": b.get("bookingId", "") or b.get("bookingid", ""),
                     "pickupDate": b.get("pickupDate", "") or b.get("pickupdate", ""),
                     "returnDate": b.get("returnDate", "") or b.get("returndate", ""),
                 })
-
-    # Check Google Calendar events (maintenance, blocked dates, etc.)
-    cal_events = _fetch_calendar_events(req.pickupDate, req.returnDate)
-    for event in cal_events:
-        start = event.get('start', {})
-        end = event.get('end', {})
-        
-        # Handle all-day events
-        if 'date' in start:
-            ev_start = _parse_date(start['date'])
-            ev_end = _parse_date(end['date'])
-        else:
-            ev_start = _parse_date(start.get('dateTime', '')[:10])
-            ev_end = _parse_date(end.get('dateTime', '')[:10])
-        
-        if ev_start and ev_end and _dates_overlap(pickup, return_d, ev_start, ev_end):
-            conflicts.append({
-                "type": "calendar",
-                "summary": event.get('summary', 'Blocked'),
-                "start": start.get('date') or start.get('dateTime', ''),
-                "end": end.get('date') or end.get('dateTime', ''),
-            })
 
     return {
         "available": len(conflicts) == 0,
@@ -702,13 +599,9 @@ async def check_availability(req: CheckAvailabilityRequest):
 async def create_booking(req: BookingRequest):
     ref = "BK-" + os.urandom(4).hex().upper()
 
-    # Validate dates
+    # Check availability before booking
     pickup = _parse_date(req.pickupDate)
     return_d = _parse_date(req.returnDate)
-    if not pickup or not return_d:
-        raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
-    if return_d < pickup:
-        raise HTTPException(400, "Return date must be after pickup date.")
     if pickup and return_d:
         sheet_bookings = _fetch_bookings_from_sheet()
         for b in sheet_bookings:
@@ -736,10 +629,12 @@ async def create_booking(req: BookingRequest):
         "totalCost": req.totalCost,
         "created": datetime.utcnow().isoformat(),
     }
+    _bookings.append(booking)
 
     # Notify
     _log_booking_notification(req, ref)
     _append_to_sheet(req, ref)
+    _send_notification_email(req, ref)
     _add_to_calendar(req, ref)
 
     return {
@@ -753,43 +648,8 @@ async def create_booking(req: BookingRequest):
 
 @app.get("/api/bookings")
 async def list_bookings():
-    """List all bookings from the Google Sheet."""
-    return {"bookings": _fetch_bookings_from_sheet()}
-
-@app.delete("/api/bookings/{booking_id}")
-async def cancel_booking(booking_id: str):
-    """Cancel a booking — removes from Sheet and Calendar."""
-    # Find and delete from Sheet
-    if SPREADSHEET_ID:
-        try:
-            svc = _get_sheets()
-            result = svc.spreadsheets().values().get(
-                spreadsheetId=SPREADSHEET_ID, range='Bookings!A:V',
-            ).execute()
-            rows = result.get('values', [])
-            if len(rows) >= 2:
-                for i, row in enumerate(rows[1:], start=2):
-                    if row and row[0] == booking_id:
-                        svc.spreadsheets().batchUpdate(
-                            spreadsheetId=SPREADSHEET_ID,
-                            body={'requests': [{'deleteDimension': {'range': {'sheetId': 613814778, 'dimension': 'ROWS', 'startIndex': i - 1, 'endIndex': i}}}]}
-                        ).execute()
-                        break
-        except Exception as e:
-            logger.warning("Failed to delete from sheet: %s", e)
-
-    # Find and delete from Calendar
-    try:
-        svc = _get_calendar()
-        events = svc.events().list(
-            calendarId=CALENDAR_ID, q=booking_id, singleEvents=True
-        ).execute()
-        for event in events.get('items', []):
-            svc.events().delete(calendarId=CALENDAR_ID, eventId=event['id']).execute()
-    except Exception as e:
-        logger.warning("Failed to delete from calendar: %s", e)
-
-    return {"success": True, "message": f"Booking {booking_id} canceled"}
+    """List all bookings (so the owner can see what's reserved)."""
+    return {"bookings": _bookings}
 
 @app.post("/api/scan-license")
 async def scan_license(req: ScanLicenseRequest):
@@ -806,7 +666,7 @@ async def scan_license(req: ScanLicenseRequest):
     try:
         base64.b64decode(image_data, validate=True)
     except Exception:
-        raise HTTPException(400, "Invalid base64 image data")
+        return {"error": "Invalid base64 image data"}
 
     prompt = """Extract the following fields from this Barbados driver's license image.
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
@@ -833,7 +693,7 @@ If a field is not visible, set it to null."""
             resp = await client.post(url, json=body)
             if resp.status_code != 200:
                 logger.error("Gemini API error: %s - %s", resp.status_code, resp.text[:300])
-                raise HTTPException(502, f"Vision API error ({resp.status_code})")
+                return {"error": f"Vision API error ({resp.status_code})"}
 
             result = resp.json()
             text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
@@ -846,12 +706,10 @@ If a field is not visible, set it to null."""
             logger.info("License scan result: name=%s license=%s", parsed.get("customerName"), parsed.get("licenseNumber"))
             return parsed
     except json.JSONDecodeError:
-        raise HTTPException(502, "Could not parse vision API response as JSON")
-    except HTTPException:
-        raise
+        return {"raw": text, "error": "Could not parse Gemini response as JSON"}
     except Exception as e:
         logger.error("License scan failed: %s", e)
-        raise HTTPException(500, f"License scan failed: {e}")
+        return {"error": str(e)}
 
 @app.post("/api/upload-photo")
 async def upload_photo(req: PhotoUploadRequest):
@@ -862,11 +720,6 @@ async def upload_photo(req: PhotoUploadRequest):
         # Run blocking GCS upload in thread pool to avoid blocking event loop
         loop = asyncio.get_event_loop()
         blob_path = await loop.run_in_executor(_executor, _upload_to_gcs, req.image, req.bookingRef)
-        
-        # Update the photo URL in the Sheet if we have a booking reference
-        if req.bookingRef:
-            await loop.run_in_executor(_executor, _update_photo_url_in_sheet, req.bookingRef, blob_path)
-        
         return {"url": blob_path}
     except ValueError as e:
         raise HTTPException(400, str(e))

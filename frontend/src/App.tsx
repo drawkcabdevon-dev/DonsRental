@@ -8,6 +8,7 @@ import {
   Input,
   Spinner,
   Alert,
+  ChatWidget,
 } from './components/index';
 import { VehicleCard, PricingBreakdown, PricingPackages, PRICING_PACKAGES } from './components/VehicleCard';
 import { PersonalInfoForm, LicenseVerificationForm } from './components/Forms';
@@ -78,13 +79,31 @@ function App() {
     try {
       const extracted = await api.scanLicense(imageData);
 
-      if (extracted.customerName || extracted.customerEmail || extracted.customerPhone || extracted.customerAddress) {
+      // Only auto-fill fields that exist on a driver's license
+      // (name, address, license number, expiry, issuer, class)
+      const hasLicenseData =
+        extracted.customerName ||
+        extracted.customerAddress ||
+        extracted.licenseNumber ||
+        extracted.licenseExpiry ||
+        extracted.licenseIssuer ||
+        extracted.licenseClass;
+
+      if (hasLicenseData) {
         setBooking((prev) => ({
           ...prev,
           customerName: extracted.customerName || prev.customerName,
-          customerEmail: extracted.customerEmail || prev.customerEmail,
-          customerPhone: extracted.customerPhone || prev.customerPhone,
           customerAddress: extracted.customerAddress || prev.customerAddress,
+          licenseNumber: extracted.licenseNumber || prev.licenseNumber,
+          licenseExpiry: extracted.licenseExpiry || prev.licenseExpiry,
+          licenseIssuer: extracted.licenseIssuer || prev.licenseIssuer,
+          licenseClass: extracted.licenseClass || prev.licenseClass,
+          licensePhotoUrl: imageData || prev.licensePhotoUrl,
+        }));
+      } else {
+        setBooking((prev) => ({
+          ...prev,
+          licensePhotoUrl: imageData || prev.licensePhotoUrl,
         }));
         addToast('success', 'License scanned — details auto-filled');
       } else {
@@ -409,6 +428,34 @@ function App() {
           </div>
         )}
 
+        {/* Chat Banner - Alternative booking method */}
+        {!bookingRef && step === 1 && (
+          <div style={{ 
+            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)', 
+            color: 'white', 
+            padding: 'var(--space-6)', 
+            borderRadius: 'var(--radius-lg)', 
+            marginBottom: 'var(--space-8)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 'var(--space-4)'
+          }}>
+            <div>
+              <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-2)' }}>
+                💬 Prefer to chat?
+              </h3>
+              <p style={{ opacity: 0.9, marginBottom: 0 }}>
+                Talk to our AI booking assistant to book your rental naturally. Ask questions, get recommendations, and complete your booking through conversation.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ background: 'transparent', borderColor: 'white', color: 'white' }}>
+              Open Chat Assistant
+            </Button>
+          </div>
+        )}
+
         {/* Step 1: Vehicle + Pricing Packages */}
         {step === 1 && !bookingRef && (
           <div>
@@ -720,6 +767,9 @@ function App() {
           } />
         </Routes>
       </main>
+
+      {/* Chat Widget */}
+      <ChatWidget />
 
       {/* Footer */}
       <footer style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-6) 0', borderTop: 'var(--border-thick) solid var(--color-yellow)', marginTop: 'var(--space-16)' }}>

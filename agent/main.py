@@ -169,8 +169,8 @@ def scan_license(image_base64: str) -> dict:
         image_base64: Base64-encoded JPEG image (with or without data:image prefix).
 
     Returns:
-        Dict with keys: name, licenseNumber, expiryDate, issuingAuthority,
-        dateOfBirth, address, licenseClass (null if not visible).
+        Dict with keys: customerName, licenseNumber, licenseExpiry, licenseIssuer,
+        customerAddress, licenseClass (null if not visible).
     """
     client = _get_genai()
     if not client:
@@ -185,15 +185,14 @@ def scan_license(image_base64: str) -> dict:
         return {'error': 'Invalid base64 image data'}
 
     try:
-        prompt = """Extract the following fields from this driver's license image.
+        prompt = """Extract the following fields from this Barbados driver's license image.
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
-  "name": full name,
+  "customerName": full name on the license,
   "licenseNumber": the license/driver number,
-  "expiryDate": expiration date,
-  "issuingAuthority": issuing state/agency,
-  "dateOfBirth": date of birth,
-  "address": address,
-  "licenseClass": class/type.
+  "licenseExpiry": expiration date,
+  "licenseIssuer": issuing authority (e.g. "Barbados Licensing Authority"),
+  "customerAddress": address on the license,
+  "licenseClass": license class/type.
 If a field is not visible, set it to null."""
         response = client.models.generate_content(
             model='gemini-1.5-flash',
@@ -480,24 +479,26 @@ VEHICLE & PRICING:
 - Minimum 2-day rental. Weekend specials and weekly discounts available.
 - All prices are in Barbados dollars (Bds$).
 
-Your job is to help customers complete a booking step by step. Use your
-tools to get vehicles, create bookings, and scan licenses.
+BOOKING FLOW — guide the customer step by step:
+  1. Greet them and ask what dates they need the car.
+  2. Once they give dates, confirm the dates and price (days × Bds$120).
+  3. Ask for their name, email, and phone number.
+  4. Ask for their driver's license number and expiry date.
+  5. Ask for pickup/dropoff location (Airport, Downtown, etc.).
+  6. Confirm ALL details before booking — summarize everything.
+  7. Call check_availability to verify the vehicle is free.
+  8. If available, call create_booking. If not, suggest alternatives.
+  9. Share the booking reference and confirm an invoice was emailed.
 
-Booking flow:
-  1. Show the available vehicle (call get_vehicles) — tell them about the
-     Standard Rental Car at Bds$120/day and the 2-day minimum.
-  2. Collect pickup and return dates/times.
-  3. Collect customer name, email, phone, and address.
-  4. Collect license info — the customer can provide it manually OR
-     upload a photo. If they upload a photo, call scan_license.
-  5. Confirm all details WITH THE CUSTOMER before finalizing.
-  6. Before creating the booking, call check_availability to verify the
-     vehicle is free for those dates. If not available, flag it.
-  7. Call create_booking to finalize.
-  8. Tell them the booking reference and that an invoice was emailed.
-
-Important: Always confirm with the customer before calling create_booking.
-Be concise and friendly. Calculate totals: days × Bds$120.
+IMPORTANT RULES:
+- Always end your response with a [SUGGESTIONS] line listing 2-4 clickable
+  next-step options the user can tap. Format exactly like:
+  [SUGGESTIONS] I need a car for specific dates | What's the daily rate? | Tell me about the car
+- Pick suggestions that match the CURRENT step in the flow.
+- If they ask something unrelated to booking (weather, directions, etc.),
+  briefly answer then redirect back to booking.
+- Keep responses short and friendly. Use Bds$ for prices.
+- Never make up details — use your tools to check real data.
 """
 agent = LlmAgent(
     name="rental_booking_agent",

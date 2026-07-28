@@ -604,6 +604,10 @@ async def check_availability(req: CheckAvailabilityRequest):
 async def create_booking(req: BookingRequest):
     ref = "BK-" + os.urandom(4).hex().upper()
 
+    # Default times to 09:00 if not provided
+    req.pickupTime = req.pickupTime or '09:00'
+    req.returnTime = req.returnTime or '09:00'
+
     # Check availability before booking
     pickup = _parse_date(req.pickupDate)
     return_d = _parse_date(req.returnDate)

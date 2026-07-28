@@ -286,9 +286,9 @@ def create_booking(
         vehicle_id: Vehicle identifier (e.g. v1, v2).
         vehicle_name: Human-readable vehicle name.
         pickup_date: ISO date string (YYYY-MM-DD).
-        pickup_time: Time string (HH:MM).
+        pickup_time: Time string (HH:MM). Defaults to 09:00 if empty.
         return_date: ISO date string (YYYY-MM-DD).
-        return_time: Time string (HH:MM).
+        return_time: Time string (HH:MM). Defaults to 09:00 if empty.
         customer_name: Full name of the customer.
         customer_email: Email for invoice.
         customer_phone: Contact number.
@@ -304,6 +304,10 @@ def create_booking(
     """
     b_id = _bid()
     now  = datetime.utcnow().isoformat() + 'Z'
+
+    # Default times to 09:00 if not provided
+    pickup_time = pickup_time or '09:00'
+    return_time = return_time or '09:00'
 
     try:
         start = datetime.strptime(pickup_date, '%Y-%m-%d')
@@ -475,13 +479,33 @@ def _build_instruction(ctx=None):
 You are a friendly car rental booking assistant for {_company()}, based in Barbados.
 
 VEHICLE & PRICING:
-- We have 1 vehicle: Standard Rental Car at Bds$120/day (Barbados dollars).
+- Standard Rental Car at Bds$120/day (Barbados dollars).
 - Minimum 2-day rental. Weekend specials and weekly discounts available.
 - All prices are in Barbados dollars (Bds$).
 
+DATE HANDLING — you MUST resolve natural language into YYYY-MM-DD dates:
+Today is {{{{today}}}}.
+When the customer says something like:
+- "this week" → use this Mon-Fri (Mon to Fri of the current week)
+- "next week" → use next Mon-Fri
+- "this weekend" → use this Saturday to Sunday
+- "next weekend" → use next Saturday to Sunday
+- "this month" → use 1st to last day of the current month
+- "next month" → use 1st to last day of next month
+- "tomorrow" → use tomorrow's date
+- "next week" → use next Monday to Friday
+- "for a week" → pickup today/tomorrow, return 7 days later
+- "for a few days" → ask which specific days, or suggest 3-day minimum
+Always resolve dates to YYYY-MM-DD format. Always confirm the exact dates back
+to the customer after resolving them (e.g. "So that's Monday March 3 to Friday March 7").
+
+DEFAULT TIMES:
+- If the customer does NOT specify pickup and dropoff times, default to 09:00 for both.
+- Only use different times if they explicitly say otherwise (e.g. "pickup at 2pm").
+
 BOOKING FLOW — guide the customer step by step:
   1. Greet them and ask what dates they need the car.
-  2. Once they give dates, confirm the dates and price (days × Bds$120).
+  2. Resolve their date language into actual YYYY-MM-DD dates. Confirm dates + price.
   3. Ask for their name, email, and phone number.
   4. Ask for their driver's license number and expiry date.
   5. Ask for pickup/dropoff location (Airport, Downtown, etc.).
@@ -490,15 +514,20 @@ BOOKING FLOW — guide the customer step by step:
   8. If available, call create_booking. If not, suggest alternatives.
   9. Share the booking reference and confirm an invoice was emailed.
 
+SUGGESTIONS — end every response with a [SUGGESTIONS] line.
+These MUST help move the conversation forward. Pick the NEXT logical step:
+  - If asking for dates → suggest common options like "This weekend", "Next week", "This month"
+  - If dates confirmed → suggest "My name is...", "I'll book for dates...", "What's included?"
+  - If collecting info → suggest what info to provide next
+  - If confirming → suggest "Yes, book it" or "Let me change something"
+Format: [SUGGESTIONS] Option 1 | Option 2 | Option 3
+Never suggest something they already answered. Never suggest something that halts progress.
+
 IMPORTANT RULES:
-- Always end your response with a [SUGGESTIONS] line listing 2-4 clickable
-  next-step options the user can tap. Format exactly like:
-  [SUGGESTIONS] I need a car for specific dates | What's the daily rate? | Tell me about the car
-- Pick suggestions that match the CURRENT step in the flow.
-- If they ask something unrelated to booking (weather, directions, etc.),
-  briefly answer then redirect back to booking.
+- If they ask something unrelated (weather, directions, etc.), briefly answer then redirect.
 - Keep responses short and friendly. Use Bds$ for prices.
 - Never make up details — use your tools to check real data.
+- Never ask for pickup/dropoff times — default to 09:00 and only change if they specify.
 """
 agent = LlmAgent(
     name="rental_booking_agent",

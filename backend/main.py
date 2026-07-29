@@ -466,7 +466,7 @@ def _log_booking_notification(req: BookingRequest, ref: str):
 
 # ── Google Sheets Integration ──────────────────────────
 
-def _append_to_sheet(req: BookingRequest, ref: str):
+def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0):
     """Append a booking row to the Google Sheet."""
     if not SPREADSHEET_ID:
         logger.info("No SPREADSHEET_ID set — skipping sheet write")
@@ -494,7 +494,7 @@ def _append_to_sheet(req: BookingRequest, ref: str):
             req.licenseIssuer or '',
             req.licenseClass or '',
             'pay_on_pickup',
-            req.totalCost or 0,
+            total_cost,  # Use server-calculated cost
             '',  # invoice_sent_at
             '',  # notes
             req.licensePhotoUrl or '',  # licensePhotoUrl
@@ -725,7 +725,7 @@ async def create_booking(req: BookingRequest):
 
     # Notify
     _log_booking_notification(req, ref)
-    _append_to_sheet(req, ref)
+    _append_to_sheet(req, ref, total_cost)
     _add_to_calendar(req, ref)
 
     return {
@@ -737,7 +737,7 @@ async def create_booking(req: BookingRequest):
         "totalCost": total_cost,
     }
 
-ADMIN_KEY = os.getenv("ADMIN_KEY", "donsrental-admin-2026")
+ADMIN_KEY = os.getenv("ADMIN_KEY", "")
 
 @app.get("/api/bookings")
 async def list_bookings(key: str = ""):

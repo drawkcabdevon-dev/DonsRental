@@ -80,6 +80,17 @@
   --transition-normal: 150ms ease-in-out;
   --transition-slow: 300ms ease-in-out;
   
+  /* Motion tokens (GSAP / animation system) */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-entrance: cubic-bezier(0, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --duration-quick: 120ms;
+  --duration-standard: 250ms;
+  --duration-slow: 400ms;
+  --duration-page: 500ms;
+  --entrance-distance: 16px;
+  
   /* Layout */
   --max-width-container: 1200px;
   --header-height: 80px;

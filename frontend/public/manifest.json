@@ -1,0 +1,17 @@
+{
+  "name": "Don's Rental - Car Rental in Barbados",
+  "short_name": "Don's Rental",
+  "description": "Affordable car rentals in Barbados. Book Kia Picanto, Suzuki Swift, and Toyota Corolla online.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a2e",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

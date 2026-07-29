@@ -1,4 +1,5 @@
 import type { BookingData, Vehicle } from '../types';
+import type { RefObject } from 'react';
 import { Card } from './index';
 
 interface BookingSummaryProps {
@@ -42,11 +43,11 @@ export function BookingSummary({ booking, vehicle, capturedPhotoPreview }: Booki
       {/* License Photo Preview */}
       {capturedPhotoPreview && (
         <Card className="border-4 border-bau-yellow">
-          <h3 className="text-2xl font-bold text-uppercase mb-lg">📸 License Photo</h3>
+          <h3 className="text-2xl font-bold text-uppercase mb-lg">License Photo</h3>
           <p className="text-sm text-bau-gray mb-md">Your license photo will be uploaded after booking confirmation.</p>
           <img
             src={capturedPhotoPreview}
-            alt="Captured license"
+            alt="Preview of your captured driver's license photo"
             style={{ maxHeight: '200px', borderRadius: '8px', border: '2px solid var(--color-yellow)', display: 'block', margin: '0 auto' }}
           />
         </Card>
@@ -64,13 +65,14 @@ interface BookingConfirmationProps {
   bookingRef: string;
   email: string;
   photoUrl?: string;
+  headingRef?: RefObject<HTMLHeadingElement | null>;
 }
 
-export function BookingConfirmation({ bookingRef, email, photoUrl }: BookingConfirmationProps) {
+export function BookingConfirmation({ bookingRef, email, photoUrl, headingRef }: BookingConfirmationProps) {
   return (
     <div className="text-center space-y-lg">
-      <div className="text-6xl">✓</div>
-      <h2 className="text-3xl font-extrabold text-uppercase">Booking Confirmed</h2>
+      <div className="text-6xl" aria-hidden="true">✓</div>
+      <h2 ref={headingRef} tabIndex={-1} style={{ outline: 'none' }} className="text-3xl font-extrabold text-uppercase">Booking Confirmed</h2>
       
       <Card className="border-4 border-bau-yellow bg-bau-off-white">
         <p className="text-sm text-bau-gray text-uppercase font-semibold mb-md">Booking Reference</p>
@@ -85,7 +87,7 @@ export function BookingConfirmation({ bookingRef, email, photoUrl }: BookingConf
           <p className="text-sm text-bau-gray text-uppercase font-semibold mb-md">📸 License Photo Uploaded</p>
           <img
             src={photoUrl}
-            alt="License"
+            alt="Uploaded driver's license photo"
             style={{ maxHeight: '200px', borderRadius: '8px', border: '2px solid var(--color-yellow)', display: 'block', margin: '0 auto' }}
           />
           <p className="text-xs text-bau-gray mt-sm">Securely stored for your booking record</p>
@@ -93,13 +95,20 @@ export function BookingConfirmation({ bookingRef, email, photoUrl }: BookingConf
       )}
       
       <div className="bg-bau-light-gray border-2 border-bau-black p-lg rounded-lg">
-        <p className="text-sm text-bau-gray mb-md">📧 Check your email for:</p>
+        <p className="text-sm text-bau-gray mb-md"><span aria-hidden="true">📧</span> Check your email for:</p>
         <ul className="text-left space-y-sm text-sm">
           <li>✓ Booking confirmation details</li>
           <li>✓ Vehicle pickup instructions</li>
           <li>✓ Terms &amp; conditions</li>
           <li>✓ Insurance information</li>
         </ul>
+      </div>
+
+      <div style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-size-sm)', color: '#666' }}>
+        By booking, you agree to our{' '}
+        <a href="/terms" target="_blank" style={{ color: '#0f3460', textDecoration: 'underline' }}>Terms &amp; Conditions</a>
+        {' '}and{' '}
+        <a href="/privacy" target="_blank" style={{ color: '#0f3460', textDecoration: 'underline' }}>Privacy Policy</a>.
       </div>
     </div>
   );

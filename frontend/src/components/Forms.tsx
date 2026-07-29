@@ -73,7 +73,7 @@ export function LicenseVerificationForm({
   return (
     <div className="space-y-lg">
       <div className="border-4 border-dashed border-bau-black rounded-lg p-2xl text-center">
-        <p className="text-lg font-bold text-uppercase mb-lg">📷 License Photo Capture</p>
+        <p className="text-lg font-bold text-uppercase mb-lg"><span aria-hidden="true">📷</span> License Photo Capture</p>
         <p className="text-sm text-bau-gray mb-lg">
           Upload or take a photo of your driver's license for automatic scanning.
         </p>
@@ -85,6 +85,7 @@ export function LicenseVerificationForm({
               const input = document.createElement('input');
               input.type = 'file';
               input.accept = 'image/*';
+              input.setAttribute('aria-label', 'Upload a photo of your driver\'s license');
               input.onchange = (e) => {
                 const file = (e.target as HTMLInputElement).files?.[0];
                 if (file && onPhotoCapture) {
@@ -116,6 +117,7 @@ export function LicenseVerificationForm({
                 video.style.objectFit = 'cover';
                 video.style.zIndex = '9999';
                 video.style.backgroundColor = 'black';
+                video.setAttribute('aria-label', 'Camera viewfinder for license photo');
                 document.body.appendChild(video);
 
                 const captureBtn = document.createElement('button');
@@ -126,6 +128,7 @@ export function LicenseVerificationForm({
                 captureBtn.style.left = '50%';
                 captureBtn.style.transform = 'translateX(-50%)';
                 captureBtn.style.zIndex = '10000';
+                captureBtn.setAttribute('aria-label', 'Capture photo from camera');
                 document.body.appendChild(captureBtn);
 
                 const cancelBtn = document.createElement('button');
@@ -136,7 +139,10 @@ export function LicenseVerificationForm({
                 cancelBtn.style.left = '50%';
                 cancelBtn.style.transform = 'translateX(-50%)';
                 cancelBtn.style.zIndex = '10000';
+                cancelBtn.setAttribute('aria-label', 'Cancel camera capture');
                 document.body.appendChild(cancelBtn);
+
+                captureBtn.focus();
 
                 const cleanup = () => {
                   stream.getTracks().forEach(t => t.stop());
@@ -145,11 +151,21 @@ export function LicenseVerificationForm({
                   cancelBtn.remove();
                 };
 
+                const handleEscape = (e: KeyboardEvent) => {
+                  if (e.key === 'Escape') {
+                    cleanup();
+                    document.removeEventListener('keydown', handleEscape);
+                  }
+                };
+                document.addEventListener('keydown', handleEscape);
+
                 captureBtn.onclick = () => {
                   const canvas = document.createElement('canvas');
                   canvas.width = video.videoWidth;
                   canvas.height = video.videoHeight;
-                  canvas.getContext('2d')!.drawImage(video, 0, 0);
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) { cleanup(); document.removeEventListener('keydown', handleEscape); return; }
+                  ctx.drawImage(video, 0, 0);
                   canvas.toBlob((blob) => {
                     if (blob) {
                       const file = new File([blob], 'license.jpg', { type: 'image/jpeg' });
@@ -162,12 +178,16 @@ export function LicenseVerificationForm({
                       reader.readAsDataURL(file);
                     }
                     cleanup();
+                    document.removeEventListener('keydown', handleEscape);
                   }, 'image/jpeg');
                 };
 
-                cancelBtn.onclick = cleanup;
+                cancelBtn.onclick = () => {
+                  cleanup();
+                  document.removeEventListener('keydown', handleEscape);
+                };
               } catch (err) {
-                alert('Camera access denied. Please use Upload Photo instead.');
+                console.warn('Camera access failed:', err);
               }
             }}
             className="btn btn-outline btn-lg"
@@ -178,7 +198,7 @@ export function LicenseVerificationForm({
         
         {data.photoUrl && (
           <div className="mt-lg">
-            <img src={data.photoUrl} alt="License" className="max-h-48 rounded-lg mx-auto border-2 border-bau-yellow" />
+            <img src={data.photoUrl} alt="Uploaded driver's license photo" className="max-h-48 rounded-lg mx-auto border-2 border-bau-yellow" />
           </div>
         )}
       </div>

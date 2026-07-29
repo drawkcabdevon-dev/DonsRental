@@ -12,6 +12,7 @@ from datetime import datetime, date, timedelta
 from typing import Optional
 import uuid
 import asyncio
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 # Load .env file in development (not available in Cloud Run)
@@ -19,10 +20,10 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from google.auth import default as google_default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -97,6 +98,92 @@ def _get_calendar():
     _calendar_svc = build('calendar', 'v3', credentials=creds)
     return _calendar_svc
 
+class BookingRequest(BaseModel):
+    vehicleId: str = ""
+    customerName: str = ""
+    customerEmail: str = ""
+    customerPhone: str = ""
+    customerAddress: str = ""
+    pickupDate: str = ""
+    pickupTime: str = ""
+    returnDate: str = ""
+    returnTime: str = ""
+    dropoffLocation: str = ""
+    licenseNumber: str = ""
+    licenseExpiry: str = ""
+    licenseIssuer: str = ""
+    licenseClass: str = ""
+    totalDays: int = 1
+    totalCost: float = 0
+    licensePhotoUrl: str = ""
+
+    @field_validator("customerEmail")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if v and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
+            raise ValueError("Invalid email address")
+        return v
+
+    @field_validator("customerName")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Customer name is required")
+        return v.strip()
+
+    @field_validator("customerPhone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Phone number is required")
+        return v.strip()
+
+    @field_validator("pickupDate", "returnDate")
+    @classmethod
+    def validate_date_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Date is required")
+        return v
+
+class ScanLicenseRequest(BaseModel):
+    image: str
+def _add_to_calendar(req: BookingRequest, ref: str):
+    """Add a booking as an event to Google Calendar."""
+    if not GOOGLE_SHEETS_CREDENTIALS:
+        logger.info("No credentials configured — skipping calendar event")
+        return None
+    try:
+        svc = _get_calendar()
+        pickup_dt = f"{req.pickupDate}T{req.pickupTime or '09:00'}:00"
+        return_dt = f"{req.returnDate}T{req.returnTime or '17:00'}:00"
+        event = {
+            'summary': f'{ref} — {req.customerName}',
+            'description': (
+                f'Booking: {ref}\n'
+                f'Customer: {req.customerName}\n'
+                f'Email: {req.customerEmail}\n'
+                f'Phone: {req.customerPhone}\n'
+                f'Vehicle: {req.vehicleId}\n'
+                f'License: {req.licenseNumber}\n'
+                f'Days: {req.totalDays} | Total: Bds${req.totalCost}'
+            ),
+            'visibility': 'private',
+            'start': {
+                'dateTime': pickup_dt,
+                'timeZone': 'America/Barbados',
+            },
+            'end': {
+                'dateTime': return_dt,
+                'timeZone': 'America/Barbados',
+            },
+        }
+        created = svc.events().insert(calendarId=CALENDAR_ID, body=event).execute()
+        logger.info("Calendar event created: %s", created.get('htmlLink'))
+        return created.get('id')
+    except Exception as e:
+        logger.warning("Calendar event failed: %s", e)
+        return None
+
 def _upload_to_gcs(image_base64: str, booking_ref: str = "") -> str:
     """Upload a base64-encoded image to GCS and return its blob path (private object key)."""
     # Parse data URL and extract base64 data
@@ -136,14 +223,52 @@ def _upload_to_gcs(image_base64: str, booking_ref: str = "") -> str:
         raise
 
 # ── In-memory booking store (backed by Google Sheets in prod) ──
-_bookings: list[dict] = []
+_bookings: list[dict] = []  # Deprecated — Sheet is source of truth
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://rentals.onlineverywhere.com",
+        "https://donsrental-wof62rve3a-ew.a.run.app",
+        "http://localhost:5173",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Simple in-memory rate limiter ──────────────────────
+class RateLimiter:
+    """Token-bucket rate limiter. Allows `max_requests` per `window_seconds` per IP."""
+    def __init__(self, max_requests: int = 30, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._hits: dict[str, list[float]] = defaultdict(list)
+
+    def _client_ip(self, request: Request) -> str:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        return request.client.host if request.client else "unknown"
+
+    def is_allowed(self, request: Request) -> bool:
+        ip = self._client_ip(request)
+        now = datetime.utcnow().timestamp()
+        window_start = now - self.window_seconds
+        self._hits[ip] = [t for t in self._hits[ip] if t > window_start]
+        if len(self._hits[ip]) >= self.max_requests:
+            return False
+        self._hits[ip].append(now)
+        return True
+
+_rate_limiter = RateLimiter(max_requests=30, window_seconds=60)
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # Only rate-limit mutation endpoints (POST), skip GETs and health checks
+    if request.method == "POST" and not request.url.path.startswith("/api/health"):
+        if not _rate_limiter.is_allowed(request):
+            raise HTTPException(429, "Too many requests. Please try again shortly.")
+    return await call_next(request)
 
 class ChatRequest(BaseModel):
     message: str
@@ -152,68 +277,9 @@ class ChatResponse(BaseModel):
     response: str
     booking_ref: str = ""
 
-class BookingRequest(BaseModel):
-    vehicleId: str = ""
-    customerName: str = ""
-    customerEmail: str = ""
-    customerPhone: str = ""
-    customerAddress: str = ""
-    pickupDate: str = ""
-    pickupTime: str = ""
-    returnDate: str = ""
-    returnTime: str = ""
-    dropoffLocation: str = ""
-    licenseNumber: str = ""
-    licenseExpiry: str = ""
-    licenseIssuer: str = ""
-    licenseClass: str = ""
-    totalDays: int = 1
-    totalCost: float = 0
-    licensePhotoUrl: str = ""
-
-class ScanLicenseRequest(BaseModel):
-    image: str
-
 class PhotoUploadRequest(BaseModel):
     image: str
     bookingRef: str = ""
-
-# ── Google Calendar Integration ──────────────────────────
-def _add_to_calendar(req: BookingRequest, ref: str):
-    """Add a booking as an event to Google Calendar."""
-    if not GOOGLE_SHEETS_CREDENTIALS:
-        logger.info("No credentials configured — skipping calendar event")
-        return None
-    try:
-        svc = _get_calendar()
-        pickup_dt = f"{req.pickupDate}T{req.pickupTime or '09:00'}:00"
-        return_dt = f"{req.returnDate}T{req.returnTime or '17:00'}:00"
-        event = {
-            'summary': f'{ref} — {req.customerName}',
-            'description': (
-                f'Booking: {ref}\n'
-                f'Customer: {req.customerName}\n'
-                f'Email: {req.customerEmail}\n'
-                f'Phone: {req.customerPhone}\n'
-                f'Vehicle: {req.vehicleId}\n'
-                f'License: {req.licenseNumber}\n'
-                f'Days: {req.totalDays} | Total: Bds${req.totalCost}'
-            ),
-            'start': {
-                'dateTime': pickup_dt,
-                'timeZone': 'America/Barbados',
-            },
-            'end': {
-                'dateTime': return_dt,
-                'timeZone': 'America/Barbados',
-            },
-        }
-        created = svc.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        logger.info("Calendar event created: %s", created.get('htmlLink'))
-        return created.get('id')
-    except Exception as e:
-        logger.warning("Calendar event failed: %s", e)
-        return None
 
 MDS_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
@@ -328,7 +394,7 @@ def _fetch_vehicles_from_sheet() -> list[dict]:
 
 def _fetch_bookings_from_sheet() -> list[dict]:
     if not SPREADSHEET_ID:
-        return _bookings
+        return []
     try:
         svc = _get_sheets()
         result = svc.spreadsheets().values().get(
@@ -336,7 +402,7 @@ def _fetch_bookings_from_sheet() -> list[dict]:
         ).execute()
         rows = result.get('values', [])
         if len(rows) < 2:
-            return _bookings
+            return []
         headers = [h.strip() for h in rows[0]]
         bookings = []
         for row in rows[1:]:
@@ -347,7 +413,7 @@ def _fetch_bookings_from_sheet() -> list[dict]:
         return bookings
     except Exception as e:
         logger.warning("Could not read bookings from sheet: %s", e)
-        return _bookings
+        return []
 
 def _parse_date(d: str) -> Optional[date]:
     try:
@@ -398,31 +464,9 @@ def _log_booking_notification(req: BookingRequest, ref: str):
     logger.info("   Cost:     Bds$%.2f", req.totalCost)
     logger.info("=" * 50)
 
-    # Write to a log file for persistence
-    log_file = os.environ.get("BOOKING_LOG_FILE", "/tmp/bookings.log")
-    try:
-        with open(log_file, "a") as f:
-            f.write(json.dumps({
-                "ref": ref,
-                "name": req.customerName,
-                "email": req.customerEmail,
-                "phone": req.customerPhone,
-                "vehicle": req.vehicleId,
-                "pickup": req.pickupDate,
-                "pickupTime": req.pickupTime,
-                "return": req.returnDate,
-                "returnTime": req.returnTime,
-                "license": req.licenseNumber,
-                "days": req.totalDays,
-                "cost": req.totalCost,
-                "created": datetime.utcnow().isoformat(),
-            }) + "\n")
-    except Exception as e:
-        logger.warning("Could not write booking log: %s", e)
-
 # ── Google Sheets Integration ──────────────────────────
 
-def _append_to_sheet(req: BookingRequest, ref: str):
+def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0):
     """Append a booking row to the Google Sheet."""
     if not SPREADSHEET_ID:
         logger.info("No SPREADSHEET_ID set — skipping sheet write")
@@ -450,7 +494,7 @@ def _append_to_sheet(req: BookingRequest, ref: str):
             req.licenseIssuer or '',
             req.licenseClass or '',
             'pay_on_pickup',
-            req.totalCost or 0,
+            total_cost,  # Use server-calculated cost
             '',  # invoice_sent_at
             '',  # notes
             req.licensePhotoUrl or '',  # licensePhotoUrl
@@ -542,6 +586,30 @@ def _update_photo_url_in_sheet(booking_ref: str, photo_url: str):
 async def get_vehicles():
     return {"vehicles": _fetch_vehicles_from_sheet()}
 
+@app.post("/api/check-availability-batch")
+async def check_availability_batch(req: dict):
+    """Check which dates are booked for a date range (for calendar display)."""
+    start_date = req.get("startDate", "")
+    end_date = req.get("endDate", "")
+    if not start_date or not end_date:
+        raise HTTPException(400, "startDate and endDate required")
+
+    booked_dates = set()
+    try:
+        sheet_bookings = _fetch_bookings_from_sheet()
+        for b in sheet_bookings:
+            bp = _parse_date(b.get("pickupDate", "") or b.get("pickupdate", ""))
+            br = _parse_date(b.get("returnDate", "") or b.get("returndate", ""))
+            if bp and br:
+                current = bp
+                while current <= br:
+                    booked_dates.add(current.isoformat())
+                    current = current + __import__('datetime').timedelta(days=1)
+    except Exception as e:
+        logger.warning("Batch availability check failed: %s", e)
+
+    return {"bookedDates": sorted(list(booked_dates))}
+
 class CheckAvailabilityRequest(BaseModel):
     pickupDate: str
     returnDate: str
@@ -606,11 +674,15 @@ async def create_booking(req: BookingRequest):
 
     # Default times to 09:00 if not provided
     req.pickupTime = req.pickupTime or '09:00'
-    req.returnTime = req.returnTime or '09:00'
+    req.returnTime = req.returnTime or '17:00'
 
     # Check availability before booking
     pickup = _parse_date(req.pickupDate)
     return_d = _parse_date(req.returnDate)
+    if not pickup or not return_d:
+        raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
+    if return_d < pickup:
+        raise HTTPException(400, "Return date must be after pickup date.")
     if pickup and return_d:
         sheet_bookings = _fetch_bookings_from_sheet()
         for b in sheet_bookings:
@@ -621,6 +693,18 @@ async def create_booking(req: BookingRequest):
                 if _dates_overlap(pickup, return_d, bp, br):
                     ref_id = b.get("bookingId", "") or b.get("bookingid", "")
                     raise HTTPException(409, f"Vehicle not available for those dates. Conflict with booking {ref_id}.")
+
+    # Calculate cost server-side (never trust client pricing)
+    import datetime as _dt
+    days = (_dt.datetime.combine(return_d, _dt.time()) - _dt.datetime.combine(pickup, _dt.time())).days + 1
+    if days < 1:
+        days = 1
+    rate = 0
+    for v in _fetch_vehicles_from_sheet():
+        if v.get("id") == req.vehicleId:
+            rate = int(v.get("rate", 0))
+            break
+    total_cost = days * rate
 
     # Store booking
     booking = {
@@ -634,15 +718,14 @@ async def create_booking(req: BookingRequest):
         "returnDate": req.returnDate,
         "returnTime": req.returnTime,
         "licenseNumber": req.licenseNumber,
-        "totalDays": req.totalDays,
-        "totalCost": req.totalCost,
+        "totalDays": days,
+        "totalCost": total_cost,
         "created": datetime.utcnow().isoformat(),
     }
-    _bookings.append(booking)
 
     # Notify
     _log_booking_notification(req, ref)
-    _append_to_sheet(req, ref)
+    _append_to_sheet(req, ref, total_cost)
     _add_to_calendar(req, ref)
 
     return {
@@ -650,14 +733,171 @@ async def create_booking(req: BookingRequest):
         "bookingId": ref,
         "vehicleId": req.vehicleId,
         "customerName": req.customerName,
-        "totalDays": req.totalDays,
-        "totalCost": req.totalCost,
+        "totalDays": days,
+        "totalCost": total_cost,
     }
 
+ADMIN_KEY = os.getenv("ADMIN_KEY", "")
+
 @app.get("/api/bookings")
-async def list_bookings():
-    """List all bookings (so the owner can see what's reserved)."""
-    return {"bookings": _bookings}
+async def list_bookings(key: str = ""):
+    """List all bookings — admin only (requires ?key=...)"""
+    if key != ADMIN_KEY:
+        raise HTTPException(403, "Forbidden")
+    return {"bookings": _fetch_bookings_from_sheet()}
+
+@app.delete("/api/bookings/{booking_id}")
+async def cancel_booking(booking_id: str):
+    """Cancel a booking — removes from Sheet and Calendar."""
+    # Find and delete from Sheet
+    if SPREADSHEET_ID:
+        try:
+            svc = _get_sheets()
+            result = svc.spreadsheets().values().get(
+                spreadsheetId=SPREADSHEET_ID, range='Bookings!A:V',
+            ).execute()
+            rows = result.get('values', [])
+            if len(rows) >= 2:
+                for i, row in enumerate(rows[1:], start=2):
+                    if row and row[0] == booking_id:
+                        svc.spreadsheets().batchUpdate(
+                            spreadsheetId=SPREADSHEET_ID,
+                            body={'requests': [{'deleteDimension': {'range': {'sheetId': 613814778, 'dimension': 'ROWS', 'startIndex': i - 1, 'endIndex': i}}}]}
+                        ).execute()
+                        break
+        except Exception as e:
+            logger.warning("Failed to delete from sheet: %s", e)
+
+    # Find and delete from Calendar
+    try:
+        svc = _get_calendar()
+        events = svc.events().list(
+            calendarId=CALENDAR_ID, q=booking_id, singleEvents=True
+        ).execute()
+        for event in events.get('items', []):
+            svc.events().delete(calendarId=CALENDAR_ID, eventId=event['id']).execute()
+    except Exception as e:
+        logger.warning("Failed to delete from calendar: %s", e)
+
+    return {"success": True, "message": f"Booking {booking_id} canceled"}
+
+# ── Profile Endpoints ──────────────────────────────────
+
+class ProfileRequest(BaseModel):
+    email: str
+    name: str = ""
+    phone: str = ""
+    address: str = ""
+    licenseNumber: str = ""
+    licenseExpiry: str = ""
+    licenseIssuer: str = ""
+    licenseClass: str = ""
+    googleId: str = ""
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not v or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
+            raise ValueError("Valid email is required")
+        return v.strip().lower()
+
+def _get_profiles_sheet_id() -> int:
+    """Get the sheet ID for the Profiles tab."""
+    try:
+        svc = _get_sheets()
+        meta = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+        for s in meta.get('sheets', []):
+            if s['properties']['title'] == 'Profiles':
+                return s['properties']['sheetId']
+    except Exception as e:
+        logger.warning("Failed to get Profiles sheet ID: %s", e)
+    return -1
+
+@app.get("/api/profiles/{email}")
+async def get_profile(email: str):
+    """Get a user profile by email."""
+    if not SPREADSHEET_ID:
+        raise HTTPException(503, "Sheets not configured")
+    try:
+        svc = _get_sheets()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID, range='Profiles!A:J',
+        ).execute()
+        rows = result.get('values', [])
+        if len(rows) < 2:
+            raise HTTPException(404, "Profile not found")
+        headers = [h.strip().lower() for h in rows[0]]
+        for row in rows[1:]:
+            obj = dict(zip(headers, row))
+            if obj.get('email', '').strip().lower() == email.strip().lower():
+                return {"profile": obj}
+        raise HTTPException(404, "Profile not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to get profile: {e}")
+
+@app.post("/api/profiles")
+async def create_or_update_profile(req: ProfileRequest):
+    """Create or update a user profile."""
+    if not SPREADSHEET_ID:
+        raise HTTPException(503, "Sheets not configured")
+    try:
+        svc = _get_sheets()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID, range='Profiles!A:J',
+        ).execute()
+        rows = result.get('values', [])
+        headers = [h.strip().lower() for h in rows[0]] if rows else []
+        
+        existing_row = None
+        if len(rows) >= 2:
+            for i, row in enumerate(rows[1:], start=2):
+                obj = dict(zip(headers, row))
+                if obj.get('email', '').strip().lower() == req.email.strip().lower():
+                    existing_row = i
+                    break
+
+        profile_data = [
+            req.email.strip().lower(),
+            req.name.strip(),
+            req.phone.strip(),
+            req.address.strip(),
+            req.licenseNumber.strip(),
+            req.licenseExpiry.strip(),
+            req.licenseIssuer.strip(),
+            req.licenseClass.strip(),
+            req.googleId.strip(),
+            datetime.utcnow().isoformat(),
+        ]
+
+        if existing_row:
+            svc.spreadsheets().values().update(
+                spreadsheetId=SPREADSHEET_ID,
+                range=f'Profiles!A{existing_row}:J{existing_row}',
+                valueInputOption='RAW',
+                body={'values': [profile_data]},
+            ).execute()
+            logger.info("Profile updated for %s", req.email)
+        else:
+            svc.spreadsheets().values().append(
+                spreadsheetId=SPREADSHEET_ID,
+                range='Profiles!A:J',
+                valueInputOption='RAW',
+                body={'values': [profile_data]},
+            ).execute()
+            logger.info("Profile created for %s", req.email)
+
+        return {"success": True, "email": req.email}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to save profile: {e}")
+
+@app.post("/api/profiles/from-booking")
+async def save_profile_from_booking(req: ProfileRequest):
+    """Save profile data from a completed booking (called after booking confirmation)."""
+    return await create_or_update_profile(req)
 
 @app.post("/api/scan-license")
 async def scan_license(req: ScanLicenseRequest):
@@ -674,7 +914,7 @@ async def scan_license(req: ScanLicenseRequest):
     try:
         base64.b64decode(image_data, validate=True)
     except Exception:
-        return {"error": "Invalid base64 image data"}
+        raise HTTPException(400, "Invalid base64 image data")
 
     prompt = """Extract the following fields from this Barbados driver's license image.
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
@@ -701,7 +941,7 @@ If a field is not visible, set it to null."""
             resp = await client.post(url, json=body)
             if resp.status_code != 200:
                 logger.error("Gemini API error: %s - %s", resp.status_code, resp.text[:300])
-                return {"error": f"Vision API error ({resp.status_code})"}
+                raise HTTPException(502, f"Vision API error ({resp.status_code})")
 
             result = resp.json()
             text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
@@ -714,10 +954,12 @@ If a field is not visible, set it to null."""
             logger.info("License scan result: name=%s license=%s", parsed.get("customerName"), parsed.get("licenseNumber"))
             return parsed
     except json.JSONDecodeError:
-        return {"raw": text, "error": "Could not parse Gemini response as JSON"}
+        raise HTTPException(502, "Could not parse vision API response as JSON")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("License scan failed: %s", e)
-        return {"error": str(e)}
+        raise HTTPException(500, f"License scan failed: {e}")
 
 @app.post("/api/upload-photo")
 async def upload_photo(req: PhotoUploadRequest):

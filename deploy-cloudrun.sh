@@ -6,6 +6,7 @@ REGION="${REGION:-europe-west1}"
 SERVICE_NAME="${SERVICE_NAME:-donsrental}"
 SPREADSHEET_ID="${SPREADSHEET_ID:-1i8rkv11Zmuv_btAiJNji1MAj9GylHOJZEUucAqqb6-0}"
 OWNER_EMAIL="${OWNER_EMAIL:-devon@onlineverywhere.com}"
+GOOGLE_OAUTH_CLIENT_ID="${GOOGLE_OAUTH_CLIENT_ID:-450188951493-kb2oaaugj0esli53sa5hroag335ahkt6.apps.googleusercontent.com}"
 
 AGENT_ENGINE="${AGENT_ENGINE:-}"
 if [ -z "$AGENT_ENGINE" ]; then
@@ -34,8 +35,8 @@ gcloud run deploy "${SERVICE_NAME}" \
   --memory 512Mi \
   --timeout 300 \
   --concurrency 80 \
-  --set-env-vars "AGENT_ENGINE=${AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=us-central1,SPREADSHEET_ID=${SPREADSHEET_ID},OWNER_EMAIL=${OWNER_EMAIL}" \
-  --set-secrets "GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:latest" \
+  --set-env-vars "AGENT_ENGINE=${AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=us-central1,SPREADSHEET_ID=${SPREADSHEET_ID},OWNER_EMAIL=${OWNER_EMAIL},GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}" \
+  --set-secrets "GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:latest,GOOGLE_CALENDAR_ID=google-calendar-id:latest,ADMIN_KEY=admin-api-key:latest" \
   --quiet
 
 URL=$(gcloud run services describe "${SERVICE_NAME}" \

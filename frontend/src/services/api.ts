@@ -52,34 +52,30 @@ export const api = {
 
   // Check availability
   async checkAvailability(pickupDate: string, returnDate: string, vehicleId: string = 'v1'): Promise<{ available: boolean; conflicts: any[] }> {
-    try {
-      const response = await fetch(`${API_BASE}/check-availability`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pickupDate, returnDate, vehicleId }),
-      });
-      if (!response.ok) return { available: false, conflicts: [] };
-      return await response.json();
-    } catch {
-      return { available: true, conflicts: [] };
+    const response = await fetch(`${API_BASE}/check-availability`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pickupDate, returnDate, vehicleId }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Availability check failed' }));
+      throw new Error(error.detail || 'Availability check failed');
     }
+    return await response.json();
   },
 
   // Scan and verify license
   async scanLicense(imageData: string): Promise<Partial<BookingData>> {
-    try {
-      const response = await fetch(`${API_BASE}/scan-license`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageData }),
-      });
-
-      if (!response.ok) throw new Error('License scan failed');
-      return await response.json();
-    } catch (error) {
-      console.error('License scan error:', error);
-      return {};
+    const response = await fetch(`${API_BASE}/scan-license`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageData }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'License scan failed' }));
+      throw new Error(error.detail || 'License scan failed');
     }
+    return await response.json();
   },
 
   // Upload license photo to GCS
@@ -111,5 +107,50 @@ export const api = {
       console.error('Chat error:', error);
       return { response: 'Sorry, I\'m having trouble connecting. Please try again.', bookingRef: '' };
     }
+  },
+
+  // Profile management
+  async getProfile(email: string): Promise<{ profile: Record<string, string> | null }> {
+    try {
+      const response = await fetch(`${API_BASE}/profiles/${encodeURIComponent(email)}`);
+      if (response.status === 404) return { profile: null };
+      if (!response.ok) throw new Error('Failed to fetch profile');
+      const data = await response.json();
+      const raw = data.profile || {};
+      // Sheet returns lowercase headers — normalize to camelCase
+      const profile: Record<string, string> = {
+        email: raw.email || '',
+        name: raw.name || '',
+        phone: raw.phone || '',
+        address: raw.address || '',
+        licenseNumber: raw.licensenumber || raw.licenseNumber || '',
+        licenseExpiry: raw.licenseexpiry || raw.licenseExpiry || '',
+        licenseIssuer: raw.licenseissuer || raw.licenseIssuer || '',
+        licenseClass: raw.licenseclass || raw.licenseClass || '',
+      };
+      return { profile };
+    } catch {
+      return { profile: null };
+    }
+  },
+
+  async saveProfile(profile: {
+    email: string;
+    name?: string;
+    phone?: string;
+    address?: string;
+    licenseNumber?: string;
+    licenseExpiry?: string;
+    licenseIssuer?: string;
+    licenseClass?: string;
+    googleId?: string;
+  }): Promise<{ success: boolean }> {
+    const response = await fetch(`${API_BASE}/profiles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    });
+    if (!response.ok) throw new Error('Failed to save profile');
+    return await response.json();
   },
 };

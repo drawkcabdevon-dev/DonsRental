@@ -6,29 +6,43 @@ A Bauhaus Neo-Brutalist SPA (Single Page Application) for fast, hassle-free car 
 
 - **React 19** with TypeScript
 - **Vite** — blazing-fast build tool
-- **Tailwind CSS 4** — utility-first CSS
+- **GSAP** — animations and motion design
+- **React Router** — client-side routing (/terms, /privacy)
+- **Google Identity Services** — Sign-In integration
 - **Space Grotesk** — geometric sans-serif font
 
-## Architecture: 5-Step Booking Flow
+## Architecture: 6-Step Booking Flow
 
 ```
-Step 1: Vehicle Selection
+Step 1: Vehicle Selection + Availability Calendar
+  └─ Interactive calendar shows available/booked dates
+  └─ Click a date → jumps to Step 2 with dates pre-filled
   └─ Browse fleet with specs and pricing
 
-Step 2: Dates & Logistics
-  └─ Pick-up/return dates, times, drop-off location
-  └─ Live pricing summary
+Step 2: Dates & Pricing
+  └─ Pick-up/return dates, times
+  └─ Live availability checking (500ms debounce)
+  └─ Pricing package selection
+  └─ "Next" blocked if dates unavailable
 
-Step 3: Personal Information
-  └─ Name, email, phone, address
-
-Step 4: Driver's License Verification
+Step 3: Driver's License Verification
   └─ Upload/photo capture (OCR via Gemini)
   └─ Manual entry fallback
+  └─ Camera integration on mobile
+
+Step 4: Your Info
+  └─ Name, email, phone, address
+  └─ Auto-fills from Google Sign-In profile
 
 Step 5: Review & Confirm
   └─ Summary card with total cost (BBD)
+  └─ License photo preview
+  └─ Terms & Conditions acceptance checkbox
   └─ Submit booking → success confirmation
+
+Step 6: Confirmed
+  └─ Booking reference
+  └─ Profile save prompt (for logged-in users)
 ```
 
 ## Design System: Bauhaus Neo-Brutalist
@@ -56,17 +70,27 @@ Step 5: Review & Confirm
 src/
 ├── components/
 │   ├── index.ts              # Core UI library (Button, Input, Card, etc.)
+│   ├── AvailabilityCalendar.tsx  # Interactive month calendar with availability dots
 │   ├── VehicleCard.tsx       # Vehicle display & pricing breakdown
+│   ├── DrivingStepper.tsx    # GSAP-animated progress stepper
+│   ├── DrivingLoader.tsx     # Loading animation
+│   ├── CarSvg.tsx            # Car SVG illustration
 │   ├── Forms.tsx             # Personal info & license forms
 │   └── Summary.tsx           # Booking review & confirmation
+├── pages/
+│   ├── TermsAndConditions.tsx    # Terms & Conditions page
+│   └── PrivacyPolicy.tsx         # Privacy Policy page
 ├── services/
 │   └── api.ts                # Backend API integration
+├── hooks/
+│   └── useAnimations.ts      # GSAP animation hooks
 ├── types/
 │   └── index.ts              # TypeScript interfaces
 ├── styles/
-│   └── index.css             # Tailwind + component layer CSS
-├── App.tsx                   # Main booking app (5 steps)
-└── main.tsx                  # React entry point
+│   ├── variables.css         # CSS custom properties
+│   └── components.css        # Component styles
+├── App.tsx                   # Main booking app (6 steps)
+└── main.tsx                  # React entry + BrowserRouter
 
 tailwind.config.js            # Design system configuration
 postcss.config.js             # PostCSS plugins
@@ -125,11 +149,20 @@ Outputs to `dist/` for deployment.
 </Card>
 ```
 
-### ProgressStepper
+### AvailabilityCalendar
 ```tsx
-<ProgressStepper 
-  steps={['Step 1', 'Step 2', 'Step 3']} 
-  currentStep={1} 
+<AvailabilityCalendar
+  onDateSelect={(date) => { /* date clicked */ }}
+  selectedPickup="2026-07-29"
+  selectedReturn="2026-07-31"
+/>
+```
+
+### DrivingStepper
+```tsx
+<DrivingStepper
+  steps={['Vehicle', 'Dates', 'License', 'Info', 'Review']}
+  currentStep={1}
 />
 ```
 
@@ -141,38 +174,29 @@ The app communicates with the backend at `VITE_API_BASE` (default: `http://local
 
 - `GET /api/vehicles` — List available vehicles
 - `POST /api/bookings` — Create a booking
+- `POST /api/check-availability` — Check single date range
+- `POST /api/check-availability-batch` — Check multiple date ranges (for calendar)
 - `POST /api/scan-license` — OCR license photo
+- `GET /api/profiles/{email}` — Get user profile
+- `POST /api/profiles` — Create/update user profile
 
 See [src/services/api.ts](src/services/api.ts) for implementation.
 
-## Styling & Customization
+## Features
 
-All design tokens are in `tailwind.config.js`:
-
-```js
-colors: {
-  'bau-black': '#1a1a1a',
-  'bau-yellow': '#FFCC00',
-  // ...
-}
-```
-
-Component styles are defined in `src/styles/index.css` using `@layer components`.
+- **Availability Calendar** — Interactive month view with green (available) / red (booked) dots
+- **Google Sign-In** — Auto-fill from saved profile on return visits
+- **Profile Auto-fill** — Previous booking data pre-fills Step 4
+- **Live Availability** — Real-time checking with visual status indicator
+- **Toast Notifications** — Success/error feedback
+- **Accessibility** — ARIA labels, keyboard nav, focus management, color contrast
+- **SEO** — Meta tags, Open Graph, JSON-LD structured data, sitemap.xml
+- **GSAP Animations** — Driving stepper, smooth transitions, motion design
 
 ## Deployment
 
-### Docker
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY . .
-RUN npm install && npm run build
-EXPOSE 5173
-CMD ["npm", "run", "dev"]
-```
-
 ### Cloud Run (via backend)
-The frontend can be served as static files from the Cloud Run backend:
+The frontend is built into the Docker image and served as static files from the Cloud Run backend:
 
 ```python
 # backend/main.py

@@ -108,4 +108,37 @@ export const api = {
       return { response: 'Sorry, I\'m having trouble connecting. Please try again.', bookingRef: '' };
     }
   },
+
+  // Profile management
+  async getProfile(email: string): Promise<{ profile: Record<string, string> | null }> {
+    try {
+      const response = await fetch(`${API_BASE}/profiles/${encodeURIComponent(email)}`);
+      if (response.status === 404) return { profile: null };
+      if (!response.ok) throw new Error('Failed to fetch profile');
+      const data = await response.json();
+      return data;
+    } catch {
+      return { profile: null };
+    }
+  },
+
+  async saveProfile(profile: {
+    email: string;
+    name?: string;
+    phone?: string;
+    address?: string;
+    licenseNumber?: string;
+    licenseExpiry?: string;
+    licenseIssuer?: string;
+    licenseClass?: string;
+    googleId?: string;
+  }): Promise<{ success: boolean }> {
+    const response = await fetch(`${API_BASE}/profiles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    });
+    if (!response.ok) throw new Error('Failed to save profile');
+    return await response.json();
+  },
 };

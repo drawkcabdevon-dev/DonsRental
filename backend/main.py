@@ -167,6 +167,7 @@ def _add_to_calendar(req: BookingRequest, ref: str):
                 f'License: {req.licenseNumber}\n'
                 f'Days: {req.totalDays} | Total: Bds${req.totalCost}'
             ),
+            'visibility': 'public',
             'start': {
                 'dateTime': pickup_dt,
                 'timeZone': 'America/Barbados',
@@ -275,43 +276,6 @@ class ChatResponse(BaseModel):
 class PhotoUploadRequest(BaseModel):
     image: str
     bookingRef: str = ""
-
-# ── Google Calendar Integration ──────────────────────────
-def _add_to_calendar(req: BookingRequest, ref: str):
-    """Add a booking as an event to Google Calendar."""
-    if not GOOGLE_SHEETS_CREDENTIALS:
-        logger.info("No credentials configured — skipping calendar event")
-        return None
-    try:
-        svc = _get_calendar()
-        pickup_dt = f"{req.pickupDate}T{req.pickupTime or '09:00'}:00"
-        return_dt = f"{req.returnDate}T{req.returnTime or '17:00'}:00"
-        event = {
-            'summary': f'{ref} — {req.customerName}',
-            'description': (
-                f'Booking: {ref}\n'
-                f'Customer: {req.customerName}\n'
-                f'Email: {req.customerEmail}\n'
-                f'Phone: {req.customerPhone}\n'
-                f'Vehicle: {req.vehicleId}\n'
-                f'License: {req.licenseNumber}\n'
-                f'Days: {req.totalDays} | Total: Bds${req.totalCost}'
-            ),
-            'start': {
-                'dateTime': pickup_dt,
-                'timeZone': 'America/Barbados',
-            },
-            'end': {
-                'dateTime': return_dt,
-                'timeZone': 'America/Barbados',
-            },
-        }
-        created = svc.events().insert(calendarId=CALENDAR_ID, body=event).execute()
-        logger.info("Calendar event created: %s", created.get('htmlLink'))
-        return created.get('id')
-    except Exception as e:
-        logger.warning("Calendar event failed: %s", e)
-        return None
 
 MDS_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
 
@@ -790,6 +754,124 @@ async def cancel_booking(booking_id: str):
         logger.warning("Failed to delete from calendar: %s", e)
 
     return {"success": True, "message": f"Booking {booking_id} canceled"}
+
+# ── Profile Endpoints ──────────────────────────────────
+
+class ProfileRequest(BaseModel):
+    email: str
+    name: str = ""
+    phone: str = ""
+    address: str = ""
+    licenseNumber: str = ""
+    licenseExpiry: str = ""
+    licenseIssuer: str = ""
+    licenseClass: str = ""
+    googleId: str = ""
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not v or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
+            raise ValueError("Valid email is required")
+        return v.strip().lower()
+
+def _get_profiles_sheet_id() -> int:
+    """Get the sheet ID for the Profiles tab."""
+    try:
+        svc = _get_sheets()
+        meta = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+        for s in meta.get('sheets', []):
+            if s['properties']['title'] == 'Profiles':
+                return s['properties']['sheetId']
+    except Exception as e:
+        logger.warning("Failed to get Profiles sheet ID: %s", e)
+    return -1
+
+@app.get("/api/profiles/{email}")
+async def get_profile(email: str):
+    """Get a user profile by email."""
+    if not SPREADSHEET_ID:
+        raise HTTPException(503, "Sheets not configured")
+    try:
+        svc = _get_sheets()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID, range='Profiles!A:J',
+        ).execute()
+        rows = result.get('values', [])
+        if len(rows) < 2:
+            raise HTTPException(404, "Profile not found")
+        headers = [h.strip().lower() for h in rows[0]]
+        for row in rows[1:]:
+            obj = dict(zip(headers, row))
+            if obj.get('email', '').strip().lower() == email.strip().lower():
+                return {"profile": obj}
+        raise HTTPException(404, "Profile not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to get profile: {e}")
+
+@app.post("/api/profiles")
+async def create_or_update_profile(req: ProfileRequest):
+    """Create or update a user profile."""
+    if not SPREADSHEET_ID:
+        raise HTTPException(503, "Sheets not configured")
+    try:
+        svc = _get_sheets()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID, range='Profiles!A:J',
+        ).execute()
+        rows = result.get('values', [])
+        headers = [h.strip().lower() for h in rows[0]] if rows else []
+        
+        existing_row = None
+        if len(rows) >= 2:
+            for i, row in enumerate(rows[1:], start=2):
+                obj = dict(zip(headers, row))
+                if obj.get('email', '').strip().lower() == req.email.strip().lower():
+                    existing_row = i
+                    break
+
+        profile_data = [
+            req.email.strip().lower(),
+            req.name.strip(),
+            req.phone.strip(),
+            req.address.strip(),
+            req.licenseNumber.strip(),
+            req.licenseExpiry.strip(),
+            req.licenseIssuer.strip(),
+            req.licenseClass.strip(),
+            req.googleId.strip(),
+            datetime.utcnow().isoformat(),
+        ]
+
+        if existing_row:
+            svc.spreadsheets().values().update(
+                spreadsheetId=SPREADSHEET_ID,
+                range=f'Profiles!A{existing_row}:J{existing_row}',
+                valueInputOption='RAW',
+                body={'values': [profile_data]},
+            ).execute()
+            logger.info("Profile updated for %s", req.email)
+        else:
+            svc.spreadsheets().values().append(
+                spreadsheetId=SPREADSHEET_ID,
+                range='Profiles!A:J',
+                valueInputOption='RAW',
+                body={'values': [profile_data]},
+            ).execute()
+            logger.info("Profile created for %s", req.email)
+
+        return {"success": True, "email": req.email}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to save profile: {e}")
+
+@app.post("/api/profiles/from-booking")
+async def save_profile_from_booking(req: ProfileRequest):
+    """Save profile data from a completed booking (called after booking confirmation)."""
+    return await create_or_update_profile(req)
 
 @app.post("/api/scan-license")
 async def scan_license(req: ScanLicenseRequest):

@@ -22,6 +22,20 @@ interface Toast {
   message: string;
 }
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+          disableAutoSelect: () => void;
+        };
+      };
+    };
+  }
+}
+
 let _toastId = 0;
 
 function App() {
@@ -37,6 +51,8 @@ function App() {
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
   const [dateAvailability, setDateAvailability] = useState<{ available: boolean; loading: boolean; message: string }>({ available: true, loading: false, message: '' });
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [user, setUser] = useState<{ email: string; name: string; googleId: string } | null>(null);
+  const [profileSaved, setProfileSaved] = useState(false);
 
   const addToast = useCallback((type: Toast['type'], message: string) => {
     const id = ++_toastId;
@@ -100,13 +116,12 @@ function App() {
           licenseClass: extracted.licenseClass || prev.licenseClass,
           licensePhotoUrl: imageData || prev.licensePhotoUrl,
         }));
+        addToast('success', 'License scanned — details auto-filled');
       } else {
         setBooking((prev) => ({
           ...prev,
           licensePhotoUrl: imageData || prev.licensePhotoUrl,
         }));
-        addToast('success', 'License scanned — details auto-filled');
-      } else {
         addToast('warning', 'Could not extract details from license — please enter manually');
       }
     } catch {
@@ -115,6 +130,129 @@ function App() {
       setScanningLicense(false);
     }
   };
+
+  // Google Sign-In initialization
+  useEffect(() => {
+    const initGoogleSignIn = () => {
+      if (typeof window.google === 'undefined') return;
+
+      window.google.accounts.id.initialize({
+        client_id: '450188951493-kb2oaaugj0esli53sa5hroag335ahkt6.apps.googleusercontent.com',
+        callback: handleGoogleSignIn,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+    };
+
+    // Wait for GIS script to load
+    const timer = setTimeout(initGoogleSignIn, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Load user profile on mount if logged in
+  useEffect(() => {
+    const savedUser = localStorage.getItem('donsrental_user');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        // Pre-fill booking form with profile data
+        loadProfileIntoBooking(parsed.email);
+      } catch { /* ignore */ }
+    }
+  }, []);
+
+  const handleGoogleSignIn = async (response: any) => {
+    try {
+      // Decode the JWT token to get user info
+      const payload = JSON.parse(atob(response.credential.split('.')[1]));
+      const userData = {
+        email: payload.email,
+        name: payload.name || '',
+        googleId: payload.sub,
+      };
+      setUser(userData);
+      localStorage.setItem('donsrental_user', JSON.stringify(userData));
+
+      // Load existing profile to pre-fill booking
+      await loadProfileIntoBooking(userData.email);
+      addToast('success', `Welcome back, ${userData.name || userData.email}!`);
+    } catch (err) {
+      console.error('Google sign-in error:', err);
+      addToast('error', 'Sign-in failed — please try again');
+    }
+  };
+
+  const loadProfileIntoBooking = async (email: string) => {
+    try {
+      const { profile } = await api.getProfile(email);
+      if (profile) {
+        setBooking((prev) => ({
+          ...prev,
+          customerName: profile.name || prev.customerName,
+          customerEmail: profile.email || prev.customerEmail,
+          customerPhone: profile.phone || prev.customerPhone,
+          customerAddress: profile.address || prev.customerAddress,
+          licenseNumber: profile.licenseNumber || prev.licenseNumber,
+          licenseExpiry: profile.licenseExpiry || prev.licenseExpiry,
+          licenseIssuer: profile.licenseIssuer || prev.licenseIssuer,
+          licenseClass: profile.licenseClass || prev.licenseClass,
+        }));
+      }
+    } catch { /* profile not found — that's fine */ }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    try {
+      await api.saveProfile({
+        email: user.email,
+        name: booking.customerName || user.name,
+        phone: booking.customerPhone,
+        address: booking.customerAddress,
+        licenseNumber: booking.licenseNumber,
+        licenseExpiry: booking.licenseExpiry,
+        licenseIssuer: booking.licenseIssuer,
+        licenseClass: booking.licenseClass,
+        googleId: user.googleId,
+      });
+      setProfileSaved(true);
+      addToast('success', 'Profile saved! Next time your info will auto-fill.');
+    } catch {
+      addToast('error', 'Failed to save profile — please try again');
+    }
+  };
+
+  const handleSignOut = () => {
+    setUser(null);
+    setProfileSaved(false);
+    localStorage.removeItem('donsrental_user');
+    if (typeof window.google !== 'undefined') {
+      window.google.accounts.id.disableAutoSelect();
+    }
+  };
+
+  const handleRenderGoogleButton = (containerId: string) => {
+    if (typeof window.google === 'undefined') return;
+    const container = document.getElementById(containerId);
+    if (container && container.childElementCount === 0) {
+      window.google.accounts.id.renderButton(container, {
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'rectangular',
+        width: 300,
+      });
+    }
+  };
+
+  // Render Google Sign-In button when confirmation page loads
+  useEffect(() => {
+    if (bookingRef && !user) {
+      const timer = setTimeout(() => handleRenderGoogleButton('google-signin-button'), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [bookingRef, user]);
 
   useEffect(() => {
     const loadVehicles = async () => {
@@ -331,6 +469,24 @@ function App() {
         }
         setBookingRef(response.bookingRef);
         addToast('success', `Booking confirmed! Reference: ${response.bookingRef}`);
+
+        // Auto-save profile for logged-in users
+        if (user) {
+          try {
+            await api.saveProfile({
+              email: user.email,
+              name: booking.customerName || user.name,
+              phone: booking.customerPhone,
+              address: booking.customerAddress,
+              licenseNumber: booking.licenseNumber,
+              licenseExpiry: booking.licenseExpiry,
+              licenseIssuer: booking.licenseIssuer,
+              licenseClass: booking.licenseClass,
+              googleId: user.googleId,
+            });
+            setProfileSaved(true);
+          } catch { /* non-fatal */ }
+        }
       } else {
         setError(response.error || 'Failed to create booking');
       }
@@ -396,11 +552,24 @@ function App() {
 
       {/* Header */}
       <header style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-8) 0', borderBottom: 'var(--border-thick) solid var(--color-yellow)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', marginLeft: 'auto', marginRight: 'auto', paddingLeft: 'var(--space-6)', paddingRight: 'var(--space-6)' }}>
-          <h1 style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 'var(--font-weight-extrabold)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>
-            <span aria-hidden="true">🏎️</span> Don's Car Rental
-          </h1>
-          <p style={{ fontSize: 'var(--font-size-lg)', opacity: 0.75 }}>Barbados car rental — book online, no calls needed</p>
+        <div style={{ maxWidth: 'var(--max-width-container)', marginLeft: 'auto', marginRight: 'auto', paddingLeft: 'var(--space-6)', paddingRight: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+          <div>
+            <h1 style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 'var(--font-weight-extrabold)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>
+              <span aria-hidden="true">🏎️</span> Don's Car Rental
+            </h1>
+            <p style={{ fontSize: 'var(--font-size-lg)', opacity: 0.75 }}>Barbados car rental — book online, no calls needed</p>
+          </div>
+          {user && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <span style={{ fontSize: 'var(--font-size-sm)', opacity: 0.85 }}>Hello, {user.name || user.email}</span>
+              <button
+                onClick={handleSignOut}
+                style={{ background: 'none', border: '1px solid rgba(255,255,255,0.3)', color: 'white', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: 'var(--font-size-xs)' }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -727,6 +896,44 @@ function App() {
               photoUrl={booking.licensePhotoUrl || ''}
               headingRef={stepHeadingRef}
             />
+
+            {/* Profile Creation Prompt */}
+            {!user && !profileSaved && (
+              <div style={{ marginTop: 'var(--space-8)', padding: 'var(--space-6)', border: '2px solid #e0e0e0', borderRadius: '12px', background: '#f8f9fa', textAlign: 'center' }}>
+                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)' }}>
+                  Speed up your next booking?
+                </h3>
+                <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
+                  Sign in with Google to save your info. Next time, your details will auto-fill — no typing required.
+                </p>
+                <div id="google-signin-button" style={{ display: 'inline-block' }}></div>
+              </div>
+            )}
+
+            {user && !profileSaved && (
+              <div style={{ marginTop: 'var(--space-8)', padding: 'var(--space-6)', border: '2px solid #059669', borderRadius: '12px', background: '#ecfdf5', textAlign: 'center' }}>
+                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)', color: '#065f46' }}>
+                  Save your info for next time?
+                </h3>
+                <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
+                  We'll save your name, phone, and license details from this booking so you don't have to type them again.
+                </p>
+                <Button variant="primary" onClick={handleSaveProfile} style={{ marginRight: 'var(--space-3)' }}>
+                  Save My Info
+                </Button>
+                <Button variant="outline" onClick={handleSignOut}>
+                  Not now
+                </Button>
+              </div>
+            )}
+
+            {profileSaved && (
+              <div style={{ marginTop: 'var(--space-8)', padding: 'var(--space-4)', border: '2px solid #059669', borderRadius: '12px', background: '#ecfdf5', textAlign: 'center' }}>
+                <p style={{ color: '#065f46', fontWeight: 'var(--font-weight-semibold)' }}>
+                  ✓ Profile saved! Your info will auto-fill on your next visit.
+                </p>
+              </div>
+            )}
           </div>
         )}
 

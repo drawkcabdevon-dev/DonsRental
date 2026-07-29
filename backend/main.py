@@ -167,7 +167,7 @@ def _add_to_calendar(req: BookingRequest, ref: str):
                 f'License: {req.licenseNumber}\n'
                 f'Days: {req.totalDays} | Total: Bds${req.totalCost}'
             ),
-            'visibility': 'public',
+            'visibility': 'private',
             'start': {
                 'dateTime': pickup_dt,
                 'timeZone': 'America/Barbados',
@@ -227,7 +227,11 @@ _bookings: list[dict] = []  # Deprecated — Sheet is source of truth
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://rentals.onlineverywhere.com",
+        "https://donsrental-wof62rve3a-ew.a.run.app",
+        "http://localhost:5173",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -460,28 +464,6 @@ def _log_booking_notification(req: BookingRequest, ref: str):
     logger.info("   Cost:     Bds$%.2f", req.totalCost)
     logger.info("=" * 50)
 
-    # Write to a log file for persistence
-    log_file = os.environ.get("BOOKING_LOG_FILE", "/tmp/bookings.log")
-    try:
-        with open(log_file, "a") as f:
-            f.write(json.dumps({
-                "ref": ref,
-                "name": req.customerName,
-                "email": req.customerEmail,
-                "phone": req.customerPhone,
-                "vehicle": req.vehicleId,
-                "pickup": req.pickupDate,
-                "pickupTime": req.pickupTime,
-                "return": req.returnDate,
-                "returnTime": req.returnTime,
-                "license": req.licenseNumber,
-                "days": req.totalDays,
-                "cost": req.totalCost,
-                "created": datetime.utcnow().isoformat(),
-            }) + "\n")
-    except Exception as e:
-        logger.warning("Could not write booking log: %s", e)
-
 # ── Google Sheets Integration ──────────────────────────
 
 def _append_to_sheet(req: BookingRequest, ref: str):
@@ -604,6 +586,30 @@ def _update_photo_url_in_sheet(booking_ref: str, photo_url: str):
 async def get_vehicles():
     return {"vehicles": _fetch_vehicles_from_sheet()}
 
+@app.post("/api/check-availability-batch")
+async def check_availability_batch(req: dict):
+    """Check which dates are booked for a date range (for calendar display)."""
+    start_date = req.get("startDate", "")
+    end_date = req.get("endDate", "")
+    if not start_date or not end_date:
+        raise HTTPException(400, "startDate and endDate required")
+
+    booked_dates = set()
+    try:
+        sheet_bookings = _fetch_bookings_from_sheet()
+        for b in sheet_bookings:
+            bp = _parse_date(b.get("pickupDate", "") or b.get("pickupdate", ""))
+            br = _parse_date(b.get("returnDate", "") or b.get("returndate", ""))
+            if bp and br:
+                current = bp
+                while current <= br:
+                    booked_dates.add(current.isoformat())
+                    current = current + __import__('datetime').timedelta(days=1)
+    except Exception as e:
+        logger.warning("Batch availability check failed: %s", e)
+
+    return {"bookedDates": sorted(list(booked_dates))}
+
 class CheckAvailabilityRequest(BaseModel):
     pickupDate: str
     returnDate: str
@@ -688,6 +694,18 @@ async def create_booking(req: BookingRequest):
                     ref_id = b.get("bookingId", "") or b.get("bookingid", "")
                     raise HTTPException(409, f"Vehicle not available for those dates. Conflict with booking {ref_id}.")
 
+    # Calculate cost server-side (never trust client pricing)
+    import datetime as _dt
+    days = (_dt.datetime.combine(return_d, _dt.time()) - _dt.datetime.combine(pickup, _dt.time())).days + 1
+    if days < 1:
+        days = 1
+    rate = 0
+    for v in _fetch_vehicles_from_sheet():
+        if v.get("id") == req.vehicleId:
+            rate = int(v.get("rate", 0))
+            break
+    total_cost = days * rate
+
     # Store booking
     booking = {
         "bookingId": ref,
@@ -700,8 +718,8 @@ async def create_booking(req: BookingRequest):
         "returnDate": req.returnDate,
         "returnTime": req.returnTime,
         "licenseNumber": req.licenseNumber,
-        "totalDays": req.totalDays,
-        "totalCost": req.totalCost,
+        "totalDays": days,
+        "totalCost": total_cost,
         "created": datetime.utcnow().isoformat(),
     }
 
@@ -715,13 +733,17 @@ async def create_booking(req: BookingRequest):
         "bookingId": ref,
         "vehicleId": req.vehicleId,
         "customerName": req.customerName,
-        "totalDays": req.totalDays,
-        "totalCost": req.totalCost,
+        "totalDays": days,
+        "totalCost": total_cost,
     }
 
+ADMIN_KEY = os.getenv("ADMIN_KEY", "donsrental-admin-2026")
+
 @app.get("/api/bookings")
-async def list_bookings():
-    """List all bookings from the Google Sheet."""
+async def list_bookings(key: str = ""):
+    """List all bookings — admin only (requires ?key=...)"""
+    if key != ADMIN_KEY:
+        raise HTTPException(403, "Forbidden")
     return {"bookings": _fetch_bookings_from_sheet()}
 
 @app.delete("/api/bookings/{booking_id}")

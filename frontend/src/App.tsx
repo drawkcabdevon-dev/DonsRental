@@ -13,6 +13,7 @@ import {
 import { VehicleCard, PricingBreakdown, PricingPackages, PRICING_PACKAGES } from './components/VehicleCard';
 import { PersonalInfoForm, LicenseVerificationForm } from './components/Forms';
 import { BookingSummary, BookingConfirmation } from './components/Summary';
+import { AvailabilityCalendar } from './components/AvailabilityCalendar';
 import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 
@@ -633,44 +634,58 @@ function App() {
               <Spinner message="Loading vehicles..." />
             ) : (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-6)', marginBottom: 'var(--space-8)' }}>
-                  {vehicles.map((vehicle) => (
-                    <VehicleCard
-                      key={vehicle.id}
-                      vehicle={vehicle}
-                      isSelected={booking.vehicleId === vehicle.id}
-                      onSelect={(v) => handleBookingChange('vehicleId', v.id)}
-                    />
-                  ))}
+                {/* Calendar as Entry Point */}
+                <div style={{ marginBottom: 'var(--space-8)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-8)', alignItems: 'start' }}>
+                    <div>
+                      <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)' }}>
+                        📅 Pick a date to start
+                      </h3>
+                      <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
+                        Tap any available date below to jump straight to booking. Green dots mean we're open.
+                      </p>
+                      <AvailabilityCalendar
+                        onDateSelect={(date) => {
+                          handleBookingChange('pickupDate', date);
+                          const ret = new Date(date);
+                          ret.setDate(ret.getDate() + 1);
+                          handleBookingChange('returnDate', ret.toISOString().split('T')[0]);
+                          setStep(2);
+                        }}
+                        selectedPickup={booking.pickupDate}
+                        selectedReturn={booking.returnDate}
+                      />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)' }}>
+                        🚗 Or choose a vehicle first
+                      </h3>
+                      <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
+                        Select your car, then pick dates on the next step.
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                        {vehicles.map((vehicle) => (
+                          <VehicleCard
+                            key={vehicle.id}
+                            vehicle={vehicle}
+                            isSelected={booking.vehicleId === vehicle.id}
+                            onSelect={(v) => handleBookingChange('vehicleId', v.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <h3 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}>Choose a Package</h3>
+                <h3 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}>Quick Packages</h3>
                 <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
-                  Select a preset package and we'll auto-set your dates. Or tap Next to choose custom dates.
+                  Select a preset package and we'll auto-set your dates. Or tap a calendar date above.
                 </p>
                 <PricingPackages
                   packages={PRICING_PACKAGES}
                   selectedId={booking.selectedPackage}
                   onSelect={handlePackageSelect}
                 />
-
-                {/* Proactive Availability Preview */}
-                <div style={{ marginTop: 'var(--space-8)', padding: 'var(--space-6)', border: '1px solid #e0e0e0', borderRadius: '12px', background: '#f8f9fa' }}>
-                  <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)', color: '#1a1a1a' }}>
-                    <span aria-hidden="true">📅</span> When are we available?
-                  </h3>
-                  <p style={{ fontSize: 'var(--font-size-sm)', color: '#666', marginBottom: 'var(--space-4)' }}>
-                    Here's a quick look at our availability. Green dates are open — pick your dates when you're ready.
-                  </p>
-                  <iframe
-                    src="https://calendar.google.com/calendar/embed?src=bde1103e58d2de06c05f0778bae75c2aae68823f3d30acc7a017bec2a5c9a41e%40group.calendar.google.com&ctz=America%2FBarbados&mode=MONTH&showTitle=0&showNav=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0"
-                    style={{ width: '100%', height: '300px', border: 0, borderRadius: '8px' }}
-                    frameBorder="0"
-                    scrolling="no"
-                    title="Availability Calendar"
-                    aria-label="View available rental dates on Google Calendar"
-                  />
-                </div>
               </>
             )}
           </div>
@@ -722,17 +737,16 @@ function App() {
               </div>
               
               <div style={{ marginTop: 'var(--space-6)' }}>
-                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}><span aria-hidden="true">📅</span> Availability Calendar</h3>
-                <p style={{ marginBottom: 'var(--space-4)', color: 'var(--color-dark-gray)' }}>
-                  Check available dates before booking. Blocked dates show existing reservations and maintenance.
-                </p>
-                <iframe
-                  src="https://calendar.google.com/calendar/embed?src=bde1103e58d2de06c05f0778bae75c2aae68823f3d30acc7a017bec2a5c9a41e%40group.calendar.google.com&ctz=America%2FBarbados"
-                  style={{ width: '100%', height: '400px', border: 0, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                  frameBorder="0"
-                  scrolling="no"
-                  title="Availability Calendar - Don's Car Rental"
-                  aria-label="View available rental dates on Google Calendar"
+                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}><span aria-hidden="true">📅</span> Availability</h3>
+                <AvailabilityCalendar
+                  onDateSelect={(date) => {
+                    handleBookingChange('pickupDate', date);
+                    const ret = new Date(date);
+                    ret.setDate(ret.getDate() + 1);
+                    handleBookingChange('returnDate', ret.toISOString().split('T')[0]);
+                  }}
+                  selectedPickup={booking.pickupDate}
+                  selectedReturn={booking.returnDate}
                 />
               </div>
 

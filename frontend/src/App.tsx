@@ -2,16 +2,17 @@ import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types'
 import { useState, useEffect } from 'react';
 import { api } from './services/api';
 import {
-  ProgressStepper,
   Button,
   Input,
-  Spinner,
   Alert,
   ChatWidget,
 } from './components/index';
+import { DrivingStepper } from './components/DrivingStepper';
+import { DrivingLoader } from './components/DrivingLoader';
 import { VehicleCard, PricingBreakdown, PricingPackages, PRICING_PACKAGES } from './components/VehicleCard';
 import { PersonalInfoForm, LicenseVerificationForm } from './components/Forms';
 import { BookingSummary, BookingConfirmation } from './components/Summary';
+import { useStepTransition } from './hooks/useAnimations';
 
 function App() {
   const [step, setStep] = useState<BookingStep>(1);
@@ -220,6 +221,14 @@ function App() {
 
   const selectedVehicle = vehicles.find((v) => v.id === booking.vehicleId);
 
+  // Step transition refs
+  const step1Ref = useStepTransition(`step-1-${step}`);
+  const step2Ref = useStepTransition(`step-2-${step}`);
+  const step3Ref = useStepTransition(`step-3-${step}`);
+  const step4Ref = useStepTransition(`step-4-${step}`);
+  const step5Ref = useStepTransition(`step-5-${step}`);
+  const confirmRef = useStepTransition(`confirm-${bookingRef}`);
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-background)' }}>
       {/* Header */}
@@ -234,9 +243,9 @@ function App() {
 
       {/* Main Content */}
       <main style={{ flex: 1, maxWidth: 'var(--max-width-container)', margin: '0 auto', width: '100%', padding: `var(--space-8) var(--space-6)` }}>
-        {/* Progress Stepper */}
-        <div style={{ marginBottom: 'var(--space-12)' }}>
-          <ProgressStepper
+        {/* Driving Stepper */}
+        <div style={{ marginBottom: 'var(--space-8)' }}>
+          <DrivingStepper
             steps={['Vehicle', 'Dates', 'License', 'Your Info', 'Review', 'Confirmed']}
             currentStep={bookingRef ? 6 : step}
           />
@@ -281,10 +290,10 @@ function App() {
 
         {/* Step 1: Vehicle + Pricing Packages */}
         {step === 1 && !bookingRef && (
-          <div>
+          <div ref={step1Ref} className="step-container">
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Choose Your Vehicle</h2>
             {loading ? (
-              <Spinner message="Loading vehicles..." />
+              <DrivingLoader message="Loading vehicles..." variant="compact" />
             ) : (
               <>
                 {/* Vehicle card */}
@@ -316,7 +325,7 @@ function App() {
 
         {/* Step 2: Dates & Pricing */}
         {step === 2 && !bookingRef && (
-          <div>
+          <div ref={step2Ref} className="step-container">
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Select Dates & Pricing</h2>
             
             <div className="dates-pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-6)' }}>
@@ -389,7 +398,7 @@ function App() {
 
         {/* Step 3: License Verification (auto-fills personal info) */}
         {step === 3 && !bookingRef && (
-          <div>
+          <div ref={step3Ref} className="step-container">
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Driver's License</h2>
             <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
               Upload or take a photo of your license and we'll auto-fill your details. You can review and confirm on the final step.
@@ -427,7 +436,7 @@ function App() {
 
         {/* Step 4: Personal Information (pre-filled from license scan) */}
         {step === 4 && !bookingRef && (
-          <div>
+          <div ref={step4Ref} className="step-container">
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Your Information</h2>
             <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
               Fields were auto-filled from your license scan. Review and correct if needed.
@@ -456,7 +465,7 @@ function App() {
 
         {/* Step 5: Confirmation — review + photo preview before submit */}
         {step === 5 && !bookingRef && (
-          <div style={{ maxWidth: '600px' }}>
+          <div ref={step5Ref} className="step-container" style={{ maxWidth: '600px' }}>
             <h2 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)' }}>Review & Confirm</h2>
             <BookingSummary
               booking={{
@@ -472,7 +481,7 @@ function App() {
 
         {/* Success State */}
         {bookingRef && (
-          <div style={{ maxWidth: '600px' }}>
+          <div ref={confirmRef} className="step-container" style={{ maxWidth: '600px' }}>
             <BookingConfirmation
               bookingRef={bookingRef}
               email={booking.customerEmail || ''}
@@ -500,6 +509,13 @@ function App() {
             >
               {step === 5 ? '✓ Confirm Booking' : 'Next →'}
             </Button>
+          </div>
+        )}
+
+        {/* Booking submission loader */}
+        {!bookingRef && loading && step === 5 && (
+          <div style={{ marginTop: 'var(--space-6)' }}>
+            <DrivingLoader message="Booking your rental..." />
           </div>
         )}
 

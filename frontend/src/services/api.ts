@@ -116,7 +116,19 @@ export const api = {
       if (response.status === 404) return { profile: null };
       if (!response.ok) throw new Error('Failed to fetch profile');
       const data = await response.json();
-      return data;
+      const raw = data.profile || {};
+      // Sheet returns lowercase headers — normalize to camelCase
+      const profile: Record<string, string> = {
+        email: raw.email || '',
+        name: raw.name || '',
+        phone: raw.phone || '',
+        address: raw.address || '',
+        licenseNumber: raw.licensenumber || raw.licenseNumber || '',
+        licenseExpiry: raw.licenseexpiry || raw.licenseExpiry || '',
+        licenseIssuer: raw.licenseissuer || raw.licenseIssuer || '',
+        licenseClass: raw.licenseclass || raw.licenseClass || '',
+      };
+      return { profile };
     } catch {
       return { profile: null };
     }

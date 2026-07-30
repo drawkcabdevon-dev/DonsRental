@@ -2,19 +2,20 @@ import { useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { CarSvg } from './CarSvg';
+import { Car, Calendar, CreditCard, User, CheckCircle, Flag, Check, MapPin } from 'lucide-react';
 
 interface DrivingStepperProps {
   steps: string[];
   currentStep: number;
 }
 
-const STEP_ICONS: Record<string, string> = {
-  Vehicle: '🚗',
-  Dates: '📅',
-  License: '🪪',
-  'Your Info': '📝',
-  Review: '✅',
-  Confirmed: '🏁',
+const STEP_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  Vehicle: Car,
+  Dates: Calendar,
+  License: CreditCard,
+  'Your Info': User,
+  Review: CheckCircle,
+  Confirmed: Flag,
 };
 
 export function DrivingStepper({ steps, currentStep }: DrivingStepperProps) {
@@ -92,7 +93,6 @@ export function DrivingStepper({ steps, currentStep }: DrivingStepperProps) {
         {steps.map((step, i) => {
           const isCompleted = currentStep > i + 1;
           const isActive = currentStep === i + 1;
-          const isConfirmation = step === 'Confirmed';
 
           return (
             <div
@@ -101,11 +101,12 @@ export function DrivingStepper({ steps, currentStep }: DrivingStepperProps) {
             >
               <div className="checkpoint-icon">
                 {isCompleted ? (
-                  <span className="checkmark">✓</span>
-                ) : isConfirmation ? (
-                  <span className="checkpoint-emoji">{STEP_ICONS[step] || '🏁'}</span>
+                  <Check size={14} className="checkmark-icon" />
                 ) : (
-                  <span className="checkpoint-emoji">{STEP_ICONS[step] || '📍'}</span>
+                  (() => {
+                    const Icon = STEP_ICONS[step] || MapPin;
+                    return <Icon size={14} className="checkpoint-lucide" />;
+                  })()
                 )}
               </div>
               <span className="checkpoint-label">{step}</span>

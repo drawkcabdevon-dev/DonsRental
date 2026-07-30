@@ -18,6 +18,7 @@ import { AvailabilityCalendar } from './components/AvailabilityCalendar';
 import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import { useStepTransition } from './hooks/useAnimations';
+import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 
 interface Toast {
   id: number;
@@ -537,7 +538,7 @@ function App() {
       </a>
 
       {/* Toast Container */}
-      <div aria-live="polite" aria-label="Notifications" style={{ position: 'fixed', top: 'var(--space-6)', right: 'var(--space-6)', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      <div className="toast-container" aria-live="polite" aria-label="Notifications" style={{ position: 'fixed', top: 'var(--space-6)', right: 'var(--space-6)', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {toasts.map((t) => (
           <div
             key={t.id}
@@ -553,9 +554,9 @@ function App() {
               backgroundColor: t.type === 'success' ? '#059669' : t.type === 'error' ? '#dc2626' : t.type === 'warning' ? '#b45309' : '#1d4ed8',
             }}
           >
-            {t.type === 'success' && '✓ '}
-            {t.type === 'error' && '✕ '}
-            {t.type === 'warning' && '⚠ '}
+            {t.type === 'success' && <Check size={16} />}
+            {t.type === 'error' && <X size={16} />}
+            {t.type === 'warning' && <AlertTriangle size={16} />}
             {t.message}
           </div>
         ))}
@@ -566,7 +567,7 @@ function App() {
         <div style={{ maxWidth: 'var(--max-width-container)', marginLeft: 'auto', marginRight: 'auto', paddingLeft: 'var(--space-6)', paddingRight: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
           <div>
             <h1 style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 'var(--font-weight-extrabold)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>
-              <span aria-hidden="true">🏎️</span> Don's Car Rental
+              <Car size={24} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} /> Don's Car Rental
             </h1>
             <p style={{ fontSize: 'var(--font-size-lg)', opacity: 0.75 }}>Barbados car rental — book online, no calls needed</p>
           </div>
@@ -610,7 +611,7 @@ function App() {
 
         {/* Chat Banner - Alternative booking method */}
         {!bookingRef && step === 1 && (
-          <div style={{ 
+          <div className="chat-banner" style={{ 
             background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)', 
             color: 'white', 
             padding: 'var(--space-6)', 
@@ -624,7 +625,7 @@ function App() {
           }}>
             <div>
               <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-2)' }}>
-                💬 Prefer to chat?
+                <MessageSquare size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> Prefer to chat?
               </h3>
               <p style={{ opacity: 0.9, marginBottom: 0 }}>
                 Talk to our AI booking assistant to book your rental naturally. Ask questions, get recommendations, and complete your booking through conversation.
@@ -646,10 +647,10 @@ function App() {
               <>
                 {/* Calendar as Entry Point */}
                 <div style={{ marginBottom: 'var(--space-8)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-8)', alignItems: 'start' }}>
+                  <div className="grid-responsive-2">
                     <div>
                       <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)' }}>
-                        📅 Pick a date to start
+                        <Calendar size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> Pick a date to start
                       </h3>
                       <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
                         Tap any available date below to jump straight to booking. Green dots mean we're open.
@@ -668,7 +669,7 @@ function App() {
                     </div>
                     <div>
                       <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)' }}>
-                        🚗 Or choose a vehicle first
+                        <Car size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> Or choose a vehicle first
                       </h3>
                       <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
                         Select your car, then pick dates on the next step.
@@ -747,7 +748,7 @@ function App() {
               </div>
               
               <div style={{ marginTop: 'var(--space-6)' }}>
-                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}><span aria-hidden="true">📅</span> Availability</h3>
+                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}><Calendar size={20} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> Availability</h3>
                 <AvailabilityCalendar
                   onDateSelect={(date) => {
                     handleBookingChange('pickupDate', date);
@@ -779,9 +780,9 @@ function App() {
                   {dateAvailability.loading ? (
                     <Spinner size="sm" />
                   ) : dateAvailability.available ? (
-                    <span style={{ fontSize: '1.25rem' }} aria-hidden="true">✅</span>
+                    <CircleCheck size={20} aria-hidden="true" style={{ color: 'var(--color-success)' }} />
                   ) : (
-                    <span style={{ fontSize: '1.25rem' }} aria-hidden="true">❌</span>
+                    <X size={20} aria-hidden="true" style={{ color: 'var(--color-error)' }} />
                   )}
                   <span style={{ fontWeight: 'var(--font-weight-semibold)', color: dateAvailability.available ? '#065f46' : '#991b1b' }}>
                     {dateAvailability.loading ? 'Checking availability...' : dateAvailability.message}
@@ -954,7 +955,7 @@ function App() {
             {profileSaved && (
               <div style={{ marginTop: 'var(--space-8)', padding: 'var(--space-4)', border: '2px solid #059669', borderRadius: '12px', background: '#ecfdf5', textAlign: 'center' }}>
                 <p style={{ color: '#065f46', fontWeight: 'var(--font-weight-semibold)' }}>
-                  ✓ Profile saved! Your info will auto-fill on your next visit.
+                  <Check size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Profile saved! Your info will auto-fill on your next visit.
                 </p>
               </div>
             )}
@@ -970,7 +971,7 @@ function App() {
               disabled={step === 1}
               style={{ flex: 1 }}
             >
-              ← Back
+              <ArrowLeft size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Back
             </Button>
             <Button
               variant="primary"
@@ -978,7 +979,7 @@ function App() {
               isLoading={loading}
               style={{ flex: 1 }}
             >
-              {step === 5 ? '✓ Confirm Booking' : 'Next →'}
+              {step === 5 ? <><Check size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Confirm Booking</> : <>Next <ArrowRight size={16} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: '4px' }} /></>}
             </Button>
           </div>
         )}

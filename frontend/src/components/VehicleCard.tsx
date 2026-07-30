@@ -1,5 +1,6 @@
 import type { Vehicle, PricingPackage } from '../types';
 import { Card, Badge } from './index';
+import { Check } from 'lucide-react';
 
 interface VehicleCardProps {
   vehicle: Vehicle;
@@ -29,7 +30,7 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
     >
       {vehicle.imageUrl && (
         <div
-          className="w-full rounded-md mb-lg border-2 border-bau-black"
+          className="vehicle-image-container w-full rounded-md mb-lg border-2 border-bau-black"
           style={{
             backgroundColor: 'var(--color-surface)',
             display: 'flex',
@@ -77,7 +78,7 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
       
       {isSelected && (
         <div className="mt-lg pt-lg border-t-2 border-bau-black">
-          <p className="text-sm font-bold text-bau-yellow text-uppercase">✓ Selected</p>
+          <p className="text-sm font-bold text-bau-yellow text-uppercase"><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Selected</p>
         </div>
       )}
     </Card>
@@ -105,7 +106,7 @@ interface PricingPackagesProps {
 
 export function PricingPackages({ packages, selectedId, onSelect }: PricingPackagesProps) {
   return (
-    <div className="grid grid-cols-3 gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }} role="radiogroup" aria-label="Pricing packages">
+    <div className="pricing-packages-grid grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }} role="radiogroup" aria-label="Pricing packages">
       {packages.map((pkg) => {
         const isSelected = selectedId === pkg.id;
         return (
@@ -133,7 +134,7 @@ export function PricingPackages({ packages, selectedId, onSelect }: PricingPacka
             <p className="text-xs text-bau-gray">{pkg.description}</p>
             {isSelected && (
               <div className="mt-md pt-md border-t-2 border-bau-black">
-                <p className="text-sm font-bold text-bau-yellow text-uppercase">✓ Selected</p>
+                <p className="text-sm font-bold text-bau-yellow text-uppercase"><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Selected</p>
               </div>
             )}
           </Card>

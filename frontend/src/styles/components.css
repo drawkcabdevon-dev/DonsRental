@@ -712,10 +712,22 @@ h2:focus-visible {
    Mobile Responsiveness
    ───────────────────────────────────────────────── */
 
+/* Helper class: force grid to single column on mobile */
+.grid-responsive-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+
 /* Dates & Pricing grid: 2 columns on desktop, stack on mobile */
 @media (max-width: 768px) {
   .dates-pricing-grid {
     grid-template-columns: 1fr !important;
+  }
+  .grid-responsive-2 {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
   }
 }
 
@@ -784,6 +796,30 @@ h2:focus-visible {
   header p {
     font-size: var(--font-size-sm) !important;
   }
+
+  /* Toast notifications: full-width on mobile */
+  .toast-container {
+    left: var(--space-4) !important;
+    right: var(--space-4) !important;
+    top: var(--space-4) !important;
+  }
+
+  /* Larger touch targets for buttons */
+  .btn {
+    min-height: 48px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* Pricing packages grid: stack on mobile */
+  .pricing-packages-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Chat banner: stack on mobile */
+  .chat-banner {
+    flex-direction: column;
+    text-align: center;
+  }
 }
 
 /* Phone only */
@@ -798,6 +834,7 @@ h2:focus-visible {
   .btn {
     padding: var(--space-3) var(--space-4);
     font-size: var(--font-size-xs);
+    min-height: 44px;
   }
 
   .btn-lg {
@@ -819,6 +856,22 @@ h2:focus-visible {
     bottom: 80px !important;
     font-size: var(--font-size-sm) !important;
     padding: var(--space-2) var(--space-4) !important;
+  }
+
+  /* Step headings: tighter spacing */
+  .step-container h2 {
+    font-size: var(--font-size-xl) !important;
+    margin-bottom: var(--space-4) !important;
+  }
+
+  /* Vehicle card image: shorter on mobile */
+  .vehicle-image-container {
+    height: 200px !important;
+  }
+
+  /* Summary card: reduce padding */
+  .booking-summary-card {
+    padding: var(--space-3) !important;
   }
 }
 
@@ -1514,6 +1567,8 @@ h2:focus-visible {
 
 .btn {
   will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* ─────────────────────────────────────────────────
@@ -1522,4 +1577,35 @@ h2:focus-visible {
 
 .step-container {
   will-change: transform, opacity;
+}
+
+/* ─────────────────────────────────────────────────
+   Mobile Touch Improvements
+   ───────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Remove tap highlight on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Larger touch targets for interactive elements */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
+  }
+
+  /* Smooth scrolling on iOS */
+  .chat-messages {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent zoom on input focus (iOS) */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="time"],
+  textarea {
+    font-size: 16px !important;
+  }
 }

@@ -1,6 +1,7 @@
 import type { BookingData, Vehicle } from '../types';
 import type { RefObject } from 'react';
 import { Card } from './index';
+import { Check, Image, Mail } from 'lucide-react';
 
 interface BookingSummaryProps {
   booking: BookingData;
@@ -71,7 +72,7 @@ interface BookingConfirmationProps {
 export function BookingConfirmation({ bookingRef, email, photoUrl, headingRef }: BookingConfirmationProps) {
   return (
     <div className="text-center space-y-lg">
-      <div className="text-6xl" aria-hidden="true">✓</div>
+      <div aria-hidden="true"><Check size={48} strokeWidth={3} /></div>
       <h2 ref={headingRef} tabIndex={-1} style={{ outline: 'none' }} className="text-3xl font-extrabold text-uppercase">Booking Confirmed</h2>
       
       <Card className="border-4 border-bau-yellow bg-bau-off-white">
@@ -84,7 +85,7 @@ export function BookingConfirmation({ bookingRef, email, photoUrl, headingRef }:
 
       {photoUrl && (
         <Card className="border-4 border-bau-yellow bg-bau-off-white">
-          <p className="text-sm text-bau-gray text-uppercase font-semibold mb-md">📸 License Photo Uploaded</p>
+          <p className="text-sm text-bau-gray text-uppercase font-semibold mb-md"><Image size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> License Photo Uploaded</p>
           <img
             src={photoUrl}
             alt="Uploaded driver's license photo"
@@ -95,12 +96,12 @@ export function BookingConfirmation({ bookingRef, email, photoUrl, headingRef }:
       )}
       
       <div className="bg-bau-light-gray border-2 border-bau-black p-lg rounded-lg">
-        <p className="text-sm text-bau-gray mb-md"><span aria-hidden="true">📧</span> Check your email for:</p>
+        <p className="text-sm text-bau-gray mb-md"><Mail size={16} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Check your email for:</p>
         <ul className="text-left space-y-sm text-sm">
-          <li>✓ Booking confirmation details</li>
-          <li>✓ Vehicle pickup instructions</li>
-          <li>✓ Terms &amp; conditions</li>
-          <li>✓ Insurance information</li>
+          <li><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Booking confirmation details</li>
+          <li><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Vehicle pickup instructions</li>
+          <li><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Terms &amp; conditions</li>
+          <li><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Insurance information</li>
         </ul>
       </div>
 

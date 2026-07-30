@@ -1,4 +1,5 @@
 import { Input, Textarea } from './index';
+import { Camera, Upload } from 'lucide-react';
 
 interface PersonalInfoFormProps {
   data: {
@@ -73,7 +74,7 @@ export function LicenseVerificationForm({
   return (
     <div className="space-y-lg">
       <div className="border-4 border-dashed border-bau-black rounded-lg p-2xl text-center">
-        <p className="text-lg font-bold text-uppercase mb-lg"><span aria-hidden="true">📷</span> License Photo Capture</p>
+        <p className="text-lg font-bold text-uppercase mb-lg"><Camera size={20} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> License Photo Capture</p>
         <p className="text-sm text-bau-gray mb-lg">
           Upload or take a photo of your driver's license for automatic scanning.
         </p>
@@ -97,7 +98,7 @@ export function LicenseVerificationForm({
             }}
             className="btn btn-outline btn-lg"
           >
-            📁 Upload Photo
+            <Upload size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Upload Photo
           </button>
           
           <button
@@ -121,7 +122,7 @@ export function LicenseVerificationForm({
                 document.body.appendChild(video);
 
                 const captureBtn = document.createElement('button');
-                captureBtn.textContent = '📷 Capture';
+                captureBtn.textContent = 'Capture';
                 captureBtn.className = 'btn btn-primary btn-lg camera-capture-btn';
                 captureBtn.style.position = 'fixed';
                 captureBtn.style.bottom = '40px';
@@ -132,7 +133,7 @@ export function LicenseVerificationForm({
                 document.body.appendChild(captureBtn);
 
                 const cancelBtn = document.createElement('button');
-                cancelBtn.textContent = '✕ Cancel';
+                cancelBtn.textContent = 'Cancel';
                 cancelBtn.className = 'btn btn-outline btn-lg camera-cancel-btn';
                 cancelBtn.style.position = 'fixed';
                 cancelBtn.style.bottom = '100px';
@@ -192,7 +193,7 @@ export function LicenseVerificationForm({
             }}
             className="btn btn-outline btn-lg"
           >
-            📷 Take Photo
+            <Camera size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Take Photo
           </button>
         </div>
         

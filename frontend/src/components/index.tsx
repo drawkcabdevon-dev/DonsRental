@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { api } from '../services/api';
+import { Check } from 'lucide-react';
 
 // Button Component
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -208,7 +209,7 @@ export function ProgressStepper({ steps, currentStep, className = '' }: Progress
               className="progress-circle"
               aria-current={isCurrent ? 'step' : undefined}
             >
-              {isCompleted ? '✓' : index + 1}
+              {isCompleted ? <Check size={14} /> : index + 1}
             </div>
             <p className="progress-label">{step}</p>
           </div>
@@ -318,7 +319,7 @@ export function ChatWidget() {
 
       <div className="chat-window">
         <div className="chat-header">
-          <h3>💬 Chat with Don's Rental</h3>
+          <h3>Chat with Don's Rental</h3>
           <button className="chat-close" onClick={() => setIsOpen(false)} aria-label="Close chat">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" />

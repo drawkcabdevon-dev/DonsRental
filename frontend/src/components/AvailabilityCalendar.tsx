@@ -1,4 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CalendarDay {
   date: Date;
@@ -15,10 +18,17 @@ interface AvailabilityCalendarProps {
   selectedReturn?: string;
 }
 
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedReturn }: AvailabilityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [bookedDates, setBookedDates] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const monthLabelRef = useRef<HTMLHeadingElement>(null);
+  const touchStartX = useRef(0);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -47,7 +57,7 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
           setBookedDates(new Set(data.bookedDates || []));
         }
       } catch {
-        // Silently fail — calendar still works, just won't show availability
+        // Silently fail — calendar still works
       } finally {
         setLoading(false);
       }
@@ -56,12 +66,32 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
     fetchAvailability();
   }, [currentMonth]);
 
-  const getDaysInMonth = (): CalendarDay[] => {
+  // GSAP month transition
+  useGSAP(() => {
+    if (!gridRef.current || !slideDirection) return;
+
+    const startX = slideDirection === 'left' ? 30 : -30;
+    gsap.fromTo(gridRef.current,
+      { opacity: 0, x: startX },
+      { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' }
+    );
+    if (monthLabelRef.current) {
+      gsap.fromTo(monthLabelRef.current,
+        { opacity: 0, y: -8 },
+        { opacity: 1, y: 0, duration: 0.25, ease: 'power2.out', delay: 0.05 }
+      );
+    }
+  }, { dependencies: [slideDirection, currentMonth] });
+
+  const getDaysInMonth = useCallback((): CalendarDay[] => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startPadding = firstDay.getDay();
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
 
     const days: CalendarDay[] = [];
 
@@ -73,7 +103,7 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
         date: d,
         day: prevMonth.getDate() - i,
         isCurrentMonth: false,
-        isPast: d < today,
+        isPast: d < now,
         isAvailable: false,
         isToday: false,
       });
@@ -87,9 +117,9 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
         date,
         day: d,
         isCurrentMonth: true,
-        isPast: date < today,
-        isAvailable: !bookedDates.has(dateStr) && date >= today,
-        isToday: date.getTime() === today.getTime(),
+        isPast: date < now,
+        isAvailable: !bookedDates.has(dateStr) && date >= now,
+        isToday: date.getTime() === now.getTime(),
       });
     }
 
@@ -108,7 +138,7 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
     }
 
     return days;
-  };
+  }, [currentMonth, bookedDates]);
 
   const handleDateClick = (day: CalendarDay) => {
     if (!day.isCurrentMonth || day.isPast || !day.isAvailable) return;
@@ -116,11 +146,13 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
     onDateSelect(dateStr);
   };
 
-  const prevMonth = () => {
+  const goToPrevMonth = () => {
+    setSlideDirection('right');
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
   };
 
-  const nextMonth = () => {
+  const goToNextMonth = () => {
+    setSlideDirection('left');
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
   };
 
@@ -136,98 +168,105 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
     return dateStr === selectedPickup || dateStr === selectedReturn;
   };
 
+  const isPickup = (day: CalendarDay): boolean => {
+    if (!day.isCurrentMonth || !selectedPickup) return false;
+    return day.date.toISOString().split('T')[0] === selectedPickup;
+  };
+
+  const isReturn = (day: CalendarDay): boolean => {
+    if (!day.isCurrentMonth || !selectedReturn) return false;
+    return day.date.toISOString().split('T')[0] === selectedReturn;
+  };
+
+  // Touch swipe for month navigation
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) goToNextMonth();
+      else goToPrevMonth();
+    }
+  };
+
   const days = getDaysInMonth();
   const monthName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
-    <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ background: '#1a1a1a', color: 'white', padding: 'var(--space-4) var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={prevMonth} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.25rem', padding: '4px 8px' }} aria-label="Previous month">
-          ‹
+    <div className="calendar" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      {/* Header with month nav + legend */}
+      <div className="calendar-header">
+        <button className="calendar-nav-btn" onClick={goToPrevMonth} aria-label="Previous month">
+          <ChevronLeft size={20} />
         </button>
-        <h3 style={{ margin: 0, fontWeight: 700, letterSpacing: '0.05em' }}>{monthName}</h3>
-        <button onClick={nextMonth} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.25rem', padding: '4px 8px' }} aria-label="Next month">
-          ›
+        <h3 className="calendar-month-label" ref={monthLabelRef}>{monthName}</h3>
+        <button className="calendar-nav-btn" onClick={goToNextMonth} aria-label="Next month">
+          <ChevronRight size={20} />
         </button>
       </div>
 
-      {/* Day headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #e0e0e0' }}>
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-          <div key={d} style={{ padding: '8px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'uppercase' }}>
-            {d}
-          </div>
+      {/* Day headers + legend */}
+      <div className="calendar-day-headers">
+        {DAY_LABELS.map((d) => (
+          <div key={d} className="calendar-day-label">{d}</div>
         ))}
       </div>
 
       {/* Days grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      <div className="calendar-grid" ref={gridRef}>
         {days.map((day, i) => {
-          const isSelectedDate = isSelected(day);
+          const selected = isSelected(day);
           const inRange = isInRange(day);
+          const pickup = isPickup(day);
+          const ret = isReturn(day);
+
+          const className = [
+            'calendar-day',
+            !day.isCurrentMonth && 'other-month',
+            day.isPast && 'past',
+            day.isToday && 'today',
+            day.isAvailable && day.isCurrentMonth && !day.isPast && 'available',
+            !day.isAvailable && day.isCurrentMonth && !day.isPast && 'booked',
+            selected && 'selected',
+            inRange && 'in-range',
+            pickup && 'range-start',
+            ret && 'range-end',
+          ].filter(Boolean).join(' ');
 
           return (
             <button
               key={i}
+              className={className}
               onClick={() => handleDateClick(day)}
               disabled={!day.isCurrentMonth || day.isPast || !day.isAvailable}
-              style={{
-                padding: '10px 4px',
-                textAlign: 'center',
-                border: 'none',
-                borderBottom: '1px solid #f0f0f0',
-                background: isSelectedDate ? '#1a1a1a' : inRange ? '#f0f7ff' : 'white',
-                color: !day.isCurrentMonth ? '#ccc' : day.isPast ? '#ccc' : !day.isAvailable && day.isCurrentMonth ? '#dc2626' : isSelectedDate ? 'white' : '#1a1a1a',
-                cursor: day.isCurrentMonth && !day.isPast && day.isAvailable ? 'pointer' : 'default',
-                fontWeight: day.isToday ? 700 : isSelectedDate ? 700 : 400,
-                position: 'relative',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={(e) => {
-                if (day.isCurrentMonth && !day.isPast && day.isAvailable && !isSelectedDate) {
-                  e.currentTarget.style.background = '#f5f5f5';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isSelectedDate && !inRange) {
-                  e.currentTarget.style.background = 'white';
-                }
-              }}
-              aria-label={`${day.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${day.isAvailable ? 'Available' : day.isPast ? 'Past' : 'Booked'}`}
+              aria-label={`${day.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — ${day.isAvailable ? 'Available' : day.isPast ? 'Past' : 'Booked'}`}
             >
-              {day.day}
-              {day.isAvailable && day.isCurrentMonth && !day.isPast && (
-                <span style={{ display: 'block', width: '4px', height: '4px', borderRadius: '50%', background: '#059669', margin: '2px auto 0' }} />
-              )}
-              {!day.isAvailable && day.isCurrentMonth && !day.isPast && (
-                <span style={{ display: 'block', width: '4px', height: '4px', borderRadius: '50%', background: '#dc2626', margin: '2px auto 0' }} />
-              )}
+              <span className="calendar-day-number">{day.day}</span>
             </button>
           );
         })}
       </div>
 
       {/* Legend */}
-      <div style={{ padding: 'var(--space-3) var(--space-4)', borderTop: '1px solid #e0e0e0', display: 'flex', gap: 'var(--space-6)', fontSize: '0.75rem', color: '#666' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#059669', display: 'inline-block' }} />
+      <div className="calendar-legend">
+        <span className="calendar-legend-item">
+          <span className="calendar-legend-dot available" />
           Available
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#dc2626', display: 'inline-block' }} />
+        <span className="calendar-legend-item">
+          <span className="calendar-legend-dot booked" />
           Booked
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ccc', display: 'inline-block' }} />
+        <span className="calendar-legend-item">
+          <span className="calendar-legend-dot past" />
           Past
         </span>
       </div>
 
       {loading && (
-        <div style={{ padding: 'var(--space-2)', textAlign: 'center', fontSize: '0.75rem', color: '#999' }}>
-          Checking availability...
-        </div>
+        <div className="calendar-loading">Checking availability...</div>
       )}
     </div>
   );

@@ -531,28 +531,19 @@ function App() {
   const selectedVehicle = vehicles.find((v) => v.id === booking.vehicleId);
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-background)' }}>
+    <div className="app-container">
       {/* Skip to content link */}
       <a href="#main-content" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }} onFocus={(e) => { e.currentTarget.style.position = 'static'; e.currentTarget.style.width = 'auto'; e.currentTarget.style.height = 'auto'; }} onBlur={(e) => { e.currentTarget.style.position = 'absolute'; e.currentTarget.style.left = '-10000px'; e.currentTarget.style.width = '1px'; e.currentTarget.style.height = '1px'; }}>
         Skip to main content
       </a>
 
       {/* Toast Container */}
-      <div className="toast-container" aria-live="polite" aria-label="Notifications" style={{ position: 'fixed', top: 'var(--space-6)', right: 'var(--space-6)', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      <div className="toast-container" aria-live="polite" aria-label="Notifications">
         {toasts.map((t) => (
           <div
             key={t.id}
+            className={`toast-item toast-${t.type}`}
             role="alert"
-            style={{
-              padding: 'var(--space-4) var(--space-5)',
-              borderRadius: '8px',
-              color: 'white',
-              fontWeight: 600,
-              minWidth: '280px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              animation: 'slideIn 0.3s ease-out',
-              backgroundColor: t.type === 'success' ? '#059669' : t.type === 'error' ? '#dc2626' : t.type === 'warning' ? '#b45309' : '#1d4ed8',
-            }}
           >
             {t.type === 'success' && <Check size={16} />}
             {t.type === 'error' && <X size={16} />}
@@ -563,20 +554,20 @@ function App() {
       </div>
 
       {/* Header */}
-      <header style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-8) 0', borderBottom: 'var(--border-thick) solid var(--color-yellow)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', marginLeft: 'auto', marginRight: 'auto', paddingLeft: 'var(--space-6)', paddingRight: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+      <header className="site-header">
+        <div className="site-header-inner">
           <div>
-            <h1 style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 'var(--font-weight-extrabold)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>
-              <Car size={24} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} /> Don's Car Rental
+            <h1 className="site-header-title">
+              <Car size={24} aria-hidden="true" /> Don's Car Rental
             </h1>
-            <p style={{ fontSize: 'var(--font-size-lg)', opacity: 0.75 }}>Barbados car rental — book online, no calls needed</p>
+            <p className="site-header-subtitle">Barbados car rental — book online, no calls needed</p>
           </div>
           {user && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <span style={{ fontSize: 'var(--font-size-sm)', opacity: 0.85 }}>Hello, {user.name || user.email}</span>
+            <div className="site-header-user">
+              <span>Hello, {user.name || user.email}</span>
               <button
                 onClick={handleSignOut}
-                style={{ background: 'none', border: '1px solid rgba(255,255,255,0.3)', color: 'white', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: 'var(--font-size-xs)' }}
+                className="site-header-signout"
               >
                 Sign out
               </button>
@@ -586,7 +577,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main id="main-content" style={{ flex: 1, maxWidth: 'var(--max-width-container)', margin: '0 auto', width: '100%', padding: `var(--space-8) var(--space-6)` }} tabIndex={-1}>
+      <main id="main-content" className="site-main" tabIndex={-1}>
         <Routes>
           <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -640,20 +631,20 @@ function App() {
         {/* Step 1: Vehicle + Pricing Packages */}
         {step === 1 && !bookingRef && (
           <div ref={step1Ref} className="step-container">
-            <h2 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)', outline: 'none' }}>Choose Your Vehicle</h2>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Choose Your Vehicle</h2>
             {loading ? (
               <DrivingLoader message="Loading vehicles..." variant="compact" />
             ) : (
               <>
-                {/* Calendar as Entry Point */}
-                <div style={{ marginBottom: 'var(--space-8)' }}>
+                {/* Calendar + Vehicle Selection */}
+                <div className="step-section">
                   <div className="grid-responsive-2">
-                    <div>
-                      <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)' }}>
-                        <Calendar size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> Pick a date to start
+                    <div className="step-column">
+                      <h3 className="step-column-title">
+                        <Calendar size={20} /> Pick a date to start
                       </h3>
-                      <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
-                        Tap any available date below to jump straight to booking. Green dots mean we're open.
+                      <p className="step-column-desc">
+                        Tap any available date to jump straight to booking.
                       </p>
                       <AvailabilityCalendar
                         onDateSelect={(date) => {
@@ -667,14 +658,14 @@ function App() {
                         selectedReturn={booking.returnDate}
                       />
                     </div>
-                    <div>
-                      <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)' }}>
-                        <Car size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> Or choose a vehicle first
+                    <div className="step-column">
+                      <h3 className="step-column-title">
+                        <Car size={20} /> Or choose a vehicle first
                       </h3>
-                      <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
+                      <p className="step-column-desc">
                         Select your car, then pick dates on the next step.
                       </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                      <div className="vehicle-list">
                         {vehicles.map((vehicle) => (
                           <VehicleCard
                             key={vehicle.id}
@@ -688,8 +679,8 @@ function App() {
                   </div>
                 </div>
 
-                <h3 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}>Quick Packages</h3>
-                <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
+                <h3 className="section-heading">Quick Packages</h3>
+                <p className="section-desc">
                   Select a preset package and we'll auto-set your dates. Or tap a calendar date above.
                 </p>
                 <PricingPackages
@@ -705,93 +696,88 @@ function App() {
         {/* Step 2: Dates & Pricing */}
         {step === 2 && !bookingRef && (
           <div ref={step2Ref} className="step-container">
-            <h2 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)', outline: 'none' }}>Select Dates & Pricing</h2>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Select Dates & Pricing</h2>
             
-            <div className="dates-pricing-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-6)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
-                  <Input
-                    label="Pick-up Date *"
-                    variant="date"
-                    value={booking.pickupDate}
-                    onChange={(e) => handleBookingChange('pickupDate', e.target.value)}
-                  />
+            <div className="step-section">
+              <div className="step-form-grid">
+                <div className="step-form-fields">
+                  <div className="form-row-2">
+                    <Input
+                      label="Pick-up Date *"
+                      variant="date"
+                      value={booking.pickupDate}
+                      onChange={(e) => handleBookingChange('pickupDate', e.target.value)}
+                    />
+                    
+                    <Input
+                      label="Pick-up Time *"
+                      variant="time"
+                      value={booking.pickupTime}
+                      onChange={(e) => handleBookingChange('pickupTime', e.target.value)}
+                    />
+                    
+                    <Input
+                      label="Return Date *"
+                      variant="date"
+                      value={booking.returnDate}
+                      onChange={(e) => handleBookingChange('returnDate', e.target.value)}
+                    />
+                    
+                    <Input
+                      label="Return Time *"
+                      variant="time"
+                      value={booking.returnTime}
+                      onChange={(e) => handleBookingChange('returnTime', e.target.value)}
+                    />
+                  </div>
                   
                   <Input
-                    label="Pick-up Time *"
-                    variant="time"
-                    value={booking.pickupTime}
-                    onChange={(e) => handleBookingChange('pickupTime', e.target.value)}
-                  />
-                  
-                  <Input
-                    label="Return Date *"
-                    variant="date"
-                    value={booking.returnDate}
-                    onChange={(e) => handleBookingChange('returnDate', e.target.value)}
-                  />
-                  
-                  <Input
-                    label="Return Time *"
-                    variant="time"
-                    value={booking.returnTime}
-                    onChange={(e) => handleBookingChange('returnTime', e.target.value)}
+                    label="Drop-off Location"
+                    placeholder="Airport, Downtown, etc."
+                    value={booking.dropoffLocation}
+                    onChange={(e) => handleBookingChange('dropoffLocation', e.target.value)}
                   />
                 </div>
                 
-                <Input
-                  label="Drop-off Location"
-                  placeholder="Airport, Downtown, etc."
-                  value={booking.dropoffLocation}
-                  onChange={(e) => handleBookingChange('dropoffLocation', e.target.value)}
-                />
-              </div>
-              
-              <div style={{ marginTop: 'var(--space-6)' }}>
-                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-4)' }}><Calendar size={20} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> Availability</h3>
-                <AvailabilityCalendar
-                  onDateSelect={(date) => {
-                    handleBookingChange('pickupDate', date);
-                    const ret = new Date(date);
-                    ret.setDate(ret.getDate() + 1);
-                    handleBookingChange('returnDate', ret.toISOString().split('T')[0]);
-                  }}
-                  selectedPickup={booking.pickupDate}
-                  selectedReturn={booking.returnDate}
-                />
+                <div className="step-calendar-section">
+                  <h3 className="section-heading-sm">
+                    <Calendar size={18} /> Availability
+                  </h3>
+                  <AvailabilityCalendar
+                    onDateSelect={(date) => {
+                      handleBookingChange('pickupDate', date);
+                      const ret = new Date(date);
+                      ret.setDate(ret.getDate() + 1);
+                      handleBookingChange('returnDate', ret.toISOString().split('T')[0]);
+                    }}
+                    selectedPickup={booking.pickupDate}
+                    selectedReturn={booking.returnDate}
+                  />
+                </div>
               </div>
 
               {/* Live availability status */}
               {booking.pickupDate && booking.returnDate && (
                 <div
-                  style={{
-                    padding: 'var(--space-4)',
-                    borderRadius: '8px',
-                    border: `2px solid ${dateAvailability.loading ? 'var(--color-medium-gray)' : dateAvailability.available ? 'var(--color-success)' : 'var(--color-error)'}`,
-                    background: dateAvailability.loading ? 'var(--color-light-gray)' : dateAvailability.available ? '#ecfdf5' : '#fef2f2',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-3)',
-                    marginTop: 'var(--space-4)',
-                  }}
+                  className={`availability-status ${dateAvailability.loading ? 'loading' : dateAvailability.available ? 'available' : 'unavailable'}`}
                   role="status"
                   aria-live="polite"
                 >
                   {dateAvailability.loading ? (
                     <Spinner size="sm" />
                   ) : dateAvailability.available ? (
-                    <CircleCheck size={20} aria-hidden="true" style={{ color: 'var(--color-success)' }} />
+                    <CircleCheck size={20} aria-hidden="true" />
                   ) : (
-                    <X size={20} aria-hidden="true" style={{ color: 'var(--color-error)' }} />
+                    <X size={20} aria-hidden="true" />
                   )}
-                  <span style={{ fontWeight: 'var(--font-weight-semibold)', color: dateAvailability.available ? '#065f46' : '#991b1b' }}>
+                  <span>
                     {dateAvailability.loading ? 'Checking availability...' : dateAvailability.message}
                   </span>
                 </div>
               )}
               
               {selectedVehicle && (
-                <div style={{ marginTop: 'var(--space-6)' }}>
+                <div className="step-section">
                   <PricingBreakdown
                     vehicleName={selectedVehicle.name}
                     totalDays={calculateTotalDays()}
@@ -807,8 +793,8 @@ function App() {
         {/* Step 3: License Verification */}
         {step === 3 && !bookingRef && (
           <div ref={step3Ref} className="step-container">
-            <h2 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)', outline: 'none' }}>Driver's License</h2>
-            <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Driver's License</h2>
+            <p className="section-desc">
               Upload or take a photo of your license and we'll auto-fill your details. You can review and confirm on the final step.
             </p>
             {scanningLicense && (
@@ -816,7 +802,7 @@ function App() {
                 <Spinner message="Scanning license..." size="sm" />
               </div>
             )}
-            <div style={{ maxWidth: '600px' }}>
+            <div className="step-form-fields" style={{ maxWidth: '600px' }}>
               <LicenseVerificationForm
                 data={{
                   licenseNumber: booking.licenseNumber || '',
@@ -850,11 +836,11 @@ function App() {
         {/* Step 4: Personal Information */}
         {step === 4 && !bookingRef && (
           <div ref={step4Ref} className="step-container">
-            <h2 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)', outline: 'none' }}>Your Information</h2>
-            <p style={{ marginBottom: 'var(--space-6)', color: 'var(--color-dark-gray)' }}>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Your Information</h2>
+            <p className="section-desc">
               Fields were auto-filled from your license scan. Review and correct if needed.
             </p>
-            <div style={{ maxWidth: '600px' }}>
+            <div className="step-form-fields" style={{ maxWidth: '600px' }}>
               <PersonalInfoForm
                 data={{
                   name: booking.customerName || '',
@@ -878,8 +864,8 @@ function App() {
 
         {/* Step 5: Review & Confirm */}
         {step === 5 && !bookingRef && (
-          <div ref={step5Ref} className="step-container" style={{ maxWidth: '600px' }}>
-            <h2 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', marginBottom: 'var(--space-6)', outline: 'none' }}>Review & Confirm</h2>
+          <div ref={step5Ref} className="step-container step-container-narrow">
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Review & Confirm</h2>
             <BookingSummary
               booking={{
                 ...booking,
@@ -891,20 +877,19 @@ function App() {
             />
 
             {/* T&C Acceptance */}
-            <div style={{ marginTop: 'var(--space-6)', padding: 'var(--space-4)', border: '2px solid #e0e0e0', borderRadius: '8px', background: '#fafafa' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)', cursor: 'pointer', lineHeight: '1.6' }}>
+            <div className="tc-acceptance">
+              <label>
                 <input
                   type="checkbox"
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
-                  style={{ marginTop: '4px', width: '18px', height: '18px', accentColor: '#0f3460' }}
                   aria-required="true"
                 />
-                <span style={{ fontSize: 'var(--font-size-sm)', color: '#333' }}>
+                <span>
                   I have read and agree to the{' '}
-                  <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#0f3460', textDecoration: 'underline' }}>Terms &amp; Conditions</a>
+                  <a href="/terms" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
                   {' '}and{' '}
-                  <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#0f3460', textDecoration: 'underline' }}>Privacy Policy</a>.
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
                   I understand the rental agreement, cancellation policy, and liability terms.
                 </span>
               </label>
@@ -914,7 +899,7 @@ function App() {
 
         {/* Success State */}
         {bookingRef && (
-          <div ref={confirmRef} className="step-container" style={{ maxWidth: '600px' }}>
+          <div ref={confirmRef} className="step-container step-container-narrow">
             <BookingConfirmation
               bookingRef={bookingRef}
               email={booking.customerEmail || ''}
@@ -924,25 +909,17 @@ function App() {
 
             {/* Profile Creation Prompt */}
             {!user && !profileSaved && (
-              <div style={{ marginTop: 'var(--space-8)', padding: 'var(--space-6)', border: '2px solid #e0e0e0', borderRadius: '12px', background: '#f8f9fa', textAlign: 'center' }}>
-                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)' }}>
-                  Speed up your next booking?
-                </h3>
-                <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
-                  Sign in with Google to save your info. Next time, your details will auto-fill — no typing required.
-                </p>
+              <div className="profile-prompt profile-prompt-signin">
+                <h3>Speed up your next booking?</h3>
+                <p>Sign in with Google to save your info. Next time, your details will auto-fill — no typing required.</p>
                 <div id="google-signin-button" style={{ display: 'inline-block' }}></div>
               </div>
             )}
 
             {user && !profileSaved && (
-              <div style={{ marginTop: 'var(--space-8)', padding: 'var(--space-6)', border: '2px solid #059669', borderRadius: '12px', background: '#ecfdf5', textAlign: 'center' }}>
-                <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)', color: '#065f46' }}>
-                  Save your info for next time?
-                </h3>
-                <p style={{ color: '#666', marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
-                  We'll save your name, phone, and license details from this booking so you don't have to type them again.
-                </p>
+              <div className="profile-prompt profile-prompt-save">
+                <h3>Save your info for next time?</h3>
+                <p>We'll save your name, phone, and license details from this booking so you don't have to type them again.</p>
                 <Button variant="primary" onClick={handleSaveProfile} style={{ marginRight: 'var(--space-3)' }}>
                   Save My Info
                 </Button>
@@ -953,8 +930,8 @@ function App() {
             )}
 
             {profileSaved && (
-              <div style={{ marginTop: 'var(--space-8)', padding: 'var(--space-4)', border: '2px solid #059669', borderRadius: '12px', background: '#ecfdf5', textAlign: 'center' }}>
-                <p style={{ color: '#065f46', fontWeight: 'var(--font-weight-semibold)' }}>
+              <div className="profile-saved">
+                <p>
                   <Check size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Profile saved! Your info will auto-fill on your next visit.
                 </p>
               </div>
@@ -964,22 +941,20 @@ function App() {
 
         {/* Navigation Buttons */}
         {!bookingRef && (
-          <div className="nav-buttons" style={{ display: 'flex', gap: 'var(--space-6)', marginTop: 'var(--space-12)', paddingTop: 'var(--space-6)', borderTop: 'var(--border-normal) solid var(--color-charcoal)' }}>
+          <div className="nav-buttons">
             <Button
               variant="outline"
               onClick={handlePrevStep}
               disabled={step === 1}
-              style={{ flex: 1 }}
             >
-              <ArrowLeft size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Back
+              <ArrowLeft size={16} /> Back
             </Button>
             <Button
               variant="primary"
               onClick={handleNextStep}
               isLoading={loading}
-              style={{ flex: 1 }}
             >
-              {step === 5 ? <><Check size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Confirm Booking</> : <>Next <ArrowRight size={16} style={{ display: 'inline', verticalAlign: 'middle', marginLeft: '4px' }} /></>}
+              {step === 5 ? <><Check size={16} /> Confirm Booking</> : <>Next <ArrowRight size={16} /></>}
             </Button>
           </div>
         )}
@@ -992,7 +967,7 @@ function App() {
         )}
 
         {bookingRef && (
-          <div style={{ display: 'flex', gap: 'var(--space-6)', marginTop: 'var(--space-12)', paddingTop: 'var(--space-6)', borderTop: 'var(--border-normal) solid var(--color-charcoal)' }}>
+          <div className="post-confirmation-actions">
             <Button
               variant="primary"
               onClick={() => window.location.href = '/'}
@@ -1011,30 +986,23 @@ function App() {
       <ChatWidget />
 
       {/* Footer */}
-      <footer style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-6) 0', borderTop: 'var(--border-thick) solid var(--color-yellow)', marginTop: 'var(--space-16)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', marginLeft: 'auto', marginRight: 'auto', paddingLeft: 'var(--space-6)', paddingRight: 'var(--space-6)', textAlign: 'center', fontSize: 'var(--font-size-sm)' }}>
-          <p style={{ marginBottom: 'var(--space-3)' }}>
-            <a href="/terms" style={{ color: 'var(--color-white)', opacity: 0.75, textDecoration: 'underline' }}>Terms &amp; Conditions</a>
+      <footer className="site-footer">
+        <div className="site-footer-inner">
+          <p className="site-footer-links">
+            <a href="/terms">Terms &amp; Conditions</a>
             {' | '}
-            <a href="/privacy" style={{ color: 'var(--color-white)', opacity: 0.75, textDecoration: 'underline' }}>Privacy Policy</a>
+            <a href="/privacy">Privacy Policy</a>
             {' | '}
-            <a href="mailto:bookings@donsrental.com" style={{ color: 'var(--color-white)', opacity: 0.75, textDecoration: 'underline' }}>bookings@donsrental.com</a>
+            <a href="mailto:bookings@donsrental.com">bookings@donsrental.com</a>
             {' | '}
-            <a href="tel:+12462682842" style={{ color: 'var(--color-white)', opacity: 0.75, textDecoration: 'underline' }}>+1 (246) 268-2842</a>
+            <a href="tel:+12462682842">+1 (246) 268-2842</a>
           </p>
-          <p style={{ opacity: 0.5 }}>
+          <p className="site-footer-copy">
             © 2026 Don's Car Rental — Barbados. All rights reserved.
           </p>
         </div>
       </footer>
 
-      {/* Toast animation keyframe */}
-      <style>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }

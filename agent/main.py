@@ -189,7 +189,7 @@ def scan_license(image_base64: str) -> dict:
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
   "customerName": full name on the license,
   "licenseNumber": the license/driver number,
-  "licenseExpiry": expiration date,
+  "licenseExpiry": the EXPIRY (expiration / VALID TO / EXPIRES / expiry date) shown on the license, formatted as YYYY-MM-DD. This is the LATEST date on the card — NOT the issue date. If a date has no year, infer it as the next year. Return null only if no date is visible at all,
   "licenseIssuer": issuing authority (e.g. "Barbados Licensing Authority"),
   "customerAddress": address on the license,
   "licenseClass": license class/type.
@@ -201,11 +201,47 @@ If a field is not visible, set it to null."""
         raw = response.text.strip()
         raw = re.sub(r'^```(?:json)?\s*', '', raw)
         raw = re.sub(r'\s*```$', '', raw)
-        return json.loads(raw)
+        parsed = json.loads(raw)
+        if parsed.get('licenseExpiry'):
+            parsed['licenseExpiry'] = _normalize_expiry(parsed['licenseExpiry'])
+        return parsed
     except json.JSONDecodeError:
         return {'raw_text': raw, 'error': 'Could not parse as structured JSON'}
     except Exception as e:
         return {'error': str(e)}
+
+
+def _normalize_expiry(value) -> str:
+    """Normalize a license expiry string to YYYY-MM-DD, or '' if unparseable."""
+    if not value:
+        return ''
+    v = str(value).strip()
+    if not v:
+        return ''
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', v):
+        return v
+    m = re.match(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$', v)
+    if m:
+        a, b, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            d1 = datetime(y, a, b)
+            d2 = datetime(y, b, a)
+            return max(d1, d2).date().isoformat()
+        except ValueError:
+            try:
+                return datetime(y, a, b).date().isoformat()
+            except ValueError:
+                try:
+                    return datetime(y, b, a).date().isoformat()
+                except ValueError:
+                    return ''
+    m = re.match(r'^(\d{4})$', v)
+    if m:
+        return f'{m.group(1)}-12-31'
+    m = re.match(r'^(?:[A-Za-z]+)\s+(\d{4})$', v)
+    if m:
+        return f'{m.group(1)}-12-31'
+    return ''
 
 
 def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> dict:

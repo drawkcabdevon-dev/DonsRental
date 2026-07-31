@@ -153,4 +153,16 @@ export const api = {
     if (!response.ok) throw new Error('Failed to save profile');
     return await response.json();
   },
+
+  // Bookings for a specific customer
+  async getMyBookings(email: string): Promise<Record<string, string>[]> {
+    try {
+      const response = await fetch(`${API_BASE}/my-bookings/${encodeURIComponent(email)}`);
+      if (!response.ok) throw new Error('Failed to fetch bookings');
+      const data = await response.json();
+      return data.bookings || [];
+    } catch {
+      return [];
+    }
+  },
 };

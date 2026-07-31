@@ -1,6 +1,6 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import { api } from './services/api';
 import {
   Button,
@@ -17,6 +17,7 @@ import { BookingSummary, BookingConfirmation } from './components/Summary';
 import { AvailabilityCalendar } from './components/AvailabilityCalendar';
 import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import { ProfilePage } from './pages/ProfilePage';
 import { useStepTransition } from './hooks/useAnimations';
 import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 
@@ -565,6 +566,9 @@ function App() {
           {user && (
             <div className="site-header-user">
               <span>Hello, {user.name || user.email}</span>
+              <Link to="/profile" className="site-header-profile-link">
+                My Profile
+              </Link>
               <button
                 onClick={handleSignOut}
                 className="site-header-signout"
@@ -581,6 +585,7 @@ function App() {
         <Routes>
           <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/profile" element={<ProfilePage user={user} onSignOut={handleSignOut} />} />
           <Route path="*" element={
             <>
               {/* Driving Stepper */}
@@ -647,6 +652,11 @@ function App() {
                         Tap any available date to jump straight to booking.
                       </p>
                       <AvailabilityCalendar
+                        onRangeSelect={(start, end) => {
+                          handleBookingChange('pickupDate', start);
+                          handleBookingChange('returnDate', end);
+                          setStep(2);
+                        }}
                         onDateSelect={(date) => {
                           handleBookingChange('pickupDate', date);
                           const ret = new Date(date);
@@ -744,6 +754,10 @@ function App() {
                     <Calendar size={18} /> Availability
                   </h3>
                   <AvailabilityCalendar
+                    onRangeSelect={(start, end) => {
+                      handleBookingChange('pickupDate', start);
+                      handleBookingChange('returnDate', end);
+                    }}
                     onDateSelect={(date) => {
                       handleBookingChange('pickupDate', date);
                       const ret = new Date(date);

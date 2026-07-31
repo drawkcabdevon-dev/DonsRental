@@ -14,21 +14,36 @@ interface CalendarDay {
 
 interface AvailabilityCalendarProps {
   onDateSelect: (date: string) => void;
+  onRangeSelect?: (start: string, end: string) => void;
   selectedPickup?: string;
   selectedReturn?: string;
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedReturn }: AvailabilityCalendarProps) {
+function toDateStr(d: Date): string {
+  return d.toISOString().split('T')[0];
+}
+
+export function AvailabilityCalendar({
+  onDateSelect,
+  onRangeSelect,
+  selectedPickup,
+  selectedReturn,
+}: AvailabilityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [bookedDates, setBookedDates] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
+  const [rangeStart, setRangeStart] = useState<string | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<string | null>(null);
+  const [hoverDate, setHoverDate] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const monthLabelRef = useRef<HTMLHeadingElement>(null);
   const touchStartX = useRef(0);
+  const dragMoved = useRef(false);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -112,7 +127,7 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
     // Current month
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const date = new Date(year, month, d);
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = toDateStr(date);
       days.push({
         date,
         day: d,
@@ -140,10 +155,118 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
     return days;
   }, [currentMonth, bookedDates]);
 
-  const handleDateClick = (day: CalendarDay) => {
-    if (!day.isCurrentMonth || day.isPast || !day.isAvailable) return;
-    const dateStr = day.date.toISOString().split('T')[0];
-    onDateSelect(dateStr);
+  const days = getDaysInMonth();
+  const monthName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const canSelect = (day: CalendarDay) => day.isCurrentMonth && !day.isPast && day.isAvailable;
+
+  const commitRange = (start: string, end: string) => {
+    if (!onRangeSelect) {
+      onDateSelect(start);
+      return;
+    }
+    const s = new Date(start).getTime();
+    const e = new Date(end).getTime();
+    const ordered = s <= e ? [start, end] : [end, start];
+    onRangeSelect(ordered[0], ordered[1]);
+  };
+
+  const handleDayPointerDown = (day: CalendarDay) => {
+    if (!canSelect(day)) return;
+    dragMoved.current = false;
+    setIsDragging(true);
+    setRangeStart(toDateStr(day.date));
+    setRangeEnd(null);
+  };
+
+  const handleDayPointerEnter = (day: CalendarDay) => {
+    if (isDragging && rangeStart && canSelect(day)) {
+      dragMoved.current = true;
+      setRangeEnd(toDateStr(day.date));
+    }
+    if (!isDragging) {
+      setHoverDate(toDateStr(day.date));
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    setHoverDate(null);
+    if (rangeStart && rangeEnd && rangeStart !== rangeEnd) {
+      commitRange(rangeStart, rangeEnd);
+    } else if (rangeStart && !dragMoved.current && !onRangeSelect) {
+      onDateSelect(rangeStart);
+    }
+  };
+
+  const handleClick = (day: CalendarDay) => {
+    if (!canSelect(day) || dragMoved.current) return;
+
+    if (onRangeSelect) {
+      const dateStr = toDateStr(day.date);
+      if (!rangeStart || (rangeStart && rangeEnd)) {
+        // Start a new range
+        setRangeStart(dateStr);
+        setRangeEnd(null);
+      } else if (rangeStart === dateStr) {
+        // Same date again — single-day range
+        commitRange(dateStr, dateStr);
+        setRangeStart(null);
+        setRangeEnd(null);
+      } else {
+        // Complete the range
+        commitRange(rangeStart, dateStr);
+        setRangeStart(null);
+        setRangeEnd(null);
+      }
+    } else {
+      onDateSelect(toDateStr(day.date));
+    }
+  };
+
+  const clearSelection = () => {
+    setRangeStart(null);
+    setRangeEnd(null);
+    setHoverDate(null);
+  };
+
+  // Effective range: props (pre-filled) or internal selection
+  const effStart = rangeStart || selectedPickup || '';
+  const effEnd = rangeEnd || selectedReturn || '';
+  const previewEnd = isDragging ? rangeEnd : hoverDate && effStart && !effEnd ? hoverDate : null;
+  const previewEndEff = previewEnd || effEnd;
+
+  const isInRange = (day: CalendarDay): boolean => {
+    if (!effStart || !effEnd || !day.isCurrentMonth) return false;
+    const d = day.date.getTime();
+    const s = new Date(effStart).getTime();
+    const e = new Date(effEnd).getTime();
+    return d > Math.min(s, e) && d < Math.max(s, e);
+  };
+
+  const isPreviewRange = (day: CalendarDay): boolean => {
+    if (!effStart || !previewEndEff || !day.isCurrentMonth) return false;
+    const d = day.date.getTime();
+    const s = new Date(effStart).getTime();
+    const e = new Date(previewEndEff).getTime();
+    return d > Math.min(s, e) && d < Math.max(s, e);
+  };
+
+  const isSelected = (day: CalendarDay): boolean => {
+    if (!day.isCurrentMonth) return false;
+    const dateStr = toDateStr(day.date);
+    return dateStr === effStart || dateStr === effEnd;
+  };
+
+  const isPickup = (day: CalendarDay): boolean => {
+    if (!day.isCurrentMonth || !effStart) return false;
+    return toDateStr(day.date) === effStart;
+  };
+
+  const isReturn = (day: CalendarDay): boolean => {
+    if (!day.isCurrentMonth || !effEnd) return false;
+    return toDateStr(day.date) === effEnd;
   };
 
   const goToPrevMonth = () => {
@@ -154,28 +277,6 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
   const goToNextMonth = () => {
     setSlideDirection('left');
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
-  };
-
-  const isInRange = (day: CalendarDay): boolean => {
-    if (!selectedPickup || !selectedReturn || !day.isCurrentMonth) return false;
-    const d = day.date.getTime();
-    return d > new Date(selectedPickup).getTime() && d < new Date(selectedReturn).getTime();
-  };
-
-  const isSelected = (day: CalendarDay): boolean => {
-    if (!day.isCurrentMonth) return false;
-    const dateStr = day.date.toISOString().split('T')[0];
-    return dateStr === selectedPickup || dateStr === selectedReturn;
-  };
-
-  const isPickup = (day: CalendarDay): boolean => {
-    if (!day.isCurrentMonth || !selectedPickup) return false;
-    return day.date.toISOString().split('T')[0] === selectedPickup;
-  };
-
-  const isReturn = (day: CalendarDay): boolean => {
-    if (!day.isCurrentMonth || !selectedReturn) return false;
-    return day.date.toISOString().split('T')[0] === selectedReturn;
   };
 
   // Touch swipe for month navigation
@@ -191,17 +292,37 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
     }
   };
 
-  const days = getDaysInMonth();
-  const monthName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const hasSelection = Boolean(effStart || effEnd || rangeStart);
 
   return (
-    <div className="calendar" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-      {/* Header with month nav + legend */}
+    <div
+      className="calendar"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onPointerUp={handlePointerUp}
+      onMouseLeave={() => {
+        if (isDragging) handlePointerUp();
+        else setHoverDate(null);
+      }}
+      style={{ userSelect: 'none', touchAction: 'pan-y' }}
+    >
+      {/* Header with month nav + selection hint */}
       <div className="calendar-header">
         <button className="calendar-nav-btn" onClick={goToPrevMonth} aria-label="Previous month">
           <ChevronLeft size={20} />
         </button>
-        <h3 className="calendar-month-label" ref={monthLabelRef}>{monthName}</h3>
+        <h3 className="calendar-month-label" ref={monthLabelRef}>
+          {monthName}
+          {effStart && (
+            <span className="calendar-selection-hint">
+              {effStart && effEnd ? (
+                <>Selected: {effStart} → {effEnd}</>
+              ) : (
+                <>Pick return date — or drag</>
+              )}
+            </span>
+          )}
+        </h3>
         <button className="calendar-nav-btn" onClick={goToNextMonth} aria-label="Next month">
           <ChevronRight size={20} />
         </button>
@@ -219,6 +340,7 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
         {days.map((day, i) => {
           const selected = isSelected(day);
           const inRange = isInRange(day);
+          const inPreview = isPreviewRange(day);
           const pickup = isPickup(day);
           const ret = isReturn(day);
 
@@ -230,7 +352,7 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
             day.isAvailable && day.isCurrentMonth && !day.isPast && 'available',
             !day.isAvailable && day.isCurrentMonth && !day.isPast && 'booked',
             selected && 'selected',
-            inRange && 'in-range',
+            (inRange || inPreview) && 'in-range',
             pickup && 'range-start',
             ret && 'range-end',
           ].filter(Boolean).join(' ');
@@ -239,8 +361,13 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
             <button
               key={i}
               className={className}
-              onClick={() => handleDateClick(day)}
-              disabled={!day.isCurrentMonth || day.isPast || !day.isAvailable}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                handleDayPointerDown(day);
+              }}
+              onPointerEnter={() => handleDayPointerEnter(day)}
+              onClick={() => handleClick(day)}
+              disabled={!canSelect(day)}
               aria-label={`${day.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — ${day.isAvailable ? 'Available' : day.isPast ? 'Past' : 'Booked'}`}
             >
               <span className="calendar-day-number">{day.day}</span>
@@ -249,7 +376,7 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
         })}
       </div>
 
-      {/* Legend */}
+      {/* Legend + actions */}
       <div className="calendar-legend">
         <span className="calendar-legend-item">
           <span className="calendar-legend-dot available" />
@@ -259,10 +386,14 @@ export function AvailabilityCalendar({ onDateSelect, selectedPickup, selectedRet
           <span className="calendar-legend-dot booked" />
           Booked
         </span>
-        <span className="calendar-legend-item">
-          <span className="calendar-legend-dot past" />
-          Past
-        </span>
+        {onRangeSelect && (
+          <span className="calendar-legend-item calendar-legend-hint">Click start + end, or drag</span>
+        )}
+        {hasSelection && (
+          <button className="calendar-clear-btn" onClick={clearSelection}>
+            Clear
+          </button>
+        )}
       </div>
 
       {loading && (

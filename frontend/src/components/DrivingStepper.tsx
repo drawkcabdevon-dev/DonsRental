@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { CarSvg } from './CarSvg';
@@ -22,7 +22,20 @@ export function DrivingStepper({ steps, currentStep }: DrivingStepperProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const carRef = useRef<HTMLDivElement>(null);
   const roadFillRef = useRef<HTMLDivElement>(null);
-  const prevStep = useRef(currentStep);
+  const [wheelsSpinning, setWheelsSpinning] = useState(false);
+  const spinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Spin wheels briefly when the step changes
+  useEffect(() => {
+    setWheelsSpinning(true);
+    if (spinTimer.current) clearTimeout(spinTimer.current);
+    spinTimer.current = setTimeout(() => setWheelsSpinning(false), 700);
+    return () => {
+      if (spinTimer.current) clearTimeout(spinTimer.current);
+    };
+  }, [currentStep]);
+
+  const isMobile = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
   useGSAP(() => {
     if (!containerRef.current || !carRef.current || !roadFillRef.current) return;
@@ -31,18 +44,23 @@ export function DrivingStepper({ steps, currentStep }: DrivingStepperProps) {
     const stepIndex = Math.min(currentStep - 1, totalSteps - 1);
     const fillPercent = (stepIndex / (totalSteps - 1)) * 100;
 
-    // Animate road fill
-    gsap.to(roadFillRef.current, {
-      width: `${fillPercent}%`,
-      duration: 0.5,
-      ease: 'power2.inOut',
-    });
+    // Kill any in-flight tweens to prevent conflicts
+    gsap.killTweensOf([carRef.current, roadFillRef.current]);
 
-    // Animate car position
+    const mobile = isMobile();
+
+    // Animate road fill (width on desktop, height on mobile)
+    const roadProps: gsap.TweenVars = mobile
+      ? { height: `${fillPercent}%`, duration: 0.5, ease: 'power2.inOut' }
+      : { width: `${fillPercent}%`, duration: 0.5, ease: 'power2.inOut' };
+    gsap.to(roadFillRef.current, roadProps);
+
+    // Animate car position (left on desktop, top on mobile)
+    const carProps: gsap.TweenVars = mobile
+      ? { top: `${fillPercent}%`, duration: 0.5, ease: 'power2.inOut' }
+      : { left: `${fillPercent}%`, duration: 0.5, ease: 'power2.inOut' };
     gsap.to(carRef.current, {
-      left: `${fillPercent}%`,
-      duration: 0.5,
-      ease: 'power2.inOut',
+      ...carProps,
       onStart: () => {
         carRef.current?.classList.add('moving');
       },
@@ -75,7 +93,6 @@ export function DrivingStepper({ steps, currentStep }: DrivingStepperProps) {
       }
     });
 
-    prevStep.current = currentStep;
   }, { scope: containerRef, dependencies: [currentStep, steps.length] });
 
   return (
@@ -117,7 +134,7 @@ export function DrivingStepper({ steps, currentStep }: DrivingStepperProps) {
 
       {/* Car */}
       <div className="stepper-car" ref={carRef}>
-        <CarSvg size={32} wheelSpinning={prevStep.current !== currentStep} />
+        <CarSvg size={32} wheelSpinning={wheelsSpinning} />
       </div>
     </div>
   );

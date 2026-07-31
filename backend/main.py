@@ -421,6 +421,43 @@ def _parse_date(d: str) -> Optional[date]:
     except (ValueError, TypeError):
         return None
 
+def _normalize_expiry(value) -> str:
+    """Normalize a license expiry string to YYYY-MM-DD, or '' if unparseable."""
+    if not value:
+        return ''
+    v = str(value).strip()
+    if not v:
+        return ''
+    # Already YYYY-MM-DD
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', v):
+        return v
+    # DD/MM/YYYY or MM/DD/YYYY (ambiguous) — assume DD/MM/YYYY (Barbados)
+    m = re.match(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$', v)
+    if m:
+        a, b, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            d1 = datetime(y, a, b)
+            d2 = datetime(y, b, a)
+            # Prefer DD/MM/YYYY when both valid and different; pick the later date
+            pick = max(d1, d2)
+            return pick.date().isoformat()
+        except ValueError:
+            try:
+                return datetime(y, a, b).date().isoformat()
+            except ValueError:
+                try:
+                    return datetime(y, b, a).date().isoformat()
+                except ValueError:
+                    return ''
+    # "June 2028" or "2028" only
+    m = re.match(r'^(\d{4})$', v)
+    if m:
+        return f"{m.group(1)}-12-31"
+    m = re.match(r'^(?:[A-Za-z]+)\s+(\d{4})$', v)
+    if m:
+        return f"{m.group(1)}-12-31"
+    return ''
+
 def _dates_overlap(a1: date, a2: date, b1: date, b2: date) -> bool:
     """Check if date range [a1, a2] overlaps with [b1, b2]."""
     return a1 <= b2 and b1 <= a2
@@ -746,6 +783,22 @@ async def list_bookings(key: str = ""):
         raise HTTPException(403, "Forbidden")
     return {"bookings": _fetch_bookings_from_sheet()}
 
+@app.get("/api/my-bookings/{email}")
+async def get_my_bookings(email: str):
+    """Get bookings for a specific customer email."""
+    if not SPREADSHEET_ID:
+        raise HTTPException(503, "Sheets not configured")
+    bookings = _fetch_bookings_from_sheet()
+    target = email.strip().lower()
+    mine = []
+    for b in bookings:
+        cust_email = (b.get("custEmail") or b.get("customerEmail") or b.get("custemail") or "").strip().lower()
+        if cust_email == target:
+            mine.append(b)
+    # Sort by pickup date (newest last)
+    mine.sort(key=lambda b: b.get("pickupDate", "") or b.get("pickupdate", ""))
+    return {"bookings": mine}
+
 @app.delete("/api/bookings/{booking_id}")
 async def cancel_booking(booking_id: str):
     """Cancel a booking — removes from Sheet and Calendar."""
@@ -920,7 +973,7 @@ async def scan_license(req: ScanLicenseRequest):
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
   "customerName": full name on the license,
   "licenseNumber": the license/driver number,
-  "licenseExpiry": expiration date,
+  "licenseExpiry": the EXPIRY (expiration / VALID TO / EXPIRES / expiry date) shown on the license, formatted as YYYY-MM-DD. This is the LATEST date on the card — NOT the issue date. If a date has no year, infer it as the next year. Return null only if no date is visible at all,
   "licenseIssuer": issuing authority (e.g. 'Barbados Licensing Authority'),
   "licenseClass": license class/type,
   "customerAddress": address on the license.
@@ -951,7 +1004,10 @@ If a field is not visible, set it to null."""
             text = re.sub(r'\s*```$', '', text)
 
             parsed = json.loads(text)
-            logger.info("License scan result: name=%s license=%s", parsed.get("customerName"), parsed.get("licenseNumber"))
+            # Normalize the expiry date to YYYY-MM-DD
+            if parsed.get("licenseExpiry"):
+                parsed["licenseExpiry"] = _normalize_expiry(parsed["licenseExpiry"])
+            logger.info("License scan result: name=%s license=%s expiry=%s", parsed.get("customerName"), parsed.get("licenseNumber"), parsed.get("licenseExpiry"))
             return parsed
     except json.JSONDecodeError:
         raise HTTPException(502, "Could not parse vision API response as JSON")

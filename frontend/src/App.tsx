@@ -18,6 +18,8 @@ import { AvailabilityCalendar } from './components/AvailabilityCalendar';
 import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import { ProfilePage } from './pages/ProfilePage';
+import { LandingPage } from './pages/LandingPage';
+import { AdminDashboard } from './pages/AdminDashboard';
 import { useStepTransition } from './hooks/useAnimations';
 import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 
@@ -586,8 +588,8 @@ function App() {
           <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/profile" element={<ProfilePage user={user} onSignOut={handleSignOut} />} />
-          <Route path="*" element={
-            <>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/book" element={<>
               {/* Driving Stepper */}
         <div style={{ marginBottom: 'var(--space-8)' }}>
           <DrivingStepper
@@ -993,6 +995,7 @@ function App() {
         )}
             </>
           } />
+          <Route path="*" element={<LandingPage onBookNow={() => window.location.href = '/book'} />} />
         </Routes>
       </main>
 

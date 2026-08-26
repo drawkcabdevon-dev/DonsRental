@@ -1,11 +1,11 @@
 # Don's Rental — Car Booking System
 
-A self-service car rental booking system for Barbados.
+A self-service car rental booking system for Barbados. Built by [OnlineVeryWhere](https://onlineverywhere.com).
 
 ## Architecture
 
 ```
-frontend/       ← React 19 + Vite + TypeScript SPA (6-step booking flow)
+frontend/       ← React 19 + Vite + TypeScript SPA (animated landing + booking flow)
 backend/        ← FastAPI Cloud Run service (Sheets, Calendar, profiles)
 agent/          ← ADK agent deployed to Vertex AI Agent Engine (chat interface)
 Google Sheets   ← Vehicles, Bookings, Profiles tabs (persistent data store)
@@ -15,11 +15,11 @@ Apps Script     ← Time-driven trigger sends email notifications
 
 ## How it works
 
-1. Customer opens the booking site → sees availability calendar → clicks available date
-2. Selects vehicle → picks dates/times → uploads license → enters info → reviews → confirms
-3. Backend calculates cost server-side, writes booking to **Google Sheets** (`Bookings` tab)
-4. Backend creates calendar event in **Google Calendar** (availability tracking)
-5. Backend reads vehicles from **Google Sheets** (`Vehicles` tab)
+1. Customer opens the booking site → sees animated landing page with bolt branding → clicks "Book Now"
+2. Interactive calendar shows green/red color-coded availability
+3. Selects vehicle → picks dates/times → uploads license → enters info → reviews → confirms
+4. Backend calculates cost server-side, writes booking to **Google Sheets** (`Bookings` tab)
+5. Backend creates calendar event in **Google Calendar** (availability tracking)
 6. **Apps Script** (time-driven, every 5 mins) checks for new bookings → sends confirmation email to customer + notification to owner
 7. User profiles saved to `Profiles` sheet → auto-fill on next booking
 
@@ -72,7 +72,10 @@ cp .env.example .env
 
 ## Features
 
-- **Availability Calendar** — Interactive month view with green/red dots, clickable dates to jump to booking
+- **Animated Landing Page** — Motion graphic hero, bolt branding, marquee ticker, tabbed walkthrough
+- **Color-Coded Calendar** — Green (available), red (booked), yellow (selected) with glow effects
+- **Bolt Branding** — Yellow bolt icons (⚡) throughout, consistent black/yellow palette
+- **Smooth Transitions** — AnimatePresence slide animations between booking steps
 - **Google Sign-In** — Auto-fill profile data from previous bookings
 - **6-Step Booking Flow** — Vehicle → Dates → License → Your Info → Review → Confirmed
 - **Server-side Pricing** — Cost calculated from vehicle rate × days (never trusts client)
@@ -83,11 +86,12 @@ cp .env.example .env
 
 ## Security
 
+- Cloudflare Turnstile CAPTCHA on booking endpoint
+- Rate limiting (10 bookings/min, 5 license scans/min)
 - `GET /api/bookings` requires admin key (protects customer PII)
 - CORS restricted to production domains
 - Calendar events set to private visibility
 - No PII logged to files
-- Rate limiting on booking endpoint
 - Input validation via Pydantic
 
 ## Files
@@ -98,11 +102,13 @@ cp .env.example .env
 | `agent/main.py` | ADK agent + tools (get_vehicles, scan_license, check_availability, create_booking) |
 | `agent/deploy.py` | Deploy agent to Vertex AI Agent Engine |
 | `frontend/src/App.tsx` | Main booking app (6 steps, Google Sign-In, availability calendar) |
+| `frontend/src/pages/LandingPage.tsx` | Animated landing page with bolt branding |
 | `frontend/src/components/AvailabilityCalendar.tsx` | Custom interactive calendar component |
 | `frontend/src/components/DrivingStepper.tsx` | GSAP-animated progress stepper |
 | `frontend/src/services/api.ts` | Backend API integration (vehicles, bookings, profiles) |
 | `frontend/src/pages/TermsAndConditions.tsx` | Terms & Conditions page |
 | `frontend/src/pages/PrivacyPolicy.tsx` | Privacy Policy page |
+| `frontend/src/pages/AdminDashboard.tsx` | Owner dashboard |
 | `apps-script/booking-notifications.gs` | Google Apps Script (time-driven email notifications) |
 | `deploy-cloudrun.sh` | Deploy to Cloud Run |
 | `cloudbuild.yaml` | Cloud Build config (auto-deploys on push) |

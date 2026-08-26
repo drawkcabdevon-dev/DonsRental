@@ -1,4 +1,4 @@
-import { motion, useScroll, useTransform, useSpring, useInView } from 'motion/react';
+import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence } from 'motion/react';
 import { useRef, useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Vehicle } from '../types';
@@ -83,14 +83,14 @@ function AnimCounter({ target, prefix = '', suffix = '' }: { target: number; pre
 }
 
 /* ─── Marquee ──────────────────────────────────────── */
-const MARQUEE = ['⚡ Airport Pickup', '⚡ AI License Scan', '⚡ No Booking Fees', '⚡ 24/7 Online', '⚡ Instant Confirmation', '⚡ Full Insurance', '⚡ Barbados Fleet', '⚡ Free Cancellation'];
+const MARQUEE = ['Airport Pickup', 'No Booking Fees', '24/7 Online', 'Instant Confirmation', 'Full Insurance', 'Barbados Fleet', 'Free Cancellation', 'Fast & Easy'];
 function Marquee() {
   return (
     <div style={{ overflow: 'hidden', backgroundColor: 'var(--color-yellow)', padding: 'var(--space-3) 0', borderBottom: '4px solid var(--color-black)' }}>
       <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ duration: 25, repeat: Infinity, ease: 'linear' }} style={{ display: 'flex', width: 'max-content', gap: 'var(--space-12)' }}>
         {[...MARQUEE, ...MARQUEE].map((item, i) => (
-          <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
-            {item} <span style={{ margin: '0 var(--space-4)', opacity: 0.3 }}>●</span>
+          <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <Icons.bolt style={{ width: 12, height: 12, stroke: 'var(--color-black)', strokeWidth: 2.5 }} /> {item}
           </span>
         ))}
       </motion.div>
@@ -98,152 +98,159 @@ function Marquee() {
   );
 }
 
-/* ─── Device Frame (for walkthrough) ───────────────── */
-function DeviceFrame({ children, label }: { children: React.ReactNode; label: string }) {
-  return (
-    <motion.div whileHover={{ y: -6, scale: 1.01 }} transition={{ duration: 0.3 }} style={{ position: 'relative' }}>
-      <div style={{
-        backgroundColor: '#1a1a1a',
-        borderRadius: 24,
-        padding: '12px 12px 0',
-        boxShadow: '0 25px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05)',
-      }}>
-        {/* Notch */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-          <div style={{ width: 80, height: 6, backgroundColor: '#333', borderRadius: 3 }} />
-        </div>
-        {/* Screen */}
-        <div style={{
-          backgroundColor: '#fff',
-          borderRadius: 16,
-          overflow: 'hidden',
-          minHeight: 320,
-          position: 'relative',
-        }}>
-          {children}
-        </div>
-      </div>
-      <p style={{
-        textAlign: 'center',
-        marginTop: 'var(--space-4)',
-        fontFamily: 'var(--font-mono)',
-        fontSize: 'var(--font-size-xs)',
-        color: 'var(--color-medium-gray)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.1em',
-      }}>
-        {label}
-      </p>
-    </motion.div>
-  );
-}
-
 /* ─── Step Screen Content ──────────────────────────── */
-function Step1Screen() {
+function StepScreen({ step, title, children }: { step: number; title: string; children: React.ReactNode }) {
   return (
-    <div style={{ padding: 20, fontFamily: 'var(--font-sans)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: '#FFCC00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>1</div>
+    <div style={{ padding: 24, fontFamily: 'var(--font-sans)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: 'var(--color-yellow)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 16, color: 'var(--color-black)' }}>{step}</div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Step 1</div>
-          <div style={{ fontSize: 16, fontWeight: 800, textTransform: 'uppercase' }}>Choose Vehicle</div>
+          <div style={{ fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#999' }}>Step {step}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>{title}</div>
         </div>
       </div>
-      <div style={{ background: '#f5f5f0', borderRadius: 12, padding: 16, border: '2px solid #2d2d2d' }}>
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🏎️</div>
-        <div style={{ fontWeight: 700, fontSize: 14, textTransform: 'uppercase', marginBottom: 4 }}>Standard Rental Car</div>
-        <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>Clean, reliable car for getting around Barbados.</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 800, fontSize: 20, color: '#FFCC00' }}>$120<span style={{ fontSize: 11, color: '#999' }}>/day</span></span>
-          <div style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: '#FFCC00', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icons.check style={{ width: 12, height: 12, stroke: '#000', strokeWidth: 3 }} />
-          </div>
-        </div>
-      </div>
+      {children}
     </div>
   );
 }
 
-function Step2Screen() {
-  return (
-    <div style={{ padding: 20, fontFamily: 'var(--font-sans)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: '#FFCC00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>2</div>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Step 2</div>
-          <div style={{ fontSize: 16, fontWeight: 800, textTransform: 'uppercase' }}>Select Dates</div>
+const STEPS = [
+  {
+    label: 'Choose',
+    title: 'Pick Your Ride',
+    icon: Icons.car,
+    content: (
+      <div style={{ background: '#f5f5f0', borderRadius: 14, padding: 18, border: '2px solid #2d2d2d' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+          {['Picanto', 'Swift', 'Corolla'].map((name, i) => (
+            <div key={name} style={{ flex: 1, padding: 10, borderRadius: 8, border: i === 1 ? '2px solid var(--color-yellow)' : '2px solid #e5e5e5', backgroundColor: i === 1 ? '#fffef0' : '#fff', textAlign: 'center' }}>
+              <div style={{ marginBottom: 6 }}><Icons.car style={{ width: 28, height: 28, stroke: i === 1 ? 'var(--color-yellow)' : '#666' }} /></div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>{name}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-yellow)', marginTop: 4 }}>${[120, 135, 160][i]}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '10px 14px', backgroundColor: 'var(--color-yellow)', borderRadius: 8, textAlign: 'center', fontWeight: 800, fontSize: 13, color: 'var(--color-black)' }}>
+          <Icons.bolt style={{ width: 14, height: 14, stroke: 'var(--color-black)', strokeWidth: 2.5, display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Select Suzuki Swift
         </div>
       </div>
+    ),
+  },
+  {
+    label: 'Dates',
+    title: 'Set Your Dates',
+    icon: Icons.calendar,
+    content: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {[
-          { label: 'Pick-up Date', value: '2026-08-26' },
-          { label: 'Pick-up Time', value: '09:00' },
-          { label: 'Return Date', value: '2026-08-28' },
-          { label: 'Return Time', value: '17:00' },
+          { label: 'Pick-up', value: 'Aug 26, 2026 — 9:00 AM', icon: Icons.bolt },
+          { label: 'Return', value: 'Aug 28, 2026 — 5:00 PM', icon: Icons.bolt },
         ].map((f) => (
-          <div key={f.label}>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: '#999', marginBottom: 4 }}>{f.label}</div>
-            <div style={{ padding: '8px 12px', border: '2px solid #ddd', borderRadius: 6, fontSize: 13, fontWeight: 600, backgroundColor: '#fafafa' }}>{f.value}</div>
+          <div key={f.label} style={{ padding: '12px 14px', border: '2px solid #e5e5e5', borderRadius: 10, backgroundColor: '#fafafa' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#999', marginBottom: 4, letterSpacing: '0.05em' }}>{f.label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{f.value}</div>
           </div>
         ))}
-        <div style={{ marginTop: 4, padding: 12, backgroundColor: '#FFCC00', borderRadius: 8, textAlign: 'center', fontWeight: 800, fontSize: 13 }}>
-          Total: Bds$240 (2 days × $120)
+        <div style={{ padding: 12, backgroundColor: 'var(--color-yellow)', borderRadius: 10, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--color-black)' }}>
+          2 Days × $135 = <strong>Bds$270</strong>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Step3Screen() {
-  return (
-    <div style={{ padding: 20, fontFamily: 'var(--font-sans)', textAlign: 'center' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, textAlign: 'left' }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: '#FFCC00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>3</div>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Step 3</div>
-          <div style={{ fontSize: 16, fontWeight: 800, textTransform: 'uppercase' }}>Scan License</div>
+    ),
+  },
+  {
+    label: 'Scan',
+    title: 'Snap License',
+    icon: Icons.camera,
+    content: (
+      <div>
+        <div style={{ padding: 32, border: '3px dashed #d4d4d4', borderRadius: 14, textAlign: 'center', marginBottom: 12 }}>
+          <Icons.camera style={{ width: 44, height: 44, stroke: '#bbb', margin: '0 auto 10px' }} />
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#666' }}>Tap to upload or take photo</div>
+          <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>JPEG, PNG, or HEIC</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', backgroundColor: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+          <Icons.bolt style={{ width: 16, height: 16, stroke: '#16a34a' }} />
+          <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>License recognized instantly</span>
         </div>
       </div>
-      <div style={{ padding: 30, border: '3px dashed #ddd', borderRadius: 12, marginBottom: 12 }}>
-        <Icons.camera style={{ width: 40, height: 40, stroke: '#ccc', margin: '0 auto 8px' }} />
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#666' }}>Tap to upload or take photo</div>
-        <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>JPEG, PNG, or HEIC</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
-        <Icons.bolt style={{ width: 16, height: 16, stroke: '#16a34a' }} />
-        <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>AI reads your license instantly</span>
-      </div>
-    </div>
-  );
-}
-
-function Step4Screen() {
-  return (
-    <div style={{ padding: 20, fontFamily: 'var(--font-sans)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: '#FFCC00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>4</div>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Step 4</div>
-          <div style={{ fontSize: 16, fontWeight: 800, textTransform: 'uppercase' }}>Confirm</div>
-        </div>
-      </div>
-      <div style={{ backgroundColor: '#f5f5f0', borderRadius: 12, padding: 16, border: '2px solid #2d2d2d' }}>
-        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 10, textTransform: 'uppercase' }}>Booking Summary</div>
+    ),
+  },
+  {
+    label: 'Confirm',
+    title: 'Book & Go',
+    icon: Icons.check,
+    content: (
+      <div style={{ backgroundColor: '#f5f5f0', borderRadius: 14, padding: 18, border: '2px solid #2d2d2d' }}>
+        <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Booking Summary</div>
         {[
-          ['Vehicle', 'Standard Rental Car'],
+          ['Vehicle', 'Suzuki Swift'],
           ['Dates', 'Aug 26 → Aug 28'],
           ['Customer', 'John Smith'],
-          ['License', '••••4582'],
         ].map(([k, v]) => (
-          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee', fontSize: 12 }}>
-            <span style={{ color: '#666' }}>{k}</span>
-            <span style={{ fontWeight: 600 }}>{v}</span>
+          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #e5e5e5', fontSize: 12 }}>
+            <span style={{ color: '#999', fontWeight: 600 }}>{k}</span>
+            <span style={{ fontWeight: 700 }}>{v}</span>
           </div>
         ))}
-        <div style={{ marginTop: 12, padding: 12, backgroundColor: '#FFCC00', borderRadius: 8, textAlign: 'center', fontWeight: 800, fontSize: 14 }}>
-          ✓ Confirm Booking
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', fontSize: 12 }}>
+          <span style={{ color: '#999', fontWeight: 600 }}>License</span>
+          <span style={{ fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4 }}><Icons.check style={{ width: 14, height: 14, stroke: '#16a34a', strokeWidth: 3 }} /> Scanned</span>
+        </div>
+        <div style={{ marginTop: 14, padding: 12, backgroundColor: 'var(--color-yellow)', borderRadius: 10, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--color-black)' }}>
+          <Icons.bolt style={{ width: 14, height: 14, stroke: 'var(--color-black)', strokeWidth: 2.5, display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Confirm Booking
         </div>
       </div>
+    ),
+  },
+];
+
+/* ─── How It Works — Tabbed Walkthrough ──────────── */
+function HowItWorksTabs() {
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setActive((p) => (p + 1) % 4), 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 'var(--space-10)', alignItems: 'center' }}>
+      {/* Tabs */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        {STEPS.map((s, i) => {
+          const Icon = s.icon;
+          const isActive = i === active;
+          return (
+            <motion.button key={i} onClick={() => setActive(i)} whileHover={{ x: 6 }} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-4) var(--space-5)', backgroundColor: isActive ? 'var(--color-yellow)' : 'transparent', color: isActive ? 'var(--color-black)' : 'var(--color-dark-gray)', border: isActive ? '2px solid var(--color-yellow)' : '2px solid transparent', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left', transition: 'all 0.3s ease' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: isActive ? 'var(--color-black)' : 'var(--color-charcoal)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon style={{ width: 20, height: 20, stroke: isActive ? 'var(--color-yellow)' : 'var(--color-medium-gray)' }} />
+              </div>
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6, marginBottom: 2 }}>Step {i + 1}</div>
+                <div style={{ fontWeight: 800, fontSize: 16, textTransform: 'uppercase' }}>{s.label}</div>
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Device frame */}
+      <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.3 }} style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{ width: '100%', maxWidth: 420, backgroundColor: 'var(--color-charcoal)', borderRadius: 28, padding: '14px 14px 0', boxShadow: '0 30px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)' }}>
+          {/* Notch */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+            <div style={{ width: 90, height: 6, backgroundColor: '#444', borderRadius: 3 }} />
+          </div>
+          {/* Screen */}
+          <AnimatePresence mode="wait">
+            <motion.div key={active} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.35 }} style={{ backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', minHeight: 340 }}>
+              <StepScreen step={active + 1} title={STEPS[active].title}>
+                {STEPS[active].content}
+              </StepScreen>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -264,83 +271,92 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
       <Marquee />
 
-      {/* ═══ HERO ═══════════════════════════════════════ */}
+      {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}
       <motion.header ref={heroRef} style={{ y: heroY, scale: heroScale, opacity: heroOpacity }}>
         <div style={{
+          height: '100vh',
+          minHeight: 700,
           backgroundColor: 'var(--color-black)',
           color: 'var(--color-white)',
-          padding: 'var(--space-24) var(--space-6) var(--space-20)',
-          borderBottom: '4px solid var(--color-yellow)',
           position: 'relative',
           overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
-          {/* Grid bg */}
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,204,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,204,0,0.04) 1px, transparent 1px)', backgroundSize: '50px 50px', pointerEvents: 'none' }} />
+          {/* Animated grid */}
+          <motion.div animate={{ backgroundPosition: ['0% 0%', '100% 100%'] }} transition={{ duration: 40, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,204,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,204,0,0.06) 1px, transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
 
-          {/* Floating orbs */}
-          <motion.div animate={{ y: [0, -25, 0], x: [0, 12, 0] }} transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'absolute', top: '12%', right: '8%', width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,204,0,0.25), transparent 70%)', filter: 'blur(35px)', pointerEvents: 'none' }} />
-          <motion.div animate={{ y: [0, 18, 0], x: [0, -15, 0] }} transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'absolute', bottom: '18%', left: '6%', width: 100, height: 100, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,204,0,0.18), transparent 70%)', filter: 'blur(28px)', pointerEvents: 'none' }} />
-
-          {/* Bolt decorations */}
-          <motion.div animate={{ opacity: [0.03, 0.08, 0.03], rotate: [0, 5, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'absolute', top: '8%', left: '15%', pointerEvents: 'none' }}>
-            <Icons.bolt style={{ width: 120, height: 120, stroke: 'var(--color-yellow)', strokeWidth: 1 }} />
-          </motion.div>
-          <motion.div animate={{ opacity: [0.02, 0.06, 0.02], rotate: [-10, 0, -10] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }} style={{ position: 'absolute', bottom: '10%', right: '12%', pointerEvents: 'none' }}>
-            <Icons.bolt style={{ width: 80, height: 80, stroke: 'var(--color-yellow)', strokeWidth: 1 }} />
+          {/* Rotating bolt behind content */}
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', width: 500, height: 500, pointerEvents: 'none', opacity: 0.08 }}>
+            <Icons.bolt style={{ width: '100%', height: '100%', stroke: 'var(--color-yellow)', strokeWidth: 0.5 }} />
           </motion.div>
 
-          {/* Rings */}
-          <motion.div initial={{ opacity: 0, scale: 0.4, rotate: -90 }} animate={{ opacity: 0.06, scale: 1, rotate: 0 }} transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }} style={{ position: 'absolute', top: -160, right: -160, width: 520, height: 520, border: '6px solid var(--color-yellow)', borderRadius: '50%' }} />
-          <motion.div initial={{ opacity: 0, scale: 0.4, rotate: 90 }} animate={{ opacity: 0.04, scale: 1, rotate: 0 }} transition={{ duration: 2, delay: 0.15, ease: [0.16, 1, 0.3, 1] }} style={{ position: 'absolute', bottom: -120, left: -120, width: 380, height: 380, border: '4px solid var(--color-white)', borderRadius: '50%' }} />
+          {/* Lightning flash overlay */}
+          <motion.div animate={{ opacity: [0, 0, 0, 0.15, 0, 0.08, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', inset: 0, backgroundColor: 'var(--color-yellow)', pointerEvents: 'none', zIndex: 3 }} />
 
-          <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-12)', alignItems: 'center' }}>
-            {/* Left — text */}
-            <div>
-              <motion.div initial={{ opacity: 0, x: -40, filter: 'blur(8px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} transition={{ duration: 0.6, delay: 0.2 }} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-8)', padding: '6px 14px', border: '1px solid rgba(255,204,0,0.3)' }}>
-                <Icons.bolt style={{ width: 14, height: 14 }} />
-                Lightning-Fast Booking — Barbados
+          {/* Center content */}
+          <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 var(--space-6)', maxWidth: 900 }}>
+            {/* Flash flicker on content */}
+            <motion.div animate={{ opacity: [1, 1, 1, 0.6, 1, 0.85, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}>
+            {/* Bolt icon - large */}
+            <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} style={{ marginBottom: 'var(--space-6)' }}>
+              <motion.div animate={{ filter: ['drop-shadow(0 0 20px rgba(255,204,0,0.6))', 'drop-shadow(0 0 40px rgba(255,204,0,0.9))', 'drop-shadow(0 0 20px rgba(255,204,0,0.6))'] }} transition={{ duration: 2, repeat: Infinity }}>
+                <Icons.bolt style={{ width: 80, height: 80, stroke: 'var(--color-yellow)', strokeWidth: 2, margin: '0 auto' }} />
               </motion.div>
+            </motion.div>
 
-              <div style={{ overflow: 'hidden', marginBottom: 'var(--space-3)' }}>
-                <div style={{ display: 'flex', gap: 'var(--space-5)', flexWrap: 'wrap' }}>
-                  {['Book', 'A', 'Car.'].map((word, i) => (
-                    <motion.span key={i} initial={{ y: '110%', rotateX: -40 }} animate={{ y: 0, rotateX: 0 }} transition={{ duration: 0.8, delay: 0.3 + i * 0.12, ease: [0.16, 1, 0.3, 1] }} style={{ fontSize: 'clamp(3rem, 7vw, 6rem)', fontWeight: 800, lineHeight: 1, letterSpacing: '-0.03em', textTransform: 'uppercase', display: 'inline-block' }}>
-                      {word}
-                    </motion.span>
-                  ))}
-                </div>
-              </div>
-              <div style={{ overflow: 'hidden', marginBottom: 'var(--space-6)' }}>
-                <motion.div initial={{ y: '110%' }} animate={{ y: 0 }} transition={{ duration: 0.8, delay: 0.7, ease: [0.16, 1, 0.3, 1] }} style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)', fontWeight: 800, lineHeight: 1, textTransform: 'uppercase', color: 'var(--color-yellow)' }}>
-                  No Calls. No Hassle.
-                </motion.div>
-              </div>
-
-              <motion.p initial={{ opacity: 0, y: 20, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.7, delay: 0.9 }} style={{ fontSize: 'var(--font-size-lg)', opacity: 0.7, maxWidth: 480, lineHeight: 1.7, marginBottom: 'var(--space-10)' }}>
-                AI-powered online booking for Barbados. Upload your license, pick your dates, drive away. Under 2 minutes, zero phone calls.
-              </motion.p>
-
-              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 1.1 }} style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-                <motion.button whileHover={{ scale: 1.05, boxShadow: '0 0 50px rgba(255,204,0,0.4)' }} whileTap={{ scale: 0.96 }} onClick={onBookNow} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-10)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                  Book Now <Icons.arrowRight style={{ width: 20, height: 20 }} />
-                </motion.button>
-                <motion.a whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.08)' }} whileTap={{ scale: 0.96 }} href="#how-it-works" style={{ color: 'var(--color-white)', border: '2px solid rgba(255,255,255,0.35)', padding: 'var(--space-5) var(--space-10)', fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                  How It Works ↓
-                </motion.a>
+            {/* Main title - cinematic reveal */}
+            <div style={{ overflow: 'hidden', marginBottom: 'var(--space-2)' }}>
+              <motion.div initial={{ y: '120%' }} animate={{ y: 0 }} transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }} style={{ fontSize: 'clamp(4rem, 10vw, 8rem)', fontWeight: 900, lineHeight: 0.9, letterSpacing: '-0.04em', textTransform: 'uppercase', fontFamily: "'Inter', 'Arial Black', sans-serif" }}>
+                DON<span style={{ display: 'inline-flex', verticalAlign: 'super', marginTop: '-0.15em' }}><Icons.bolt style={{ width: '0.65em', height: '0.65em', stroke: 'var(--color-yellow)', strokeWidth: 2.5, fill: 'var(--color-yellow)' }} /></span>S
+              </motion.div>
+            </div>
+            <div style={{ overflow: 'hidden', marginBottom: 'var(--space-2)' }}>
+              <motion.div initial={{ y: '120%' }} animate={{ y: 0 }} transition={{ duration: 1, delay: 0.45, ease: [0.16, 1, 0.3, 1] }} style={{ fontSize: 'clamp(4rem, 10vw, 8rem)', fontWeight: 900, lineHeight: 0.9, letterSpacing: '-0.04em', textTransform: 'uppercase', color: 'var(--color-yellow)', fontFamily: "'Inter', 'Arial Black', sans-serif" }}>
+                RENTAL
               </motion.div>
             </div>
 
-            {/* Right — hero car image */}
-            <motion.div initial={{ opacity: 0, x: 60, scale: 0.9 }} animate={{ opacity: 1, x: 0, scale: 1 }} transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }} style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-              <motion.div animate={{ y: [0, -12, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'relative', width: '100%', maxWidth: 380, overflow: 'hidden', borderRadius: 16 }}>
-                <img src="/dons-car.png" alt="Don's Rental Car" style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', filter: 'drop-shadow(0 30px 40px rgba(0,0,0,0.5))' }} />
-              </motion.div>
-              {/* Price badge */}
-              <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 1.2, type: 'spring', stiffness: 300 }} style={{ position: 'absolute', bottom: 20, right: 10, backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', padding: '10px 18px', fontWeight: 800, fontSize: 18, boxShadow: '0 8px 25px rgba(0,0,0,0.3)' }}>
-                From $120/day
-              </motion.div>
+            {/* Animated underline */}
+            <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.8, delay: 0.8, ease: [0.16, 1, 0.3, 1] }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: 'var(--space-6) auto', maxWidth: 200, transformOrigin: 'center' }} />
+
+            {/* Tagline */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1 }} style={{ fontSize: 'clamp(1rem, 2.5vw, 1.5rem)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.7)', marginBottom: 'var(--space-2)' }}>
+              Barbados Car Rental
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.15 }} style={{ fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', color: 'rgba(255,255,255,0.45)', marginBottom: 'var(--space-10)', fontFamily: 'var(--font-mono)' }}>
+              Online Booking · Zero Phone Calls · Fast & Easy
+            </motion.div>
+
+            {/* CTA buttons */}
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 1.3 }} style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <motion.button whileHover={{ scale: 1.06, boxShadow: '0 0 60px rgba(255,204,0,0.5)' }} whileTap={{ scale: 0.95 }} onClick={onBookNow} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                <Icons.bolt style={{ width: 20, height: 20 }} /> Book Now
+              </motion.button>
+              <motion.a whileHover={{ scale: 1.06, borderColor: 'var(--color-yellow)', color: 'var(--color-yellow)' }} whileTap={{ scale: 0.95 }} href="#how-it-works" style={{ color: 'var(--color-white)', border: '2px solid rgba(255,255,255,0.3)', padding: 'var(--space-5) var(--space-10)', fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                How It Works ↓
+              </motion.a>
+            </motion.div>
+
+            {/* Stats row */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 1.6 }} style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-12)', marginTop: 'var(--space-16)', flexWrap: 'wrap' }}>
+              {[
+                { value: '2min', label: 'Book & Drive' },
+                { value: '24/7', label: 'Online Booking' },
+                { value: '$0', label: 'Hidden Fees' },
+              ].map((stat, i) => (
+                <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.7 + i * 0.1 }} style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 'clamp(1.8rem, 3vw, 2.5rem)', fontWeight: 900, color: 'var(--color-yellow)', lineHeight: 1 }}>{stat.value}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>{stat.label}</div>
+                </motion.div>
+              ))}
+            </motion.div>
             </motion.div>
           </div>
+
+          {/* Bottom fade */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(transparent, var(--color-black))', pointerEvents: 'none' }} />
         </div>
       </motion.header>
 
@@ -366,29 +382,17 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
 
       {/* ═══ HOW IT WORKS — Interactive Walkthrough ═════ */}
       <section id="how-it-works" style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: 'var(--space-24) var(--space-6)' }}>
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-16)', textAlign: 'center' }}>
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)', textAlign: 'center' }}>
           <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: '0 auto var(--space-4)' }} />
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>How It Works</p>
           <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>Four Steps. Done.</h2>
-          <p style={{ marginTop: 'var(--space-4)', color: 'var(--color-dark-gray)', maxWidth: 500, margin: 'var(--space-4) auto 0', lineHeight: 1.6 }}>See exactly how easy it is. Each step takes seconds.</p>
         </motion.div>
 
-        {/* Device mockups */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-6)' }}>
-          {[
-            { step: <Step1Screen />, label: 'Pick your ride' },
-            { step: <Step2Screen />, label: 'Set your dates' },
-            { step: <Step3Screen />, label: 'Snap your license' },
-            { step: <Step4Screen />, label: 'Confirm & go' },
-          ].map((s, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: i * 0.15 }}>
-              <DeviceFrame label={s.label}>{s.step}</DeviceFrame>
-            </motion.div>
-          ))}
-        </div>
+        {/* Tabbed walkthrough */}
+        <HowItWorksTabs />
 
         {/* Connecting line */}
-        <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.6 }} style={{ height: 3, background: 'linear-gradient(90deg, var(--color-yellow), var(--color-yellow))', marginTop: 'var(--space-10)', transformOrigin: 'left' }} />
+        <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.6 }} style={{ height: 3, background: 'var(--color-yellow)', marginTop: 'var(--space-10)', transformOrigin: 'left' }} />
         <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.9 }} style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-dark-gray)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           → That's it. No phone calls. No waiting.
         </motion.p>
@@ -438,23 +442,23 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
         </section>
       )}
 
-      {/* ═══ AI FEATURE ═════════════════════════════════ */}
+      {/* ═══ HOW IT'S FAST ═════════════════════════════════ */}
       <section style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: 'var(--space-24) var(--space-6)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-16)', alignItems: 'center' }}>
           <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
             <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', marginBottom: 'var(--space-4)' }} />
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>Powered by AI</p>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>Built For Speed</p>
             <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.5rem)', fontWeight: 800, textTransform: 'uppercase', marginBottom: 'var(--space-6)', lineHeight: 1.15 }}>
               Snap Your License.<br /><span style={{ color: 'var(--color-yellow)' }}>We'll Do The Rest.</span>
             </h2>
             <p style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-dark-gray)', lineHeight: 1.7, marginBottom: 'var(--space-8)' }}>
-              Our AI reads your Barbados driver's license from a single photo. Name, number, expiry — extracted in seconds. No typing, no errors.
+              Take a photo of your Barbados driver's license and we'll handle the details. No typing, no hassle — just snap and go.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               {[
-                { icon: Icons.bolt, text: 'Instant license scanning' },
+                { icon: Icons.bolt, text: 'Instant license recognition' },
                 { icon: Icons.check, text: 'Auto-filled personal info' },
-                { icon: Icons.shield, text: 'Photo stored securely in GCS' },
+                { icon: Icons.shield, text: 'Secure photo storage' },
                 { icon: Icons.phone, text: 'Works with any device camera' },
               ].map((item, i) => (
                 <motion.div key={item.text} initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }} whileHover={{ x: 8, backgroundColor: 'var(--color-light-gray)' }} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', borderLeft: '3px solid var(--color-yellow)', transition: 'all 0.2s' }}>
@@ -470,7 +474,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
               {/* Corner accents */}
               <div style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderTop: '4px solid var(--color-yellow)', borderLeft: '4px solid var(--color-yellow)' }} />
               <div style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderBottom: '4px solid var(--color-yellow)', borderRight: '4px solid var(--color-yellow)' }} />
-              <motion.img animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} src="/dons-car.png" alt="License scan demo" style={{ width: 180, height: 240, objectFit: 'cover', borderRadius: 12, filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.15))' }} />
+              <motion.img animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} src="/dons-car.png" alt="Don's Rental car" style={{ width: 180, height: 240, objectFit: 'cover', borderRadius: 12, filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.15))' }} />
               <div style={{ marginTop: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)' }}>
                 {['JPEG', 'PNG', 'HEIC'].map((fmt) => (
                   <span key={fmt} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)', padding: '3px 10px', border: '1px solid var(--color-charcoal)' }}>{fmt}</span>
@@ -527,18 +531,26 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
 
       {/* ═══ FOOTER ═════════════════════════════════════ */}
       <footer style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-12) var(--space-6)', borderTop: '4px solid var(--color-yellow)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-6)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <Icons.bolt style={{ width: 24, height: 24, stroke: 'var(--color-yellow)' }} />
-            <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: 'var(--font-size-lg)' }}>Don's Car Rental</span>
-            <span style={{ color: 'var(--color-medium-gray)', marginLeft: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>Barbados</span>
+        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-6)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <Icons.bolt style={{ width: 24, height: 24, stroke: 'var(--color-yellow)' }} />
+              <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: 'var(--font-size-lg)' }}>Don's Car Rental</span>
+              <span style={{ color: 'var(--color-medium-gray)', marginLeft: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>Barbados</span>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)' }}>
+              <a href="/privacy" style={{ color: 'var(--color-medium-gray)', textDecoration: 'none' }}>Privacy</a>
+              <a href="/terms" style={{ color: 'var(--color-medium-gray)', textDecoration: 'none' }}>Terms</a>
+              <a href="mailto:bookings@donsrental.com" style={{ color: 'var(--color-medium-gray)', textDecoration: 'none' }}>Contact</a>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)' }}>
-            <a href="#" style={{ color: 'var(--color-medium-gray)', textDecoration: 'none' }}>Privacy</a>
-            <a href="#" style={{ color: 'var(--color-medium-gray)', textDecoration: 'none' }}>Terms</a>
-            <a href="#" style={{ color: 'var(--color-medium-gray)', textDecoration: 'none' }}>Contact</a>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)' }}>© {new Date().getFullYear()} Don's Car Rental. All rights reserved.</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)' }}>
+              <span>Built by</span>
+              <a href="https://onlineverywhere.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-yellow)', textDecoration: 'none', fontWeight: 600 }}>OnlineVeryWhere</a>
+            </div>
           </div>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)' }}>© {new Date().getFullYear()} All rights reserved</div>
         </div>
       </footer>
     </div>

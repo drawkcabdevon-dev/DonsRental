@@ -386,8 +386,14 @@ export function AvailabilityCalendar({
           <span className="calendar-legend-dot booked" />
           Booked
         </span>
-        {onRangeSelect && (
-          <span className="calendar-legend-item calendar-legend-hint">Click start + end, or drag</span>
+        {hasSelection && (
+          <span className="calendar-legend-item">
+            <span className="calendar-legend-dot selected" />
+            Selected
+          </span>
+        )}
+        {onRangeSelect && !hasSelection && (
+          <span className="calendar-legend-item calendar-legend-hint">Click + drag to select range</span>
         )}
         {hasSelection && (
           <button className="calendar-clear-btn" onClick={clearSelection}>

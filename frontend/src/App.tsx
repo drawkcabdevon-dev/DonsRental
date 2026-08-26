@@ -1,6 +1,6 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { api } from './services/api';
 import {
   Button,
@@ -21,6 +21,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { LandingPage } from './pages/LandingPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { useStepTransition } from './hooks/useAnimations';
+import { motion, AnimatePresence } from 'motion/react';
 import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 
 interface Toast {
@@ -46,6 +47,8 @@ declare global {
 let _toastId = 0;
 
 function App() {
+  const location = useLocation();
+  const isLanding = location.pathname === '/';
   const [step, setStep] = useState<BookingStep>(1);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -557,6 +560,7 @@ function App() {
       </div>
 
       {/* Header */}
+      {!isLanding && (
       <header className="site-header">
         <div className="site-header-inner">
           <div>
@@ -581,9 +585,10 @@ function App() {
           )}
         </div>
       </header>
+      )}
 
       {/* Main Content */}
-      <main id="main-content" className="site-main" tabIndex={-1}>
+      <main id="main-content" className={isLanding ? '' : 'site-main'} tabIndex={-1}>
         <Routes>
           <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -636,292 +641,349 @@ function App() {
         )}
 
         {/* Step 1: Vehicle + Pricing Packages */}
-        {step === 1 && !bookingRef && (
-          <div ref={step1Ref} className="step-container">
-            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Choose Your Vehicle</h2>
-            {loading ? (
-              <DrivingLoader message="Loading vehicles..." variant="compact" />
-            ) : (
-              <>
-                {/* Calendar + Vehicle Selection */}
+        <AnimatePresence mode="wait">
+          {step === 1 && !bookingRef && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 30 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <div ref={step1Ref} className="step-container">
+                <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Choose Your Vehicle</h2>
+                {loading ? (
+                  <DrivingLoader message="Loading vehicles..." variant="compact" />
+                ) : (
+                  <>
+                    {/* Calendar + Vehicle Selection */}
+                    <div className="step-section">
+                      <div className="grid-responsive-2">
+                        <div className="step-column">
+                          <h3 className="step-column-title">
+                            <Calendar size={20} /> Pick a date to start
+                          </h3>
+                          <p className="step-column-desc">
+                            Tap any available date to jump straight to booking.
+                          </p>
+                          <AvailabilityCalendar
+                            onRangeSelect={(start, end) => {
+                              handleBookingChange('pickupDate', start);
+                              handleBookingChange('returnDate', end);
+                              setStep(2);
+                            }}
+                            onDateSelect={(date) => {
+                              handleBookingChange('pickupDate', date);
+                              const ret = new Date(date);
+                              ret.setDate(ret.getDate() + 1);
+                              handleBookingChange('returnDate', ret.toISOString().split('T')[0]);
+                              setStep(2);
+                            }}
+                            selectedPickup={booking.pickupDate}
+                            selectedReturn={booking.returnDate}
+                          />
+                        </div>
+                        <div className="step-column">
+                          <h3 className="step-column-title">
+                            <Car size={20} /> Or choose a vehicle first
+                          </h3>
+                          <p className="step-column-desc">
+                            Select your car, then pick dates on the next step.
+                          </p>
+                          <div className="vehicle-list">
+                            {vehicles.map((vehicle) => (
+                              <VehicleCard
+                                key={vehicle.id}
+                                vehicle={vehicle}
+                                isSelected={booking.vehicleId === vehicle.id}
+                                onSelect={(v) => handleBookingChange('vehicleId', v.id)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <h3 className="section-heading">Quick Packages</h3>
+                    <p className="section-desc">
+                      Select a preset package and we'll auto-set your dates. Or tap a calendar date above.
+                    </p>
+                    <PricingPackages
+                      packages={PRICING_PACKAGES}
+                      selectedId={booking.selectedPackage}
+                      onSelect={handlePackageSelect}
+                    />
+                  </>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Step 2: Dates & Pricing */}
+        <AnimatePresence mode="wait">
+          {step === 2 && !bookingRef && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 30 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <div ref={step2Ref} className="step-container">
+                <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Select Dates & Pricing</h2>
+                
                 <div className="step-section">
-                  <div className="grid-responsive-2">
-                    <div className="step-column">
-                      <h3 className="step-column-title">
-                        <Calendar size={20} /> Pick a date to start
+                  <div className="step-form-grid">
+                    <div className="step-form-fields">
+                      <div className="form-row-2">
+                        <Input
+                          label="Pick-up Date *"
+                          variant="date"
+                          value={booking.pickupDate}
+                          onChange={(e) => handleBookingChange('pickupDate', e.target.value)}
+                        />
+                        
+                        <Input
+                          label="Pick-up Time *"
+                          variant="time"
+                          value={booking.pickupTime}
+                          onChange={(e) => handleBookingChange('pickupTime', e.target.value)}
+                        />
+                        
+                        <Input
+                          label="Return Date *"
+                          variant="date"
+                          value={booking.returnDate}
+                          onChange={(e) => handleBookingChange('returnDate', e.target.value)}
+                        />
+                        
+                        <Input
+                          label="Return Time *"
+                          variant="time"
+                          value={booking.returnTime}
+                          onChange={(e) => handleBookingChange('returnTime', e.target.value)}
+                        />
+                      </div>
+                      
+                      <Input
+                        label="Drop-off Location"
+                        placeholder="Airport, Downtown, etc."
+                        value={booking.dropoffLocation}
+                        onChange={(e) => handleBookingChange('dropoffLocation', e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="step-calendar-section">
+                      <h3 className="section-heading-sm">
+                        <Calendar size={18} /> Availability
                       </h3>
-                      <p className="step-column-desc">
-                        Tap any available date to jump straight to booking.
-                      </p>
                       <AvailabilityCalendar
                         onRangeSelect={(start, end) => {
                           handleBookingChange('pickupDate', start);
                           handleBookingChange('returnDate', end);
-                          setStep(2);
                         }}
                         onDateSelect={(date) => {
                           handleBookingChange('pickupDate', date);
                           const ret = new Date(date);
                           ret.setDate(ret.getDate() + 1);
                           handleBookingChange('returnDate', ret.toISOString().split('T')[0]);
-                          setStep(2);
                         }}
                         selectedPickup={booking.pickupDate}
                         selectedReturn={booking.returnDate}
                       />
                     </div>
-                    <div className="step-column">
-                      <h3 className="step-column-title">
-                        <Car size={20} /> Or choose a vehicle first
-                      </h3>
-                      <p className="step-column-desc">
-                        Select your car, then pick dates on the next step.
-                      </p>
-                      <div className="vehicle-list">
-                        {vehicles.map((vehicle) => (
-                          <VehicleCard
-                            key={vehicle.id}
-                            vehicle={vehicle}
-                            isSelected={booking.vehicleId === vehicle.id}
-                            onSelect={(v) => handleBookingChange('vehicleId', v.id)}
-                          />
-                        ))}
-                      </div>
+                  </div>
+
+                  {/* Live availability status */}
+                  {booking.pickupDate && booking.returnDate && (
+                    <div
+                      className={`availability-status ${dateAvailability.loading ? 'loading' : dateAvailability.available ? 'available' : 'unavailable'}`}
+                      role="status"
+                      aria-live="polite"
+                    >
+                      {dateAvailability.loading ? (
+                        <Spinner size="sm" />
+                      ) : dateAvailability.available ? (
+                        <CircleCheck size={20} aria-hidden="true" />
+                      ) : (
+                        <X size={20} aria-hidden="true" />
+                      )}
+                      <span>
+                        {dateAvailability.loading ? 'Checking availability...' : dateAvailability.message}
+                      </span>
                     </div>
-                  </div>
-                </div>
-
-                <h3 className="section-heading">Quick Packages</h3>
-                <p className="section-desc">
-                  Select a preset package and we'll auto-set your dates. Or tap a calendar date above.
-                </p>
-                <PricingPackages
-                  packages={PRICING_PACKAGES}
-                  selectedId={booking.selectedPackage}
-                  onSelect={handlePackageSelect}
-                />
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Step 2: Dates & Pricing */}
-        {step === 2 && !bookingRef && (
-          <div ref={step2Ref} className="step-container">
-            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Select Dates & Pricing</h2>
-            
-            <div className="step-section">
-              <div className="step-form-grid">
-                <div className="step-form-fields">
-                  <div className="form-row-2">
-                    <Input
-                      label="Pick-up Date *"
-                      variant="date"
-                      value={booking.pickupDate}
-                      onChange={(e) => handleBookingChange('pickupDate', e.target.value)}
-                    />
-                    
-                    <Input
-                      label="Pick-up Time *"
-                      variant="time"
-                      value={booking.pickupTime}
-                      onChange={(e) => handleBookingChange('pickupTime', e.target.value)}
-                    />
-                    
-                    <Input
-                      label="Return Date *"
-                      variant="date"
-                      value={booking.returnDate}
-                      onChange={(e) => handleBookingChange('returnDate', e.target.value)}
-                    />
-                    
-                    <Input
-                      label="Return Time *"
-                      variant="time"
-                      value={booking.returnTime}
-                      onChange={(e) => handleBookingChange('returnTime', e.target.value)}
-                    />
-                  </div>
+                  )}
                   
-                  <Input
-                    label="Drop-off Location"
-                    placeholder="Airport, Downtown, etc."
-                    value={booking.dropoffLocation}
-                    onChange={(e) => handleBookingChange('dropoffLocation', e.target.value)}
-                  />
-                </div>
-                
-                <div className="step-calendar-section">
-                  <h3 className="section-heading-sm">
-                    <Calendar size={18} /> Availability
-                  </h3>
-                  <AvailabilityCalendar
-                    onRangeSelect={(start, end) => {
-                      handleBookingChange('pickupDate', start);
-                      handleBookingChange('returnDate', end);
-                    }}
-                    onDateSelect={(date) => {
-                      handleBookingChange('pickupDate', date);
-                      const ret = new Date(date);
-                      ret.setDate(ret.getDate() + 1);
-                      handleBookingChange('returnDate', ret.toISOString().split('T')[0]);
-                    }}
-                    selectedPickup={booking.pickupDate}
-                    selectedReturn={booking.returnDate}
-                  />
+                  {selectedVehicle && (
+                    <div className="step-section">
+                      <PricingBreakdown
+                        vehicleName={selectedVehicle.name}
+                        totalDays={calculateTotalDays()}
+                        dailyRate={selectedVehicle.rate}
+                        totalCost={calculateTotalCost()}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Live availability status */}
-              {booking.pickupDate && booking.returnDate && (
-                <div
-                  className={`availability-status ${dateAvailability.loading ? 'loading' : dateAvailability.available ? 'available' : 'unavailable'}`}
-                  role="status"
-                  aria-live="polite"
-                >
-                  {dateAvailability.loading ? (
-                    <Spinner size="sm" />
-                  ) : dateAvailability.available ? (
-                    <CircleCheck size={20} aria-hidden="true" />
-                  ) : (
-                    <X size={20} aria-hidden="true" />
-                  )}
-                  <span>
-                    {dateAvailability.loading ? 'Checking availability...' : dateAvailability.message}
-                  </span>
-                </div>
-              )}
-              
-              {selectedVehicle && (
-                <div className="step-section">
-                  <PricingBreakdown
-                    vehicleName={selectedVehicle.name}
-                    totalDays={calculateTotalDays()}
-                    dailyRate={selectedVehicle.rate}
-                    totalCost={calculateTotalCost()}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Step 3: License Verification */}
-        {step === 3 && !bookingRef && (
-          <div ref={step3Ref} className="step-container">
-            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Driver's License</h2>
-            <p className="section-desc">
-              Upload or take a photo of your license and we'll auto-fill your details. You can review and confirm on the final step.
-            </p>
-            {scanningLicense && (
-              <div style={{ marginBottom: 'var(--space-4)' }} role="status" aria-live="polite">
-                <Spinner message="Scanning license..." size="sm" />
+        <AnimatePresence mode="wait">
+          {step === 3 && !bookingRef && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 30 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <div ref={step3Ref} className="step-container">
+                <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Driver's License</h2>
+                <p className="section-desc">
+                  Upload or take a photo of your license and we'll auto-fill your details. You can review and confirm on the final step.
+                </p>
+                {scanningLicense && (
+                  <div style={{ marginBottom: 'var(--space-4)' }} role="status" aria-live="polite">
+                    <Spinner message="Scanning license..." size="sm" />
+                  </div>
+                )}
+                <div className="step-form-fields" style={{ maxWidth: '600px' }}>
+                  <LicenseVerificationForm
+                    data={{
+                      licenseNumber: booking.licenseNumber || '',
+                      licenseExpiry: booking.licenseExpiry || '',
+                      licenseIssuer: booking.licenseIssuer || '',
+                      licenseClass: booking.licenseClass || '',
+                      photoUrl: capturedPhotoPreview || undefined,
+                    }}
+                    onChange={(field, value) => {
+                      const fieldMap: Record<string, string> = {
+                        licenseNumber: 'licenseNumber',
+                        licenseExpiry: 'licenseExpiry',
+                        licenseIssuer: 'licenseIssuer',
+                        licenseClass: 'licenseClass',
+                      };
+                      handleBookingChange(fieldMap[field], value);
+                    }}
+                    onPhotoCapture={(file) => {
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        const dataUrl = e.target?.result as string;
+                        handleLicenseScan(dataUrl);
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </div>
               </div>
-            )}
-            <div className="step-form-fields" style={{ maxWidth: '600px' }}>
-              <LicenseVerificationForm
-                data={{
-                  licenseNumber: booking.licenseNumber || '',
-                  licenseExpiry: booking.licenseExpiry || '',
-                  licenseIssuer: booking.licenseIssuer || '',
-                  licenseClass: booking.licenseClass || '',
-                  photoUrl: capturedPhotoPreview || undefined,
-                }}
-                onChange={(field, value) => {
-                  const fieldMap: Record<string, string> = {
-                    licenseNumber: 'licenseNumber',
-                    licenseExpiry: 'licenseExpiry',
-                    licenseIssuer: 'licenseIssuer',
-                    licenseClass: 'licenseClass',
-                  };
-                  handleBookingChange(fieldMap[field], value);
-                }}
-                onPhotoCapture={(file) => {
-                  const reader = new FileReader();
-                  reader.onload = (e) => {
-                    const dataUrl = e.target?.result as string;
-                    handleLicenseScan(dataUrl);
-                  };
-                  reader.readAsDataURL(file);
-                }}
-              />
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Step 4: Personal Information */}
-        {step === 4 && !bookingRef && (
-          <div ref={step4Ref} className="step-container">
-            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Your Information</h2>
-            <p className="section-desc">
-              Fields were auto-filled from your license scan. Review and correct if needed.
-            </p>
-            <div className="step-form-fields" style={{ maxWidth: '600px' }}>
-              <PersonalInfoForm
-                data={{
-                  name: booking.customerName || '',
-                  email: booking.customerEmail || '',
-                  phone: booking.customerPhone || '',
-                  address: booking.customerAddress || '',
-                }}
-                onChange={(field, value) => {
-                  const fieldMap: Record<string, string> = {
-                    name: 'customerName',
-                    email: 'customerEmail',
-                    phone: 'customerPhone',
-                    address: 'customerAddress',
-                  };
-                  handleBookingChange(fieldMap[field], value);
-                }}
-              />
-            </div>
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {step === 4 && !bookingRef && (
+            <motion.div
+              key="step4"
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 30 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <div ref={step4Ref} className="step-container">
+                <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Your Information</h2>
+                <p className="section-desc">
+                  Fields were auto-filled from your license scan. Review and correct if needed.
+                </p>
+                <div className="step-form-fields" style={{ maxWidth: '600px' }}>
+                  <PersonalInfoForm
+                    data={{
+                      name: booking.customerName || '',
+                      email: booking.customerEmail || '',
+                      phone: booking.customerPhone || '',
+                      address: booking.customerAddress || '',
+                    }}
+                    onChange={(field, value) => {
+                      const fieldMap: Record<string, string> = {
+                        name: 'customerName',
+                        email: 'customerEmail',
+                        phone: 'customerPhone',
+                        address: 'customerAddress',
+                      };
+                      handleBookingChange(fieldMap[field], value);
+                    }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Step 5: Review & Confirm */}
-        {step === 5 && !bookingRef && (
-          <div ref={step5Ref} className="step-container step-container-narrow">
-            <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Review & Confirm</h2>
-            <BookingSummary
-              booking={{
-                ...booking,
-                totalDays: calculateTotalDays(),
-                totalCost: calculateTotalCost(),
-              }}
-              vehicle={selectedVehicle}
-              capturedPhotoPreview={capturedPhotoPreview}
-            />
-
-            {/* T&C Acceptance */}
-            <div className="tc-acceptance">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                  aria-required="true"
+        <AnimatePresence mode="wait">
+          {step === 5 && !bookingRef && (
+            <motion.div
+              key="step5"
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 30 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+              <div ref={step5Ref} className="step-container step-container-narrow">
+                <h2 ref={stepHeadingRef} tabIndex={-1} className="step-heading">Review & Confirm</h2>
+                <BookingSummary
+                  booking={{
+                    ...booking,
+                    totalDays: calculateTotalDays(),
+                    totalCost: calculateTotalCost(),
+                  }}
+                  vehicle={selectedVehicle}
+                  capturedPhotoPreview={capturedPhotoPreview}
                 />
-                <span>
-                  I have read and agree to the{' '}
-                  <a href="/terms" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
-                  {' '}and{' '}
-                  <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
-                  I understand the rental agreement, cancellation policy, and liability terms.
-                </span>
-              </label>
-            </div>
-          </div>
-        )}
+
+                {/* T&C Acceptance */}
+                <div className="tc-acceptance">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                      aria-required="true"
+                    />
+                    <span>
+                      I have read and agree to the{' '}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>
+                      {' '}and{' '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+                      I understand the rental agreement, cancellation policy, and liability terms.
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Success State */}
-        {bookingRef && (
-          <div ref={confirmRef} className="step-container step-container-narrow">
-            <BookingConfirmation
-              bookingRef={bookingRef}
-              email={booking.customerEmail || ''}
-              photoUrl={booking.licensePhotoUrl || ''}
-              headingRef={stepHeadingRef}
-            />
+        <AnimatePresence mode="wait">
+          {bookingRef && (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              <div ref={confirmRef} className="step-container step-container-narrow">
+                <BookingConfirmation
+                  bookingRef={bookingRef}
+                  email={booking.customerEmail || ''}
+                  photoUrl={booking.licensePhotoUrl || ''}
+                  headingRef={stepHeadingRef}
+                />
 
             {/* Profile Creation Prompt */}
             {!user && !profileSaved && (
@@ -953,7 +1015,9 @@ function App() {
               </div>
             )}
           </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Navigation Buttons */}
         {!bookingRef && (
@@ -1000,9 +1064,10 @@ function App() {
       </main>
 
       {/* Chat Widget */}
-      <ChatWidget />
+      {!isLanding && <ChatWidget />}
 
       {/* Footer */}
+      {!isLanding && (
       <footer className="site-footer">
         <div className="site-footer-inner">
           <p className="site-footer-links">
@@ -1019,6 +1084,7 @@ function App() {
           </p>
         </div>
       </footer>
+      )}
 
     </div>
   );

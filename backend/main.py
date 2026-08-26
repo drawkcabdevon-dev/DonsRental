@@ -1039,5 +1039,23 @@ async def upload_photo(req: PhotoUploadRequest):
         raise HTTPException(500, f"Failed to upload photo to GCS: {e}")
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
+
 if os.path.isdir(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    from starlette.responses import FileResponse
+
+    # Serve static assets (js, css, images, etc.)
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="static-assets")
+
+    # SPA catch-all: serve index.html for all non-API routes
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Don't catch API routes
+        if full_path.startswith("api/"):
+            raise HTTPException(404, "Not Found")
+        # Try to serve the file directly (for any remaining static files)
+        file_path = os.path.join(FRONTEND_DIR, full_path)
+        if full_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        # Fall back to index.html for SPA routing
+        return FileResponse(INDEX_HTML)

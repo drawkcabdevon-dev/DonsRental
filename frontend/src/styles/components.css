@@ -2530,9 +2530,180 @@ h2:focus-visible {
 }
 
 /* ─────────────────────────────────────────────────
-   Mobile Touch Improvements
+   Booking Page Animations
    ───────────────────────────────────────────────── */
 
+/* Keyframes */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 204, 0, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(255, 204, 0, 0.2); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.9); opacity: 0; }
+  60% { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Step containers */
+.step-container {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* Step headings */
+.step-heading {
+  animation: fadeInLeft 0.3s ease-out;
+  position: relative;
+}
+
+.step-heading::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 60px;
+  height: 4px;
+  background: var(--color-yellow);
+  border-radius: 2px;
+  animation: slideInRight 0.4s ease-out 0.2s both;
+}
+
+/* Form fields stagger animation */
+.step-form-fields > * {
+  animation: fadeInUp 0.3s ease-out both;
+}
+
+.step-form-fields > *:nth-child(1) { animation-delay: 0.05s; }
+.step-form-fields > *:nth-child(2) { animation-delay: 0.1s; }
+.step-form-fields > *:nth-child(3) { animation-delay: 0.15s; }
+.step-form-fields > *:nth-child(4) { animation-delay: 0.2s; }
+.step-form-fields > *:nth-child(5) { animation-delay: 0.25s; }
+
+/* Input focus animation */
+.step-form-fields input,
+.step-form-fields select,
+.step-form-fields textarea {
+  transition: all 0.2s ease;
+}
+
+.step-form-fields input:focus,
+.step-form-fields select:focus,
+.step-form-fields textarea:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 204, 0, 0.15);
+}
+
+/* Button animations */
+.btn-primary {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 204, 0, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(255, 204, 0, 0.2);
+}
+
+.btn-outline {
+  transition: all 0.2s ease;
+}
+
+.btn-outline:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Vehicle card hover */
+.vehicle-card {
+  transition: all 0.2s ease;
+}
+
+.vehicle-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.vehicle-card.selected {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Calendar day hover */
+.calendar-day:not(.past):not(.other-month):not(.booked) {
+  transition: all 0.15s ease;
+}
+
+/* Pricing package hover */
+.pricing-package {
+  transition: all 0.2s ease;
+}
+
+.pricing-package:hover {
+  transform: translateY(-2px);
+}
+
+/* Navigation buttons */
+.nav-buttons {
+  animation: fadeInUp 0.3s ease-out 0.3s both;
+}
+
+/* Availability status */
+.availability-status {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* Loading shimmer effect */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Checkbox animation */
+.tc-acceptance input[type="checkbox"] {
+  transition: all 0.2s ease;
+}
+
+.tc-acceptance input[type="checkbox"]:checked {
+  animation: bounceIn 0.3s ease;
+}
+
+/* Toast notifications */
+.toast {
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Section headings */
+.section-heading {
+  animation: fadeInLeft 0.3s ease-out 0.1s both;
+}
+
+/* Mobile Touch Improvements */
 @media (max-width: 768px) {
   /* Remove tap highlight on mobile */
   * {

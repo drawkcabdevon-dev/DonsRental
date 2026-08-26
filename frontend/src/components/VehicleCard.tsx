@@ -1,5 +1,6 @@
 import type { Vehicle, PricingPackage } from '../types';
 import { Card, Badge } from './index';
+import { motion } from 'motion/react';
 import { Check } from 'lucide-react';
 
 interface VehicleCardProps {
@@ -17,37 +18,45 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
   };
 
   return (
-    <Card
-      className={`cursor-pointer transition-fast hover:shadow-lg ${
-        isSelected ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
-      }`}
-      onClick={() => onSelect(vehicle)}
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-      role="radio"
-      aria-checked={isSelected}
-      aria-label={`${vehicle.name} - Bds$${vehicle.rate} per day`}
+    <motion.div
+      whileHover={{ y: -4, boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)' }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.2 }}
     >
-      {vehicle.imageUrl && (
-        <div
-          className="vehicle-image-container w-full rounded-md mb-lg border-2 border-bau-black"
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '500px',
-          }}
-        >
-          <img
-            src={vehicle.imageUrl}
-            alt={`${vehicle.name} rental car`}
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-          />
-        </div>
-      )}
-      {vehicle.icon && (
-        <div className="text-5xl text-center mb-lg">{vehicle.icon}</div>
+      <Card
+        className={`cursor-pointer transition-fast ${
+          isSelected ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
+        }`}
+        onClick={() => onSelect(vehicle)}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="radio"
+        aria-checked={isSelected}
+        aria-label={`${vehicle.name} - Bds$${vehicle.rate} per day`}
+      >
+        {vehicle.imageUrl && (
+          <div
+            className="vehicle-image-container w-full rounded-md mb-lg border-2 border-bau-black"
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '500px',
+              overflow: 'hidden',
+            }}
+          >
+            <motion.img
+              src={vehicle.imageUrl}
+              alt={`${vehicle.name} rental car`}
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'cover' }}
+              whileHover={{ scale: 1.05 }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+        )}
+        {vehicle.icon && (
+          <div className="text-5xl text-center mb-lg">{vehicle.icon}</div>
       )}
       
       <h3 className="text-2xl font-bold mb-sm text-uppercase">{vehicle.name}</h3>
@@ -82,6 +91,7 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
         </div>
       )}
     </Card>
+    </motion.div>
   );
 }
 
@@ -107,37 +117,50 @@ interface PricingPackagesProps {
 export function PricingPackages({ packages, selectedId, onSelect }: PricingPackagesProps) {
   return (
     <div className="pricing-packages-grid grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }} role="radiogroup" aria-label="Pricing packages">
-      {packages.map((pkg) => {
+      {packages.map((pkg, index) => {
         const isSelected = selectedId === pkg.id;
         return (
-          <Card
+          <motion.div
             key={pkg.id}
-            className={`cursor-pointer transition-fast hover:shadow-lg ${
-              isSelected ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
-            }`}
-            onClick={() => onSelect(pkg)}
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onSelect(pkg);
-              }
-            }}
-            tabIndex={0}
-            role="radio"
-            aria-checked={isSelected}
-            aria-label={`${pkg.label} - ${pkg.days} days, Bds$${pkg.totalCost} total`}
-            style={{ padding: 'var(--space-4)', textAlign: 'center' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+            whileHover={{ y: -4, boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)' }}
+            whileTap={{ scale: 0.98 }}
           >
-            <p className="text-sm font-bold text-uppercase mb-sm" style={{ letterSpacing: '0.05em' }}>{pkg.label}</p>
-            <p className="text-3xl font-extrabold text-bau-yellow mb-sm">Bds${pkg.totalCost}</p>
-            <p className="text-xs text-bau-gray mb-md">Bds${pkg.dailyRate}/day &middot; {pkg.days} days</p>
-            <p className="text-xs text-bau-gray">{pkg.description}</p>
-            {isSelected && (
-              <div className="mt-md pt-md border-t-2 border-bau-black">
-                <p className="text-sm font-bold text-bau-yellow text-uppercase"><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Selected</p>
-              </div>
-            )}
-          </Card>
+            <Card
+              className={`cursor-pointer transition-fast ${
+                isSelected ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
+              }`}
+              onClick={() => onSelect(pkg)}
+              onKeyDown={(e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelect(pkg);
+                }
+              }}
+              tabIndex={0}
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={`${pkg.label} - ${pkg.days} days, Bds$${pkg.totalCost} total`}
+              style={{ padding: 'var(--space-4)', textAlign: 'center' }}
+            >
+              <p className="text-sm font-bold text-uppercase mb-sm" style={{ letterSpacing: '0.05em' }}>{pkg.label}</p>
+              <p className="text-3xl font-extrabold text-bau-yellow mb-sm">Bds${pkg.totalCost}</p>
+              <p className="text-xs text-bau-gray mb-md">Bds${pkg.dailyRate}/day &middot; {pkg.days} days</p>
+              <p className="text-xs text-bau-gray">{pkg.description}</p>
+              {isSelected && (
+                <motion.div 
+                  className="mt-md pt-md border-t-2 border-bau-black"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <p className="text-sm font-bold text-bau-yellow text-uppercase"><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Selected</p>
+                </motion.div>
+              )}
+            </Card>
+          </motion.div>
         );
       })}
     </div>
@@ -151,30 +174,56 @@ export function PricingBreakdown({
   totalCost,
 }: PricingBreakdownProps) {
   return (
-    <Card className="bg-bau-off-white border-4 border-bau-yellow">
-      <h4 className="text-lg font-bold text-uppercase mb-lg">Pricing Summary</h4>
-      
-      <div className="space-y-md mb-lg">
-        <div className="flex justify-between text-base">
-          <span className="font-semibold">Vehicle:</span>
-          <span className="font-bold">{vehicleName}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+    >
+      <Card className="bg-bau-off-white border-4 border-bau-yellow">
+        <h4 className="text-lg font-bold text-uppercase mb-lg">Pricing Summary</h4>
+        
+        <div className="space-y-md mb-lg">
+          <motion.div 
+            className="flex justify-between text-base"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <span className="font-semibold">Vehicle:</span>
+            <span className="font-bold">{vehicleName}</span>
+          </motion.div>
+          <motion.div 
+            className="flex justify-between text-base"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <span className="font-semibold">Days:</span>
+            <span className="font-bold">{totalDays}</span>
+          </motion.div>
+          <motion.div 
+            className="flex justify-between text-base"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          >
+            <span className="font-semibold">Rate:</span>
+            <span className="font-bold">Bds${dailyRate}/day</span>
+          </motion.div>
         </div>
-        <div className="flex justify-between text-base">
-          <span className="font-semibold">Days:</span>
-          <span className="font-bold">{totalDays}</span>
-        </div>
-        <div className="flex justify-between text-base">
-          <span className="font-semibold">Rate:</span>
-          <span className="font-bold">Bds${dailyRate}/day</span>
-        </div>
-      </div>
       
       <hr className="divider" />
       
-      <div className="flex justify-between text-xl">
+      <motion.div 
+        className="flex justify-between text-xl"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, delay: 0.4 }}
+      >
         <span className="font-extrabold text-uppercase">Total:</span>
         <span className="font-extrabold text-bau-yellow text-2xl">Bds${totalCost}</span>
-      </div>
+      </motion.div>
     </Card>
+    </motion.div>
   );
 }

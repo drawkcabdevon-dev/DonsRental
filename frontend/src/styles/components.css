@@ -1441,9 +1441,10 @@ h2:focus-visible {
 
 /* Tablet and below */
 @media (max-width: 768px) {
-  /* Hero: flexible height, tighter spacing */
+  /* Hero: tighter spacing on mobile */
   .landing-hero {
-    min-height: 0 !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
     padding: var(--space-8) 0 !important;
   }
   .landing-hero-bolt {
@@ -1457,7 +1458,14 @@ h2:focus-visible {
     padding: 0 var(--space-4) !important;
   }
   .landing-hero-subtitle {
-    margin-bottom: var(--space-6) !important;
+    margin-bottom: var(--space-4) !important;
+  }
+  .landing-hero-cta {
+    margin-top: var(--space-4) !important;
+  }
+  .landing-hero-stats {
+    gap: var(--space-4) !important;
+    margin-top: var(--space-4) !important;
   }
 
   /* Hero CTA: stack vertically */
@@ -1556,9 +1564,83 @@ h2:focus-visible {
 
 /* Phone only */
 @media (max-width: 480px) {
+  /* Keep the landing experience inside the iPhone viewport. */
+  .app-container {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
   /* Hero: even tighter */
   .landing-hero {
+    min-height: 100dvh !important;
     padding: var(--space-6) 0 !important;
+  }
+  .landing-hero-content {
+    width: 100%;
+    max-width: 100%;
+  }
+  .landing-hero-content [style*="font-size: clamp(4rem"] {
+    font-size: clamp(3.25rem, 17vw, 4.25rem) !important;
+  }
+  .landing-hero-subtitle {
+    font-size: 0.68rem !important;
+    letter-spacing: 0.08em !important;
+    white-space: normal;
+  }
+  .landing-hero-cta button,
+  .landing-hero-cta a {
+    min-height: 52px !important;
+  }
+
+  /* Keep the three proof points readable without wrapping awkwardly. */
+  .landing-hero-stats {
+    width: 100%;
+    justify-content: space-between !important;
+  }
+  .landing-hero-stats > div {
+    min-width: 0;
+    flex: 1;
+  }
+  .landing-hero-stats > div > div:last-child {
+    font-size: 0.62rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  /* Allow walkthrough cards and labels to fit the narrower phone frame. */
+  .landing-how-it-works-grid .landing-how-it-works-grid {
+    min-width: 0;
+  }
+  .landing-how-it-works-grid > div:last-child {
+    min-width: 0;
+    width: 100%;
+  }
+  .landing-how-it-works-grid > div:last-child > div {
+    max-width: 100%;
+  }
+  .landing-how-it-works-grid > div:last-child [style*="display: flex"] {
+    min-width: 0;
+  }
+
+  /* Avoid oversized copy and media creating accidental horizontal scroll. */
+  .landing-section h2 {
+    overflow-wrap: anywhere;
+  }
+  .landing-vehicle-grid > div {
+    min-width: 0;
+  }
+  .landing-vehicle-grid > div > div:last-child > div:last-child {
+    gap: var(--space-3) !important;
+    flex-wrap: wrap;
+  }
+  .landing-vehicle-grid > div > div:last-child > div:last-child > button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Respect notched iPhones while keeping fixed controls reachable. */
+  .chat-widget {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
   }
   .landing-hero-bolt svg {
     width: 36px !important;

@@ -76,6 +76,7 @@ gcloud builds submit
 - No test framework — just `test_local.py` (unit) and `test_agent_local.py` (live LLM). Run with `python test_*.py`.
 - Frontend lint uses `oxlint`, not eslint. Run `npm run lint` from `frontend/`.
 - In-memory booking store (`_bookings` list in `backend/main.py`) — resets on restart. Google Sheets is the persistent fallback.
+- **Google Sheets tab names must match exactly.** The Vehicles tab was misspelled as "Vechile " — caused silent fallback to hardcoded data with $0 rates. Always verify tab names with the Sheets API before debugging data issues.
 - License OCR calls Gemini API directly (Gemini API key via env), not through Vertex AI.
 - SendGrid optional; falls back to SMTP env vars, then logs-only.
 - `.dockerignore` excludes `agent/` so the Cloud Run container cannot host the ADK agent itself.

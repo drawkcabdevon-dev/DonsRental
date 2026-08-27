@@ -70,6 +70,9 @@ gcloud builds submit
 
 ## Key gotchas
 
+- **CRITICAL: Never break the booking page (`/book`).** The booking flow is the core revenue path. A customer who can't reach `/book` cannot give you money. Always verify `/book` loads after any backend or routing change.
+- **SPA routing in FastAPI:** `StaticFiles(html=True)` does NOT serve `index.html` for SPA routes — it only handles directory requests. The backend MUST use an explicit catch-all route (`@app.get("/{full_path:path}")`) that serves existing files or falls back to `index.html`. Without this, direct navigation to `/book` returns 404.
+- **Never use `window.location.href` for SPA navigation.** Use React Router's `useNavigate()` instead. `window.location.href` causes a full page reload that hits the backend, which may not serve the SPA correctly.
 - No test framework — just `test_local.py` (unit) and `test_agent_local.py` (live LLM). Run with `python test_*.py`.
 - Frontend lint uses `oxlint`, not eslint. Run `npm run lint` from `frontend/`.
 - In-memory booking store (`_bookings` list in `backend/main.py`) — resets on restart. Google Sheets is the persistent fallback.

@@ -1483,9 +1483,11 @@ h2:focus-visible {
     margin-top: var(--space-8) !important;
   }
 
-  /* All sections: reduce padding */
+  /* All sections: reduce padding, go full-width with background */
   .landing-section {
     padding: var(--space-12) var(--space-4) !important;
+    max-width: none !important;
+    background-color: var(--color-light-gray) !important;
   }
 
   /* Stats bar: 2x2 grid */

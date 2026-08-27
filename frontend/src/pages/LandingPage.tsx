@@ -268,7 +268,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
   useEffect(() => { api.getVehicles().then(setVehicles).catch(() => {}); }, []);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-black)' }}>
       <Marquee />
 
       {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}

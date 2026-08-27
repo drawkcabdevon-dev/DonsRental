@@ -364,13 +364,16 @@ function App() {
 
   const calculateTotalCost = () => {
     const selectedVehicle = vehicles.find((v) => v.id === booking.vehicleId);
-    if (!booking.pickupDate || !booking.returnDate || !selectedVehicle) return 0;
+    if (!booking.pickupDate || !booking.returnDate || !selectedVehicle) {
+      // Fallback to server-calculated cost if available
+      return booking.totalCost || 0;
+    }
 
     const pickup = new Date(booking.pickupDate);
     const returnDate = new Date(booking.returnDate);
     const days = Math.ceil((returnDate.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    return days * selectedVehicle.rate;
+    return days * selectedVehicle.rate || booking.totalCost || 0;
   };
 
   const calculateTotalDays = () => {
@@ -480,6 +483,11 @@ function App() {
 
       const response = await api.createBooking(bookingData);
       if (response.success && response.bookingRef) {
+        // Use backend-calculated cost (never trust client pricing)
+        const serverCost = (response.data as any)?.totalCost;
+        if (serverCost && serverCost > 0) {
+          setBooking((prev) => ({ ...prev, totalCost: serverCost, totalDays: (response.data as any)?.totalDays || prev.totalDays }));
+        }
         let photoUrl = booking.licensePhotoUrl || '';
         if (capturedImageData) {
           try {

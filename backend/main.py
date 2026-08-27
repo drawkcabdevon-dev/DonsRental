@@ -385,12 +385,13 @@ def _fetch_vehicles_from_sheet() -> list[dict]:
             if obj.get('id'):
                 try:
                     obj['rate'] = int(obj.get('rate', 0))
-                except ValueError:
+                except (ValueError, TypeError):
+                    logger.warning("Vehicle '%s' has invalid rate '%s' — defaulting to 0", obj.get('id'), obj.get('rate'))
                     obj['rate'] = 0
                 vehicles.append(obj)
         return vehicles if vehicles else VEHICLES_FALLBACK
     except Exception as e:
-        logger.warning("Could not read vehicles from sheet: %s", e)
+        logger.error("Failed to read vehicles from sheet: %s — using fallback", e)
         return VEHICLES_FALLBACK
 
 def _fetch_bookings_from_sheet() -> list[dict]:
@@ -507,8 +508,8 @@ def _log_booking_notification(req: BookingRequest, ref: str):
 def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0):
     """Append a booking row to the Google Sheet."""
     if not SPREADSHEET_ID:
-        logger.info("No SPREADSHEET_ID set — skipping sheet write")
-        return
+        logger.error("BOOKING %s: No SPREADSHEET_ID set — sheet write SKIPPED", ref)
+        return False
 
     try:
         svc = _get_sheets()
@@ -589,8 +590,10 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0):
             body={'values': row},
         ).execute()
         logger.info("✅ Booking %s written to Google Sheet", ref)
+        return True
     except Exception as e:
-        logger.warning("Could not write to Google Sheet: %s", e)
+        logger.error("BOOKING %s: FAILED to write to Google Sheet: %s", ref, e)
+        return False
 
 
 def _update_photo_url_in_sheet(booking_ref: str, photo_url: str):
@@ -763,7 +766,7 @@ async def create_booking(req: BookingRequest):
 
     # Notify
     _log_booking_notification(req, ref)
-    _append_to_sheet(req, ref, total_cost)
+    sheet_ok = _append_to_sheet(req, ref, total_cost)
     _add_to_calendar(req, ref)
 
     return {
@@ -773,6 +776,7 @@ async def create_booking(req: BookingRequest):
         "customerName": req.customerName,
         "totalDays": days,
         "totalCost": total_cost,
+        "sheetStored": sheet_ok,
     }
 
 ADMIN_KEY = os.getenv("ADMIN_KEY", "")

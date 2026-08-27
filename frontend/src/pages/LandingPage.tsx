@@ -273,7 +273,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
 
       {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}
       <motion.header ref={heroRef} style={{ y: heroY, scale: heroScale, opacity: heroOpacity }}>
-        <div style={{
+        <div className="landing-hero" style={{
           height: '100vh',
           minHeight: 700,
           backgroundColor: 'var(--color-black)',
@@ -296,11 +296,11 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
           <motion.div animate={{ opacity: [0, 0, 0, 0.15, 0, 0.08, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', inset: 0, backgroundColor: 'var(--color-yellow)', pointerEvents: 'none', zIndex: 3 }} />
 
           {/* Center content */}
-          <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 var(--space-6)', maxWidth: 900 }}>
+          <div className="landing-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 var(--space-6)', maxWidth: 900 }}>
             {/* Flash flicker on content */}
             <motion.div animate={{ opacity: [1, 1, 1, 0.6, 1, 0.85, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}>
             {/* Bolt icon - large */}
-            <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} style={{ marginBottom: 'var(--space-6)' }}>
+            <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className="landing-hero-bolt" style={{ marginBottom: 'var(--space-6)' }}>
               <motion.div animate={{ filter: ['drop-shadow(0 0 20px rgba(255,204,0,0.6))', 'drop-shadow(0 0 40px rgba(255,204,0,0.9))', 'drop-shadow(0 0 20px rgba(255,204,0,0.6))'] }} transition={{ duration: 2, repeat: Infinity }}>
                 <Icons.bolt style={{ width: 80, height: 80, stroke: 'var(--color-yellow)', strokeWidth: 2, margin: '0 auto' }} />
               </motion.div>
@@ -325,7 +325,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1 }} style={{ fontSize: 'clamp(1rem, 2.5vw, 1.5rem)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.7)', marginBottom: 'var(--space-2)' }}>
               Barbados Car Rental
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.15 }} style={{ fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', color: 'rgba(255,255,255,0.45)', marginBottom: 'var(--space-10)', fontFamily: 'var(--font-mono)' }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.15 }} className="landing-hero-subtitle" style={{ fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', color: 'rgba(255,255,255,0.45)', marginBottom: 'var(--space-10)', fontFamily: 'var(--font-mono)' }}>
               Online Booking · Zero Phone Calls · Fast & Easy
             </motion.div>
 
@@ -381,7 +381,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
       </motion.div>
 
       {/* ═══ HOW IT WORKS — Interactive Walkthrough ═════ */}
-      <section id="how-it-works" style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: 'var(--space-24) var(--space-6)' }}>
+      <section id="how-it-works" className="landing-section" style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: 'var(--space-24) var(--space-6)' }}>
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)', textAlign: 'center' }}>
           <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: '0 auto var(--space-4)' }} />
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>How It Works</p>
@@ -400,7 +400,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
 
       {/* ═══ VEHICLES ═══════════════════════════════════ */}
       {vehicles.length > 0 && (
-        <section style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-24) var(--space-6)', borderTop: '4px solid var(--color-yellow)', borderBottom: '4px solid var(--color-yellow)', position: 'relative', overflow: 'hidden' }}>
+        <section className="landing-section landing-vehicles" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-24) var(--space-6)', borderTop: '4px solid var(--color-yellow)', borderBottom: '4px solid var(--color-yellow)', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,204,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,204,0,0.03) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
           <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', position: 'relative', zIndex: 1 }}>
             <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)' }}>
@@ -411,7 +411,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
             <div className="landing-vehicle-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 'var(--space-8)' }}>
               {vehicles.map((v, i) => (
                 <motion.div key={v.id} initial={{ opacity: 0, y: 60, rotateY: -6 }} whileInView={{ opacity: 1, y: 0, rotateY: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: i * 0.15, ease: [0.16, 1, 0.3, 1] }} whileHover={{ y: -10, scale: 1.02 }} style={{ backgroundColor: 'var(--color-charcoal)', border: '2px solid var(--color-dark-gray)', overflow: 'hidden', position: 'relative' }}>
-                  <div style={{ height: 280, background: 'linear-gradient(135deg, #2d2d2d, #1a1a1a)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--color-yellow)' }}>
+                  <div className="landing-vehicle-img" style={{ height: 280, background: 'linear-gradient(135deg, #2d2d2d, #1a1a1a)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--color-yellow)' }}>
                     <motion.img animate={{ y: [0, -6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} src="/vehicle.png" alt={v.name} width={400} height={280} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
                     <motion.div initial={{ x: '-100%', opacity: 0.4 }} whileInView={{ x: '200%', opacity: 0 }} viewport={{ once: true }} transition={{ duration: 1.5, delay: 0.5 + i * 0.2 }} style={{ position: 'absolute', width: 80, height: '200%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)', transform: 'skewX(-20deg)' }} />
                   </div>
@@ -443,7 +443,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
       )}
 
       {/* ═══ HOW IT'S FAST ═════════════════════════════════ */}
-      <section style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: 'var(--space-24) var(--space-6)' }}>
+      <section className="landing-section" style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: 'var(--space-24) var(--space-6)' }}>
         <div className="landing-how-fast-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-16)', alignItems: 'center' }}>
           <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
             <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', marginBottom: 'var(--space-4)' }} />
@@ -486,7 +486,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
       </section>
 
       {/* ═══ TESTIMONIAL ════════════════════════════════ */}
-      <section style={{ backgroundColor: 'var(--color-charcoal)', color: 'var(--color-white)', padding: 'var(--space-20) var(--space-6)', textAlign: 'center' }}>
+      <section className="landing-section-compact" style={{ backgroundColor: 'var(--color-charcoal)', color: 'var(--color-white)', padding: 'var(--space-20) var(--space-6)', textAlign: 'center' }}>
         <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ maxWidth: 700, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 'var(--space-6)' }}>
             {[1, 2, 3, 4, 5].map((s) => (
@@ -503,7 +503,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
       </section>
 
       {/* ═══ CTA ════════════════════════════════════════ */}
-      <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }} style={{ backgroundColor: 'var(--color-yellow)', padding: 'var(--space-24) var(--space-6)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+      <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="landing-cta-section" style={{ backgroundColor: 'var(--color-yellow)', padding: 'var(--space-24) var(--space-6)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 35, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', top: -220, right: -220, width: 520, height: 520, border: '4px solid rgba(0,0,0,0.06)', borderRadius: '50%' }} />
         <motion.div animate={{ rotate: -360 }} transition={{ duration: 28, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', bottom: -170, left: -170, width: 420, height: 420, border: '3px solid rgba(0,0,0,0.04)', borderRadius: '50%' }} />
         {/* Bolt decorations */}
@@ -530,7 +530,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
       </motion.section>
 
       {/* ═══ FOOTER ═════════════════════════════════════ */}
-      <footer style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-12) var(--space-6)', borderTop: '4px solid var(--color-yellow)' }}>
+      <footer className="landing-footer" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-12) var(--space-6)', borderTop: '4px solid var(--color-yellow)' }}>
         <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-6)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>

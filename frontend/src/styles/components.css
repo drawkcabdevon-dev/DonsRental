@@ -1436,12 +1436,59 @@ h2:focus-visible {
 }
 
 /* ─────────────────────────────────────────────────
-   Landing Page Mobile Fixes
+   Landing Page — Mobile-First Fixes
    ───────────────────────────────────────────────── */
 
 /* Tablet and below */
 @media (max-width: 768px) {
-  /* Stats bar: 2x2 grid with bottom borders */
+  /* Hero: flexible height, tighter spacing */
+  .landing-hero {
+    height: auto !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    padding: var(--space-10) 0 !important;
+  }
+  .landing-hero-bolt {
+    margin-bottom: var(--space-3) !important;
+  }
+  .landing-hero-bolt svg {
+    width: 48px !important;
+    height: 48px !important;
+  }
+  .landing-hero-content {
+    padding: 0 var(--space-4) !important;
+  }
+  .landing-hero-subtitle {
+    margin-bottom: var(--space-6) !important;
+  }
+
+  /* Hero CTA: stack vertically */
+  .landing-hero-cta {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: var(--space-3) !important;
+  }
+  .landing-hero-cta button,
+  .landing-hero-cta a {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: var(--space-4) var(--space-6) !important;
+    font-size: var(--font-size-base) !important;
+    min-height: 48px !important;
+  }
+
+  /* Hero stats: tighter */
+  .landing-hero-stats {
+    gap: var(--space-6) !important;
+    margin-top: var(--space-8) !important;
+  }
+
+  /* All sections: reduce padding */
+  .landing-section {
+    padding: var(--space-12) var(--space-4) !important;
+  }
+
+  /* Stats bar: 2x2 grid */
   .landing-stats {
     grid-template-columns: repeat(2, 1fr) !important;
   }
@@ -1464,55 +1511,112 @@ h2:focus-visible {
   /* How It's Fast: stack content and image */
   .landing-how-fast-grid {
     grid-template-columns: 1fr !important;
-    gap: var(--space-10) !important;
+    gap: var(--space-8) !important;
   }
 
   /* Vehicle grid: single column */
   .landing-vehicle-grid {
     grid-template-columns: 1fr !important;
-    gap: var(--space-6) !important;
+    gap: var(--space-5) !important;
+  }
+  .landing-vehicle-img {
+    height: 200px !important;
+  }
+  .landing-vehicle-grid > div > div:last-child {
+    padding: var(--space-4) !important;
   }
 
-  /* Hero section: reduce spacing */
-  .landing-hero-stats {
-    gap: var(--space-6) !important;
-    margin-top: var(--space-10) !important;
+  /* How It's Fast: stack and resize image */
+  .landing-how-fast-grid > div:last-child > div {
+    padding: var(--space-6) !important;
+    min-height: auto !important;
+  }
+  .landing-how-fast-grid > div:last-child img {
+    width: 140px !important;
+    height: 190px !important;
+  }
+
+  /* Testimonial: tighter */
+  .landing-section-compact {
+    padding: var(--space-12) var(--space-4) !important;
+  }
+
+  /* CTA section: tighter */
+  .landing-cta-section {
+    padding: var(--space-12) var(--space-4) !important;
+  }
+
+  /* Footer: center stack */
+  .landing-footer > div > div {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: var(--space-4) !important;
   }
 }
 
 /* Phone only */
 @media (max-width: 480px) {
+  /* Hero: even tighter */
+  .landing-hero {
+    padding: var(--space-6) 0 !important;
+  }
+  .landing-hero-bolt svg {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  /* Hero stats: 3 in a row */
+  .landing-hero-stats {
+    gap: var(--space-4) !important;
+    margin-top: var(--space-6) !important;
+  }
+
   /* Stats bar: tighter padding */
   .landing-stat-item {
-    padding: var(--space-4) var(--space-3) !important;
+    padding: var(--space-3) var(--space-2) !important;
   }
   .landing-stat-item svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 16px !important;
+    height: 16px !important;
   }
 
-  /* Hero CTA buttons: full width stack */
-  .landing-hero-cta {
-    flex-direction: column !important;
-    align-items: stretch !important;
+  /* Sections: even tighter */
+  .landing-section {
+    padding: var(--space-8) var(--space-4) !important;
   }
-  .landing-hero-cta button,
-  .landing-hero-cta a {
-    width: 100% !important;
-    justify-content: center !important;
+  .landing-section-compact {
+    padding: var(--space-8) var(--space-4) !important;
+  }
+  .landing-cta-section {
+    padding: var(--space-8) var(--space-4) !important;
   }
 
-  /* How It Works tabs: horizontal scroll on very small screens */
+  /* Vehicle card: reduce image height more */
+  .landing-vehicle-img {
+    height: 160px !important;
+  }
+
+  /* How It Works tabs: horizontal scroll */
   .landing-how-it-works-grid > div:first-child {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     flex-direction: row !important;
     gap: var(--space-2) !important;
     padding-bottom: var(--space-2);
+    scrollbar-width: none;
+  }
+  .landing-how-it-works-grid > div:first-child::-webkit-scrollbar {
+    display: none;
   }
   .landing-how-it-works-grid > div:first-child > button {
-    min-width: 120px;
+    min-width: 110px;
     flex-shrink: 0;
+    padding: var(--space-3) var(--space-4) !important;
+  }
+
+  /* Footer */
+  .landing-footer {
+    padding: var(--space-8) var(--space-4) !important;
   }
 }
 

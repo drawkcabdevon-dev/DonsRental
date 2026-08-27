@@ -509,6 +509,22 @@ def _log_booking_notification(req: BookingRequest, ref: str):
 
 # ── Google Sheets Integration ──────────────────────────
 
+import re as _re
+
+def _sanitize_sheet_value(val: str) -> str:
+    """Prevent Google Sheets formula injection by escaping dangerous prefixes."""
+    if not isinstance(val, str):
+        return str(val)
+    # Strip leading whitespace, then neutralize formula-starting characters
+    v = val.strip()
+    if v and v[0] in ('=', '+', '-', '@', '\t', '\r', '\n'):
+        v = "'" + v
+    return v
+
+def _validate_email(email: str) -> bool:
+    """Basic email format check."""
+    return bool(_re.match(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$', email))
+
 def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0):
     """Append a booking row to the Google Sheet."""
     if not SPREADSHEET_ID:
@@ -524,23 +540,23 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0):
             datetime.utcnow().isoformat(),
             req.vehicleId or 'v1',
             'Standard Rental Car',
-            req.pickupDate or '',
-            req.pickupTime or '',
-            req.returnDate or '',
-            req.returnTime or '',
-            req.customerName or '',
-            req.customerEmail or '',
-            req.customerPhone or '',
-            req.customerAddress or '',
-            req.licenseNumber or '',
-            req.licenseExpiry or '',
-            req.licenseIssuer or '',
-            req.licenseClass or '',
+            _sanitize_sheet_value(req.pickupDate or ''),
+            _sanitize_sheet_value(req.pickupTime or ''),
+            _sanitize_sheet_value(req.returnDate or ''),
+            _sanitize_sheet_value(req.returnTime or ''),
+            _sanitize_sheet_value(req.customerName or ''),
+            _sanitize_sheet_value(req.customerEmail or ''),
+            _sanitize_sheet_value(req.customerPhone or ''),
+            _sanitize_sheet_value(req.customerAddress or ''),
+            _sanitize_sheet_value(req.licenseNumber or ''),
+            _sanitize_sheet_value(req.licenseExpiry or ''),
+            _sanitize_sheet_value(req.licenseIssuer or ''),
+            _sanitize_sheet_value(req.licenseClass or ''),
             'pay_on_pickup',
             total_cost,  # Use server-calculated cost
             '',  # invoice_sent_at
             '',  # notes
-            req.licensePhotoUrl or '',  # licensePhotoUrl
+            _sanitize_sheet_value(req.licensePhotoUrl or ''),  # licensePhotoUrl
         ]]
 
         # Ensure the Bookings sheet exists and has the correct headers
@@ -667,8 +683,8 @@ async def check_availability(req: CheckAvailabilityRequest):
     return_d = _parse_date(req.returnDate)
     if not pickup or not return_d:
         raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
-
-    # Check existing bookings from Sheet
+    if return_d <= pickup:
+        raise HTTPException(400, "Return date must be after pickup date.")
     sheet_bookings = _fetch_bookings_from_sheet()
     conflicts = []
     for b in sheet_bookings:
@@ -726,8 +742,10 @@ async def create_booking(req: BookingRequest):
     return_d = _parse_date(req.returnDate)
     if not pickup or not return_d:
         raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
-    if return_d < pickup:
+    if return_d <= pickup:
         raise HTTPException(400, "Return date must be after pickup date.")
+    if not req.customerEmail or not _validate_email(req.customerEmail):
+        raise HTTPException(400, "Invalid email address.")
     if pickup and return_d:
         sheet_bookings = _fetch_bookings_from_sheet()
         for b in sheet_bookings:

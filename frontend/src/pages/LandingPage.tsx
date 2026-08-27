@@ -214,7 +214,7 @@ function HowItWorksTabs() {
   }, []);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 'var(--space-10)', alignItems: 'center' }}>
+    <div className="landing-how-it-works-grid" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 'var(--space-10)', alignItems: 'center' }}>
       {/* Tabs */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {STEPS.map((s, i) => {
@@ -330,7 +330,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
             </motion.div>
 
             {/* CTA buttons */}
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 1.3 }} style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 1.3 }} className="landing-hero-cta" style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
               <motion.button whileHover={{ scale: 1.06, boxShadow: '0 0 60px rgba(255,204,0,0.5)' }} whileTap={{ scale: 0.95 }} onClick={onBookNow} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                 <Icons.bolt style={{ width: 20, height: 20 }} /> Book Now
               </motion.button>
@@ -340,7 +340,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
             </motion.div>
 
             {/* Stats row */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 1.6 }} style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-12)', marginTop: 'var(--space-16)', flexWrap: 'wrap' }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 1.6 }} className="landing-hero-stats" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-12)', marginTop: 'var(--space-16)', flexWrap: 'wrap' }}>
               {[
                 { value: '2min', label: 'Book & Drive' },
                 { value: '24/7', label: 'Online Booking' },
@@ -361,15 +361,15 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
       </motion.header>
 
       {/* ═══ STATS ═══════════════════════════════════════ */}
-      <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7 }} style={{ backgroundColor: 'var(--color-white)', borderBottom: '2px solid var(--color-charcoal)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+      <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7 }} style={{ backgroundColor: 'var(--color-white)', borderTop: '2px solid var(--color-charcoal)', borderBottom: '2px solid var(--color-charcoal)' }}>
+        <div className="landing-stats" style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
           {[
             { icon: Icons.clock, val: 24, pre: '', suf: '/7', label: 'Online' },
             { icon: Icons.globe, val: 100, pre: '', suf: '%', label: 'Digital' },
             { icon: Icons.bolt, val: 2, pre: '<', suf: 'min', label: 'Booking' },
             { icon: Icons.shield, val: 0, pre: '$', suf: '', label: 'Fees' },
           ].map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }} whileHover={{ backgroundColor: 'var(--color-light-gray)' }} style={{ padding: 'var(--space-7) var(--space-5)', textAlign: 'center', borderRight: i < 3 ? '2px solid var(--color-charcoal)' : 'none', cursor: 'default', transition: 'background-color 0.2s' }}>
+            <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }} whileHover={{ backgroundColor: 'var(--color-light-gray)' }} className="landing-stat-item" style={{ padding: 'var(--space-7) var(--space-5)', textAlign: 'center', borderRight: i < 3 ? '2px solid var(--color-charcoal)' : 'none', cursor: 'default', transition: 'background-color 0.2s' }}>
               <s.icon style={{ width: 22, height: 22, stroke: 'var(--color-yellow)', margin: '0 auto var(--space-3)' }} />
               <div style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--color-yellow)', fontFamily: 'var(--font-mono)' }}>
                 <AnimCounter target={s.val} prefix={s.pre} suffix={s.suf} />
@@ -408,11 +408,11 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>Our Fleet</p>
               <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>What You'll Drive</h2>
             </motion.div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 'var(--space-8)' }}>
+            <div className="landing-vehicle-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 'var(--space-8)' }}>
               {vehicles.map((v, i) => (
                 <motion.div key={v.id} initial={{ opacity: 0, y: 60, rotateY: -6 }} whileInView={{ opacity: 1, y: 0, rotateY: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: i * 0.15, ease: [0.16, 1, 0.3, 1] }} whileHover={{ y: -10, scale: 1.02 }} style={{ backgroundColor: 'var(--color-charcoal)', border: '2px solid var(--color-dark-gray)', overflow: 'hidden', position: 'relative' }}>
                   <div style={{ height: 280, background: 'linear-gradient(135deg, #2d2d2d, #1a1a1a)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--color-yellow)' }}>
-                    <motion.img animate={{ y: [0, -6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} src="/vehicle.png" alt={v.name} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
+                    <motion.img animate={{ y: [0, -6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} src="/vehicle.png" alt={v.name} width={400} height={280} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
                     <motion.div initial={{ x: '-100%', opacity: 0.4 }} whileInView={{ x: '200%', opacity: 0 }} viewport={{ once: true }} transition={{ duration: 1.5, delay: 0.5 + i * 0.2 }} style={{ position: 'absolute', width: 80, height: '200%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)', transform: 'skewX(-20deg)' }} />
                   </div>
                   <div style={{ padding: 'var(--space-6)' }}>
@@ -444,7 +444,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
 
       {/* ═══ HOW IT'S FAST ═════════════════════════════════ */}
       <section style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: 'var(--space-24) var(--space-6)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-16)', alignItems: 'center' }}>
+        <div className="landing-how-fast-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-16)', alignItems: 'center' }}>
           <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
             <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', marginBottom: 'var(--space-4)' }} />
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>Built For Speed</p>
@@ -474,7 +474,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
               {/* Corner accents */}
               <div style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderTop: '4px solid var(--color-yellow)', borderLeft: '4px solid var(--color-yellow)' }} />
               <div style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderBottom: '4px solid var(--color-yellow)', borderRight: '4px solid var(--color-yellow)' }} />
-              <motion.img animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} src="/dons-car.png" alt="Don's Rental car" style={{ width: 180, height: 240, objectFit: 'cover', borderRadius: 12, filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.15))' }} />
+              <motion.img animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} src="/dons-car.png" alt="Don's Rental car" width={180} height={240} loading="lazy" style={{ width: 180, height: 240, objectFit: 'cover', borderRadius: 12, filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.15))' }} />
               <div style={{ marginTop: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)' }}>
                 {['JPEG', 'PNG', 'HEIC'].map((fmt) => (
                   <span key={fmt} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)', padding: '3px 10px', border: '1px solid var(--color-charcoal)' }}>{fmt}</span>

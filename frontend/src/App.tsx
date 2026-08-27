@@ -20,7 +20,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import { ProfilePage } from './pages/ProfilePage';
 import { LandingPage } from './pages/LandingPage';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { useStepTransition } from './hooks/useAnimations';
+import { useStepTransition, useStaggerEntrance } from './hooks/useAnimations';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 
@@ -71,6 +71,10 @@ function App() {
   const step4Ref = useStepTransition(`step-4-${step}`);
   const step5Ref = useStepTransition(`step-5-${step}`);
   const confirmRef = useStepTransition(`confirm-${bookingRef}`);
+
+  // Stagger entrance animations
+  const vehicleListRef = useStaggerEntrance('.vehicle-card', [loading, step]);
+  const pricingPackagesRef = useStaggerEntrance('.pricing-package-card', [step]);
 
   const addToast = useCallback((type: Toast['type'], message: string) => {
     const id = ++_toastId;
@@ -656,6 +660,21 @@ function App() {
                   <DrivingLoader message="Loading vehicles..." variant="compact" />
                 ) : (
                   <>
+                    {/* Live Price Estimate Banner */}
+                    {selectedVehicle && calculateTotalCost() > 0 && (
+                      <div className="live-price-estimate" role="status" aria-live="polite">
+                        <div className="live-price-label">
+                          <Car size={18} /> Estimated Total
+                        </div>
+                        <div className="live-price-value">
+                          Bds${calculateTotalCost()}
+                          <span className="live-price-detail">
+                            {calculateTotalDays()} day{calculateTotalDays() !== 1 ? 's' : ''} &middot; {selectedVehicle.name}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Calendar + Vehicle Selection */}
                     <div className="step-section">
                       <div className="grid-responsive-2">
@@ -690,7 +709,7 @@ function App() {
                           <p className="step-column-desc">
                             Select your car, then pick dates on the next step.
                           </p>
-                          <div className="vehicle-list">
+                          <div className="vehicle-list" ref={vehicleListRef}>
                             {vehicles.map((vehicle) => (
                               <VehicleCard
                                 key={vehicle.id}
@@ -708,11 +727,13 @@ function App() {
                     <p className="section-desc">
                       Select a preset package and we'll auto-set your dates. Or tap a calendar date above.
                     </p>
-                    <PricingPackages
-                      packages={PRICING_PACKAGES}
-                      selectedId={booking.selectedPackage}
-                      onSelect={handlePackageSelect}
-                    />
+                    <div ref={pricingPackagesRef}>
+                      <PricingPackages
+                        packages={PRICING_PACKAGES}
+                        selectedId={booking.selectedPackage}
+                        onSelect={handlePackageSelect}
+                      />
+                    </div>
                   </>
                 )}
               </div>

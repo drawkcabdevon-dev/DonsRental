@@ -24,7 +24,7 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
       transition={{ duration: 0.2 }}
     >
       <Card
-        className={`cursor-pointer transition-fast ${
+        className={`vehicle-card cursor-pointer transition-fast ${
           isSelected ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
         }`}
         onClick={() => onSelect(vehicle)}
@@ -129,7 +129,7 @@ export function PricingPackages({ packages, selectedId, onSelect }: PricingPacka
             whileTap={{ scale: 0.98 }}
           >
             <Card
-              className={`cursor-pointer transition-fast ${
+        className={`pricing-package-card cursor-pointer transition-fast ${
                 isSelected ? 'border-4 border-bau-yellow bg-bau-off-white' : ''
               }`}
               onClick={() => onSelect(pkg)}

@@ -32,7 +32,7 @@ export function BookingSummary({ booking, vehicle, capturedPhotoPreview }: Booki
         <div className="space-y-md">
           {reviewItems.map((item, idx) => (
             item.value && (
-              <div key={idx} className="flex justify-between items-start border-b-2 border-bau-light-gray pb-md">
+              <div key={idx} className="summary-row flex justify-between items-start border-b-2 border-bau-light-gray pb-md">
                 <span className="font-semibold text-bau-black text-uppercase">{item.label}</span>
                 <span className="font-bold text-right">{item.value}</span>
               </div>
@@ -72,19 +72,24 @@ interface BookingConfirmationProps {
 export function BookingConfirmation({ bookingRef, email, photoUrl, headingRef }: BookingConfirmationProps) {
   return (
     <div className="text-center space-y-lg">
-      <div aria-hidden="true"><Check size={48} strokeWidth={3} /></div>
+      <div className="confirm-checkmark-wrapper" aria-hidden="true">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="22" stroke="var(--color-yellow)" strokeWidth="4" className="confirm-checkmark" fill="none" />
+          <path d="M14 24l7 7 13-13" stroke="var(--color-yellow)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="confirm-checkmark" fill="none" style={{ animationDelay: '0.4s' }} />
+        </svg>
+      </div>
       <h2 ref={headingRef} tabIndex={-1} style={{ outline: 'none' }} className="text-3xl font-extrabold text-uppercase">Booking Confirmed</h2>
       
-      <Card className="border-4 border-bau-yellow bg-bau-off-white">
+      <Card className="border-4 border-bau-yellow bg-bau-off-white confirm-card-enter">
         <p className="text-sm text-bau-gray text-uppercase font-semibold mb-md">Booking Reference</p>
-        <p className="text-2xl font-mono font-bold text-bau-black mb-lg">{bookingRef}</p>
+        <p className="text-2xl font-mono font-bold text-bau-black mb-lg confirm-ref-typein">{bookingRef}</p>
         <p className="text-sm text-bau-gray">
           A confirmation email has been sent to <span className="font-bold">{email}</span>
         </p>
       </Card>
 
       {photoUrl && (
-        <Card className="border-4 border-bau-yellow bg-bau-off-white">
+        <Card className="border-4 border-bau-yellow bg-bau-off-white confirm-card-enter">
           <p className="text-sm text-bau-gray text-uppercase font-semibold mb-md"><Image size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> License Photo Uploaded</p>
           <img
             src={photoUrl}
@@ -95,7 +100,7 @@ export function BookingConfirmation({ bookingRef, email, photoUrl, headingRef }:
         </Card>
       )}
       
-      <div className="bg-bau-light-gray border-2 border-bau-black p-lg rounded-lg">
+      <div className="bg-bau-light-gray border-2 border-bau-black p-lg rounded-lg confirm-card-enter">
         <p className="text-sm text-bau-gray mb-md"><Mail size={16} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Check your email for:</p>
         <ul className="text-left space-y-sm text-sm">
           <li><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Booking confirmation details</li>

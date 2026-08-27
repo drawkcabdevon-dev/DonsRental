@@ -371,7 +371,7 @@ def _fetch_vehicles_from_sheet() -> list[dict]:
     try:
         svc = _get_sheets()
         result = svc.spreadsheets().values().get(
-            spreadsheetId=SPREADSHEET_ID, range='Vehicles!A:G',
+            spreadsheetId=SPREADSHEET_ID, range='Vehicles!A:I',
         ).execute()
         rows = result.get('values', [])
         if len(rows) < 2:
@@ -389,6 +389,10 @@ def _fetch_vehicles_from_sheet() -> list[dict]:
                     logger.warning("Vehicle '%s' has invalid rate '%s' — defaulting to 0", obj.get('id'), obj.get('rate'))
                     obj['rate'] = 0
                 vehicles.append(obj)
+        # Post-process: split pipe-separated features into arrays
+        for v in vehicles:
+            if isinstance(v.get('features'), str):
+                v['features'] = [f.strip() for f in v['features'].split('|') if f.strip()]
         return vehicles if vehicles else VEHICLES_FALLBACK
     except Exception as e:
         logger.error("Failed to read vehicles from sheet: %s — using fallback", e)

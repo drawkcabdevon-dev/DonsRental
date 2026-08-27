@@ -268,14 +268,14 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
   useEffect(() => { api.getVehicles().then(setVehicles).catch(() => {}); }, []);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-black)' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-black)', display: 'flex', flexDirection: 'column' }}>
       <Marquee />
 
       {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}
-      <motion.header ref={heroRef} style={{ y: heroY, scale: heroScale, opacity: heroOpacity }}>
+      <motion.header ref={heroRef} style={{ y: heroY, scale: heroScale, opacity: heroOpacity, flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div className="landing-hero" style={{
-          height: '100vh',
-          minHeight: 700,
+          flex: 1,
+          minHeight: 0,
           backgroundColor: 'var(--color-black)',
           color: 'var(--color-white)',
           position: 'relative',

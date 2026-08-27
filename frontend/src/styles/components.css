@@ -1443,10 +1443,8 @@ h2:focus-visible {
 @media (max-width: 768px) {
   /* Hero: flexible height, tighter spacing */
   .landing-hero {
-    height: auto !important;
-    min-height: 100vh !important;
-    min-height: 100dvh !important;
-    padding: var(--space-10) 0 !important;
+    min-height: 0 !important;
+    padding: var(--space-8) 0 !important;
   }
   .landing-hero-bolt {
     margin-bottom: var(--space-3) !important;

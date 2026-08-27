@@ -291,7 +291,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
           </motion.div>
 
           {/* Lightning flash overlay */}
-          <motion.div animate={{ opacity: [0, 0, 0, 0.15, 0, 0.08, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', inset: 0, backgroundColor: 'var(--color-yellow)', pointerEvents: 'none', zIndex: 3 }} />
+          <motion.div animate={{ opacity: [0, 0, 0, 0.15, 0, 0.08, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', inset: 0, backgroundColor: 'var(--color-yellow)', pointerEvents: 'none' }} />
 
           {/* Center content */}
           <div className="landing-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 var(--space-6)', maxWidth: 900 }}>
@@ -335,20 +335,6 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
               <motion.a whileHover={{ scale: 1.06, borderColor: 'var(--color-yellow)', color: 'var(--color-yellow)' }} whileTap={{ scale: 0.95 }} href="#how-it-works" style={{ color: 'var(--color-white)', border: '2px solid rgba(255,255,255,0.3)', padding: 'var(--space-5) var(--space-10)', fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                 How It Works ↓
               </motion.a>
-            </motion.div>
-
-            {/* Stats row */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 1.6 }} className="landing-hero-stats" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-12)', marginTop: 'var(--space-16)', flexWrap: 'wrap' }}>
-              {[
-                { value: '2min', label: 'Book & Drive' },
-                { value: '24/7', label: 'Online Booking' },
-                { value: '$0', label: 'Hidden Fees' },
-              ].map((stat, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.7 + i * 0.1 }} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 'clamp(1.8rem, 3vw, 2.5rem)', fontWeight: 900, color: 'var(--color-yellow)', lineHeight: 1 }}>{stat.value}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>{stat.label}</div>
-                </motion.div>
-              ))}
             </motion.div>
             </motion.div>
           </div>

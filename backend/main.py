@@ -42,6 +42,16 @@ GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS", "")
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "donsrental-license-photos")
 GCS_PHOTOS_PREFIX = os.environ.get("GCS_PHOTOS_PREFIX", "license-photos")
 
+# ── SMTP email config ──────────────────────────────────
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+COMPANY_NAME = os.environ.get("COMPANY_NAME", "Don's Rental")
+COMPANY_EMAIL = os.environ.get("COMPANY_EMAIL", "bookings@donsrental.com")
+COMPANY_PHONE = os.environ.get("COMPANY_PHONE", "+1 (246) 268-2842")
+OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "")
+
 app = FastAPI(title="Don's Rental Backend")
 
 # ── Thread pool for blocking I/O operations ────────────
@@ -80,6 +90,106 @@ def _get_gcs():
     else:
         _gcs_client = gcs_storage.Client()
     return _gcs_client
+
+# ── SMTP email helpers ─────────────────────────────────
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def _send_smtp(to_email: str, subject: str, html_body: str) -> bool:
+    """Send an HTML email via SMTP. Returns True on success."""
+    if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD:
+        logger.warning("SMTP not configured — skipping email to %s", to_email)
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["From"] = f"{COMPANY_NAME} <{COMPANY_EMAIL}>"
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+            server.ehlo()
+            if SMTP_PORT != 25:
+                server.starttls()
+                server.ehlo()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(COMPANY_EMAIL, [to_email], msg.as_string())
+        logger.info("Email sent to %s: %s", to_email, subject)
+        return True
+    except Exception as e:
+        logger.error("SMTP send failed to %s: %s", to_email, e)
+        return False
+
+def _esc(text: str) -> str:
+    """Minimal HTML escape."""
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+def _send_booking_confirmation(req, ref: str, total_cost: float, days: int):
+    """Send confirmation email to customer and notification to owner."""
+    name = _esc(req.customerName)
+    email = req.customerEmail
+    vehicle = _esc(req.vehicleId or "v1")
+    pu_d = _esc(req.pickupDate)
+    pu_t = _esc(req.pickupTime or "09:00")
+    re_d = _esc(req.returnDate)
+    re_t = _esc(req.returnTime or "17:00")
+
+    # ── Customer confirmation ──
+    customer_html = f'''<!DOCTYPE html>
+<html><body style="font-family:Arial,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;">
+<div style="background:#0f3460;color:#fff;padding:24px 32px;border-radius:12px 12px 0 0;">
+  <h2 style="margin:0;">{_esc(COMPANY_NAME)}</h2>
+  <p style="margin:4px 0 0;opacity:.85;">Booking Confirmation</p>
+</div>
+<div style="padding:24px 32px;border:1px solid #e0e0e0;border-top:0;border-radius:0 0 12px 12px;">
+  <p>Hi <strong>{name}</strong>,</p>
+  <p>Your booking is confirmed!</p>
+  <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Reference</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:700;">{_esc(ref)}</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Vehicle</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{vehicle}</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Pick-up</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{pu_d} at {pu_t}</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Return</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{re_d} at {re_t}</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Duration</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{days} day{"s" if days > 1 else ""}</td></tr>
+    <tr><td style="padding:8px 12px;color:#666;">Total Due</td>
+        <td style="padding:8px 12px;font-size:1.15rem;font-weight:700;color:#0f3460;">${total_cost:.2f}</td></tr>
+  </table>
+  <p style="color:#555;">Pay when you pick up the vehicle. We accept cash and card.</p>
+  <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+  <p style="color:#999;font-size:.85rem;">{_esc(COMPANY_NAME)} &bull; {_esc(COMPANY_PHONE)}</p>
+</div></body></html>'''
+
+    _send_smtp(
+        email,
+        f"Booking Confirmation — {_esc(COMPANY_NAME)} (Ref: {_esc(ref)})",
+        customer_html,
+    )
+
+    # ── Owner notification ──
+    if OWNER_EMAIL:
+        owner_html = f'''<!DOCTYPE html>
+<html><body style="font-family:Arial,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;">
+<div style="padding:24px 32px;border:1px solid #e0e0e0;border-radius:12px;">
+  <h2 style="margin:0 0 16px;">New Booking</h2>
+  <table style="width:100%;border-collapse:collapse;">
+    <tr><td style="padding:6px 0;color:#666;">Ref</td><td style="padding:6px 0;font-weight:700;">{_esc(ref)}</td></tr>
+    <tr><td style="padding:6px 0;color:#666;">Customer</td><td style="padding:6px 0;">{name} ({_esc(email)})</td></tr>
+    <tr><td style="padding:6px 0;color:#666;">Phone</td><td style="padding:6px 0;">{_esc(req.customerPhone or "N/A")}</td></tr>
+    <tr><td style="padding:6px 0;color:#666;">Vehicle</td><td style="padding:6px 0;">{vehicle}</td></tr>
+    <tr><td style="padding:6px 0;color:#666;">Dates</td><td style="padding:6px 0;">{pu_d} {pu_t} → {re_d} {re_t}</td></tr>
+    <tr><td style="padding:6px 0;color:#666;">Total</td><td style="padding:6px 0;font-weight:700;">${total_cost:.2f}</td></tr>
+  </table>
+</div></body></html>'''
+        _send_smtp(
+            OWNER_EMAIL,
+            f"New Booking: {req.customerName} — {vehicle} ({_esc(ref)})",
+            owner_html,
+        )
 
 # ── Google Calendar singleton ─────────────────────────
 _calendar_svc = None
@@ -790,6 +900,7 @@ async def create_booking(req: BookingRequest):
     _log_booking_notification(req, ref)
     sheet_ok = _append_to_sheet(req, ref, total_cost)
     _add_to_calendar(req, ref)
+    _send_booking_confirmation(req, ref, total_cost, days)
 
     return {
         "success": True,

@@ -1,6 +1,6 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './services/api';
 import {
   Button,
@@ -48,6 +48,7 @@ let _toastId = 0;
 
 function App() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isLanding = location.pathname === '/';
   const [step, setStep] = useState<BookingStep>(1);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -1071,7 +1072,7 @@ function App() {
           <div className="post-confirmation-actions">
             <Button
               variant="primary"
-              onClick={() => window.location.href = '/'}
+              onClick={() => { setBookingRef(''); setStep(1); navigate('/'); }}
               style={{ flex: 1 }}
             >
               Book Another Vehicle
@@ -1080,7 +1081,7 @@ function App() {
         )}
             </>
           } />
-          <Route path="*" element={<LandingPage onBookNow={() => window.location.href = '/book'} />} />
+          <Route path="*" element={<LandingPage onBookNow={() => navigate('/book')} />} />
         </Routes>
       </main>
 

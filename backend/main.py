@@ -354,14 +354,14 @@ async def health():
 VEHICLES_FALLBACK = [
     {
         "id": "v1",
-        "name": "Standard Rental Car",
+        "name": "Suzuki Swift",
         "rate": 120,
         "seats": 5,
         "transmission": "automatic",
         "fuelType": "petrol",
-        "description": "Clean, reliable car for getting around Barbados. 2-day minimum. Weekend & weekly specials available.",
+        "description": "Reliable and comfortable. Great for exploring the island at your own pace.",
         "imageUrl": "/vehicle.png",
-        "features": ["Air Conditioning", "2-Day Minimum", "Weekend Specials", "Free Drop-off"],
+        "features": ["Air Conditioning", "2-Day Minimum", "Bluetooth", "Free Drop-off"],
     }
 ]
 

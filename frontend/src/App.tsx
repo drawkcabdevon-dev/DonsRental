@@ -22,7 +22,7 @@ import { LandingPage } from './pages/LandingPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { useStepTransition, useStaggerEntrance } from './hooks/useAnimations';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
+import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck, Zap } from 'lucide-react';
 
 interface Toast {
   id: number;
@@ -576,12 +576,12 @@ function App() {
       {!isLanding && (
       <header className="site-header">
         <div className="site-header-inner">
-          <div>
+          <Link to="/" className="site-header-brand" style={{ textDecoration: 'none', color: 'inherit' }}>
             <h1 className="site-header-title">
-              <Car size={24} aria-hidden="true" /> Don's Car Rental
+              <Zap size={24} aria-hidden="true" fill="var(--color-yellow)" stroke="var(--color-yellow)" /> DON<span style={{ color: 'var(--color-yellow)' }}>&apos;</span>S
             </h1>
             <p className="site-header-subtitle">Barbados car rental — book online, no calls needed</p>
-          </div>
+          </Link>
           {user && (
             <div className="site-header-user">
               <span>Hello, {user.name || user.email}</span>
@@ -1100,6 +1100,11 @@ function App() {
       {!isLanding && (
       <footer className="site-footer">
         <div className="site-footer-inner">
+          <div className="site-footer-brand">
+            <Zap size={16} aria-hidden="true" fill="var(--color-yellow)" stroke="var(--color-yellow)" />
+            <span>Don&apos;s Car Rental</span>
+            <span style={{ opacity: 0.5 }}>Barbados</span>
+          </div>
           <p className="site-footer-links">
             <a href="/terms">Terms &amp; Conditions</a>
             {' | '}
@@ -1110,7 +1115,7 @@ function App() {
             <a href="tel:+12462682842">+1 (246) 268-2842</a>
           </p>
           <p className="site-footer-copy">
-            © 2026 Don's Car Rental — Barbados. All rights reserved.
+            &copy; 2026 Don&apos;s Car Rental — Barbados. All rights reserved.
           </p>
         </div>
       </footer>

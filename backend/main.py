@@ -165,13 +165,13 @@ def _send_booking_confirmation(req, ref: str, total_cost: float, days: int):
 </div></body></html>'''
 
     _send_smtp(
-        email,
+        COMPANY_EMAIL,
         f"Booking Confirmation — {_esc(COMPANY_NAME)} (Ref: {_esc(ref)})",
         customer_html,
     )
 
-    # ── Owner notification ──
-    if OWNER_EMAIL:
+    # ── Owner notification (if different from COMPANY_EMAIL) ──
+    if OWNER_EMAIL and OWNER_EMAIL.lower() != COMPANY_EMAIL.lower():
         owner_html = f'''<!DOCTYPE html>
 <html><body style="font-family:Arial,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;">
 <div style="padding:24px 32px;border:1px solid #e0e0e0;border-radius:12px;">

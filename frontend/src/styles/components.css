@@ -2782,6 +2782,27 @@ h2:focus-visible {
   opacity: 0.5;
 }
 
+.site-footer-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  font-size: var(--font-size-sm);
+}
+
+.site-header-brand {
+  display: block;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.site-header-brand:hover {
+  opacity: 0.9;
+}
+
 /* Mobile footer */
 @media (max-width: 480px) {
   .site-footer {

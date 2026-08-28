@@ -268,7 +268,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
   useEffect(() => { api.getVehicles().then(setVehicles).catch(() => {}); }, []);
 
   return (
-    <div style={{ backgroundColor: 'var(--color-black)' }}>
+    <div style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh' }}>
       <Marquee />
 
       {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}
@@ -435,7 +435,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
             <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.5rem)', fontWeight: 800, textTransform: 'uppercase', marginBottom: 'var(--space-6)', lineHeight: 1.15 }}>
               Snap Your License.<br /><span style={{ color: 'var(--color-yellow)' }}>We'll Do The Rest.</span>
             </h2>
-            <p style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-dark-gray)', lineHeight: 1.7, marginBottom: 'var(--space-8)' }}>
+            <p style={{ fontSize: 'var(--font-size-lg)', color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: 'var(--space-8)' }}>
               Take a photo of your Barbados driver's license and we'll handle the details. No typing, no hassle — just snap and go.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -447,7 +447,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
               ].map((item, i) => (
                 <motion.div key={item.text} initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }} whileHover={{ x: 8, backgroundColor: 'var(--color-light-gray)' }} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', borderLeft: '3px solid var(--color-yellow)', transition: 'all 0.2s' }}>
                   <item.icon style={{ width: 20, height: 20, stroke: 'var(--color-yellow)', flexShrink: 0 }} />
-                  <span style={{ fontSize: 'var(--font-size-base)', fontWeight: 500 }}>{item.text}</span>
+                  <span style={{ fontSize: 'var(--font-size-base)', fontWeight: 500, color: 'var(--color-white)' }}>{item.text}</span>
                 </motion.div>
               ))}
             </div>

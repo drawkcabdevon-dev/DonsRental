@@ -279,14 +279,33 @@ export function AvailabilityCalendar({
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
   };
 
-  // Touch swipe for month navigation
+  // Touch handling: swipe for month nav + drag for range selection
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
 
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || !rangeStart) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (el) {
+      const dayBtn = el.closest('.calendar-day') as HTMLElement | null;
+      if (dayBtn && dayBtn.dataset.date) {
+        const day = days.find(d => toDateStr(d.date) === dayBtn.dataset.date);
+        if (day && canSelect(day)) {
+          dragMoved.current = true;
+          setRangeEnd(toDateStr(day.date));
+        }
+      }
+    }
+  };
+
   const handleTouchEnd = (e: React.TouchEvent) => {
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) {
+    if (isDragging) {
+      handlePointerUp();
+    } else if (Math.abs(diff) > 50) {
       if (diff > 0) goToNextMonth();
       else goToPrevMonth();
     }
@@ -298,6 +317,7 @@ export function AvailabilityCalendar({
     <div
       className="calendar"
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onPointerUp={handlePointerUp}
       onMouseLeave={() => {
@@ -361,6 +381,7 @@ export function AvailabilityCalendar({
             <button
               key={i}
               className={className}
+              data-date={toDateStr(day.date)}
               onPointerDown={(e) => {
                 e.preventDefault();
                 handleDayPointerDown(day);

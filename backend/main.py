@@ -827,7 +827,7 @@ async def check_availability(req: CheckAvailabilityRequest):
         if ev_start and ev_end and _dates_overlap(pickup, return_d, ev_start, ev_end):
             conflicts.append({
                 "type": "calendar",
-                "summary": event.get('summary', 'Blocked'),
+                "summary": "Blocked",
                 "start": start.get('date') or start.get('dateTime', ''),
                 "end": end.get('date') or end.get('dateTime', ''),
             })

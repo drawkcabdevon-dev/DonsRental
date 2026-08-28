@@ -952,6 +952,7 @@ h2:focus-visible {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  touch-action: none;
 }
 
 /* Individual day cell */
@@ -1447,6 +1448,12 @@ h2:focus-visible {
     min-height: 100dvh !important;
     padding: var(--space-8) 0 !important;
   }
+
+  /* Ensure landing page fills full width on tablets */
+  .landing-section, .landing-section-compact, .landing-cta-section {
+    max-width: none !important;
+    width: 100% !important;
+  }
   .landing-hero-bolt {
     margin-bottom: var(--space-3) !important;
   }
@@ -1567,6 +1574,13 @@ h2:focus-visible {
   .app-container {
     width: 100%;
     overflow-x: hidden;
+  }
+
+  /* Landing page fills the full screen — no white border */
+  html, body {
+    background: var(--color-black);
+    margin: 0;
+    padding: 0;
   }
 
   /* Hero: even tighter */

@@ -342,11 +342,7 @@ function App() {
           if (result.available) {
             setDateAvailability({ available: true, loading: false, message: 'Dates are available' });
           } else {
-            const conflict = result.conflicts?.[0];
-            const msg = conflict
-              ? `${conflict.summary || 'Booked'} — ${conflict.start || ''} to ${conflict.end || ''}`
-              : 'These dates are not available';
-            setDateAvailability({ available: false, loading: false, message: msg });
+            setDateAvailability({ available: false, loading: false, message: 'These dates are not available' });
           }
         }
       } catch {
@@ -467,11 +463,7 @@ function App() {
         booking.vehicleId || 'v1'
       );
       if (!availability.available) {
-        const conflict = availability.conflicts[0];
-        const detail = conflict?.type === 'calendar'
-          ? `Dates blocked: ${conflict.summary || 'maintenance'}`
-          : `Conflicts with existing booking ${conflict?.existingRef || ''}`;
-        setError(`Vehicle not available for those dates. ${detail}`);
+        setError('Vehicle not available for those dates. Please choose different dates.');
         return;
       }
 
@@ -628,7 +620,7 @@ function App() {
         {/* Chat Banner - Alternative booking method */}
         {!bookingRef && step === 1 && (
           <div className="chat-banner" style={{ 
-            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)', 
+            background: 'linear-gradient(135deg, var(--color-black) 0%, var(--color-charcoal) 100%)', 
             color: 'white', 
             padding: 'var(--space-6)', 
             borderRadius: 'var(--radius-lg)', 

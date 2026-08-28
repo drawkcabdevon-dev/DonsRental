@@ -1,0 +1,3 @@
+id,title,severity,timestamp,file
+vuln-0001,Wildcard CORS Policy in FastAPI Application,MEDIUM,2026-08-25 03:38:57 UTC,vulnerabilities/vuln-0001.md
+vuln-0002,Insecure HTTP Request for License Scan,MEDIUM,2026-08-25 03:39:06 UTC,vulnerabilities/vuln-0002.md

@@ -1,0 +1,327 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Strix",
+          "informationUri": "https://strix.ai",
+          "rules": [
+            {
+              "id": "CWE-20",
+              "name": "Business Logic Flaw: Return Date Before Pickup Date in /api/check-availability",
+              "shortDescription": {
+                "text": "Business Logic Flaw: Return Date Before Pickup Date in /api/check-availability"
+              },
+              "fullDescription": {
+                "text": "The /api/check-availability endpoint allows a returnDate that is chronologically before the pickupDate, yet still returns 'available: true'. This can lead to illogical bookings and incorrect availability calculations."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "The /api/check-availability endpoint allows a returnDate that is chronologically before the pickupDate, yet still returns 'available: true'. This can lead to illogical bookings and incorrect availability calculations.\n\nIncorrect availability calculations and potential for invalid bookings, leading to business disruption and customer dissatisfaction.\n\nImplement server-side validation to ensure that 'returnDate' is always chronologically after 'pickupDate'. Return an appropriate error message (e.g., 400 Bad Request) when this condition is violated.",
+                "markdown": "The /api/check-availability endpoint allows a returnDate that is chronologically before the pickupDate, yet still returns 'available: true'. This can lead to illogical bookings and incorrect availability calculations.\n\nIncorrect availability calculations and potential for invalid bookings, leading to business disruption and customer dissatisfaction.\n\nImplement server-side validation to ensure that 'returnDate' is always chronologically after 'pickupDate'. Return an appropriate error message (e.g., 400 Bad Request) when this condition is violated."
+              },
+              "properties": {
+                "security-severity": "5.3",
+                "tags": [
+                  "security",
+                  "CWE-20",
+                  "stride:T"
+                ]
+              },
+              "helpUri": "https://cwe.mitre.org/data/definitions/20.html"
+            },
+            {
+              "id": "CWE-200",
+              "name": "Exposed Google API Key in Client-Side Code",
+              "shortDescription": {
+                "text": "Exposed Google API Key in Client-Side Code"
+              },
+              "fullDescription": {
+                "text": "A Google API key was found embedded and exposed in the client-side JavaScript bundle. While the key appears to be restricted in its functionality, its exposure represents an information disclosure vulnerability."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "A Google API key was found embedded and exposed in the client-side JavaScript bundle. While the key appears to be restricted in its functionality, its exposure represents an information disclosure vulnerability.\n\nDisclosure of an API key, which could potentially be abused if not properly restricted, or used for reconnaissance against the application's infrastructure.\n\nGoogle API keys should not be embedded directly in client-side code. If a key is required client-side, consider using a proxy to obscure the key or implementing server-side authentication for API calls. Ensure that API keys are restricted to the minimum necessary permissions and origins.",
+                "markdown": "A Google API key was found embedded and exposed in the client-side JavaScript bundle. While the key appears to be restricted in its functionality, its exposure represents an information disclosure vulnerability.\n\nDisclosure of an API key, which could potentially be abused if not properly restricted, or used for reconnaissance against the application's infrastructure.\n\nGoogle API keys should not be embedded directly in client-side code. If a key is required client-side, consider using a proxy to obscure the key or implementing server-side authentication for API calls. Ensure that API keys are restricted to the minimum necessary permissions and origins."
+              },
+              "properties": {
+                "security-severity": "5.3",
+                "tags": [
+                  "security",
+                  "CWE-200",
+                  "stride:I"
+                ]
+              },
+              "helpUri": "https://cwe.mitre.org/data/definitions/200.html"
+            },
+            {
+              "id": "CWE-94",
+              "name": "Google Sheets Formula/Command Injection via customerEmail",
+              "shortDescription": {
+                "text": "Google Sheets Formula/Command Injection via customerEmail"
+              },
+              "fullDescription": {
+                "text": "The /api/bookings endpoint is vulnerable to potential Google Sheets formula or command injection via the customerEmail parameter. When special characters or formula-like payloads are submitted, the server responds with a 500 Internal Server Error, indicating a backend processing issue due to improper input sanitization."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "help": {
+                "text": "The /api/bookings endpoint is vulnerable to potential Google Sheets formula or command injection via the customerEmail parameter. When special characters or formula-like payloads are submitted, the server responds with a 500 Internal Server Error, indicating a backend processing issue due to improper input sanitization.\n\nSuccessful exploitation could lead to data manipulation, exfiltration of sensitive booking information from Google Sheets, or potentially command execution on the backend system if the injection vector is used in a shell context.\n\nImplement robust server-side input validation and sanitization for all user-supplied data, especially for fields that interact with backend systems like Google Sheets. Ensure that special characters are properly escaped or encoded, and that input conforms to expected formats (e.g., valid email address regex). If using Google Sheets formulas, explicitly disable formula parsing for user-supplied data or use secure methods to write data.",
+                "markdown": "The /api/bookings endpoint is vulnerable to potential Google Sheets formula or command injection via the customerEmail parameter. When special characters or formula-like payloads are submitted, the server responds with a 500 Internal Server Error, indicating a backend processing issue due to improper input sanitization.\n\nSuccessful exploitation could lead to data manipulation, exfiltration of sensitive booking information from Google Sheets, or potentially command execution on the backend system if the injection vector is used in a shell context.\n\nImplement robust server-side input validation and sanitization for all user-supplied data, especially for fields that interact with backend systems like Google Sheets. Ensure that special characters are properly escaped or encoded, and that input conforms to expected formats (e.g., valid email address regex). If using Google Sheets formulas, explicitly disable formula parsing for user-supplied data or use secure methods to write data."
+              },
+              "properties": {
+                "security-severity": "7.3",
+                "tags": [
+                  "security",
+                  "CWE-94",
+                  "stride:T",
+                  "stride:E"
+                ]
+              },
+              "helpUri": "https://cwe.mitre.org/data/definitions/94.html"
+            },
+            {
+              "id": "CWE-862",
+              "name": "Broken Function Level Authorization: Unauthenticated Booking Creation",
+              "shortDescription": {
+                "text": "Broken Function Level Authorization: Unauthenticated Booking Creation"
+              },
+              "fullDescription": {
+                "text": "The /api/bookings endpoint allows unauthenticated users to create new car rental bookings. This bypasses any intended authorization controls, enabling unauthorized individuals to create bookings."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "The /api/bookings endpoint allows unauthenticated users to create new car rental bookings. This bypasses any intended authorization controls, enabling unauthorized individuals to create bookings.\n\nUnauthorized users can create bookings, leading to potential abuse of the system, creation of fraudulent bookings, and resource exhaustion. This can result in financial losses, operational disruption, and reputational damage for the rental service.\n\nImplement robust authentication and authorization checks on the /api/bookings endpoint. Ensure that only authenticated and authorized users (e.g., administrative staff or legitimate, logged-in customers) can create bookings. This typically involves requiring an authentication token (e.g., JWT) in the request headers and validating it on the server-side.",
+                "markdown": "The /api/bookings endpoint allows unauthenticated users to create new car rental bookings. This bypasses any intended authorization controls, enabling unauthorized individuals to create bookings.\n\nUnauthorized users can create bookings, leading to potential abuse of the system, creation of fraudulent bookings, and resource exhaustion. This can result in financial losses, operational disruption, and reputational damage for the rental service.\n\nImplement robust authentication and authorization checks on the /api/bookings endpoint. Ensure that only authenticated and authorized users (e.g., administrative staff or legitimate, logged-in customers) can create bookings. This typically involves requiring an authentication token (e.g., JWT) in the request headers and validating it on the server-side."
+              },
+              "properties": {
+                "security-severity": "6.5",
+                "tags": [
+                  "security",
+                  "CWE-862",
+                  "stride:E"
+                ]
+              },
+              "helpUri": "https://cwe.mitre.org/data/definitions/862.html"
+            }
+          ],
+          "version": "1.5.3"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CWE-20",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Business Logic Flaw: Return Date Before Pickup Date in /api/check-availability\n\nThe /api/check-availability endpoint allows a returnDate that is chronologically before the pickupDate, yet still returns 'available: true'. This can lead to illogical bookings and incorrect availability calculations."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SECURITY.md"
+                }
+              }
+            },
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "/api/check-availability",
+                  "kind": "endpoint"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e1327f679365de94ad6b8e0ca5a540464866922f3877f9c555d16d885ab45e31"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "strix_vuln_class_hash": "66f92cfbd928f0ed62d80f41d03a57b42c8dc61695df26192963a3d06efd7a3f",
+            "synthetic_location": true,
+            "strix": {
+              "id": "vuln-0001",
+              "severity": "medium",
+              "cvss": 5.3,
+              "timestamp": "2026-08-27 19:49:04 UTC",
+              "target": "https://rentals.onlineverywhere.com",
+              "endpoint": "/api/check-availability",
+              "method": "POST",
+              "cwe": "CWE-20",
+              "impact": "Incorrect availability calculations and potential for invalid bookings, leading to business disruption and customer dissatisfaction.",
+              "technical_analysis": "The API endpoint does not properly validate the chronological order of pickupDate and returnDate. When a request is sent with returnDate < pickupDate, the system still responds with available:true, indicating a flaw in the business logic.",
+              "remediation_steps": "Implement server-side validation to ensure that 'returnDate' is always chronologically after 'pickupDate'. Return an appropriate error message (e.g., 400 Bad Request) when this condition is violated.",
+              "poc": {
+                "description": "1. Intercept a POST request to /api/check-availability.\n2. Modify the JSON body to set 'returnDate' to a date before 'pickupDate'.\n3. Send the modified request.\n4. Observe the response, which will show 'available:true' despite the invalid date range.",
+                "script_available": true
+              }
+            }
+          }
+        },
+        {
+          "ruleId": "CWE-200",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Exposed Google API Key in Client-Side Code\n\nA Google API key was found embedded and exposed in the client-side JavaScript bundle. While the key appears to be restricted in its functionality, its exposure represents an information disclosure vulnerability."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SECURITY.md"
+                }
+              }
+            },
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "/assets/index-FrECPCYq.js",
+                  "kind": "endpoint"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b3e53fb3fb73cf262024c934707cd6f97798b51c009f35072fd481300b725408"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "strix_vuln_class_hash": "8e275dd0049b3775cdd696df86bb3d716fc0f50f96d813e2f016d8007a58a379",
+            "synthetic_location": true,
+            "strix": {
+              "id": "vuln-0002",
+              "severity": "medium",
+              "cvss": 5.3,
+              "timestamp": "2026-08-27 19:49:18 UTC",
+              "target": "https://rentals.onlineverywhere.com",
+              "endpoint": "/assets/index-FrECPCYq.js",
+              "method": "GET",
+              "cwe": "CWE-200",
+              "impact": "Disclosure of an API key, which could potentially be abused if not properly restricted, or used for reconnaissance against the application's infrastructure.",
+              "technical_analysis": "The API key `AIzaSyCkfPOPZXDKNn8hhgu3JrA62wIgC93d44k` was found in `assets/index-FrECPCYq.js` and observed in network requests to `optimizationguide-pa.googleapis.com`. This key is directly visible in the browser's developer tools and network traffic.",
+              "remediation_steps": "Google API keys should not be embedded directly in client-side code. If a key is required client-side, consider using a proxy to obscure the key or implementing server-side authentication for API calls. Ensure that API keys are restricted to the minimum necessary permissions and origins.",
+              "poc": {
+                "description": "1. Navigate to `https://rentals.onlineverywhere.com`.\n2. Open browser developer tools and inspect network requests.\n3. Observe requests to `optimizationguide-pa.googleapis.com` containing the API key in the query parameters.",
+                "script_available": true
+              }
+            }
+          }
+        },
+        {
+          "ruleId": "CWE-94",
+          "ruleIndex": 2,
+          "level": "error",
+          "message": {
+            "text": "Google Sheets Formula/Command Injection via customerEmail\n\nThe /api/bookings endpoint is vulnerable to potential Google Sheets formula or command injection via the customerEmail parameter. When special characters or formula-like payloads are submitted, the server responds with a 500 Internal Server Error, indicating a backend processing issue due to improper input sanitization."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SECURITY.md"
+                }
+              }
+            },
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "/api/bookings",
+                  "kind": "endpoint"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "7ba1ab592a2cbaa42ab976a985be35bee4a6fa8bb268e9ae481f3e2cae319d5f"
+          },
+          "properties": {
+            "security-severity": "7.3",
+            "strix_vuln_class_hash": "3c685d8c5d88141a7be4c38913782128a3b59ce85e4bfc75b9ae60e2ca65341f",
+            "synthetic_location": true,
+            "strix": {
+              "id": "vuln-0003",
+              "severity": "high",
+              "cvss": 7.3,
+              "timestamp": "2026-08-27 19:50:59 UTC",
+              "target": "https://rentals.onlineverywhere.com",
+              "endpoint": "/api/bookings",
+              "method": "POST",
+              "cwe": "CWE-94",
+              "impact": "Successful exploitation could lead to data manipulation, exfiltration of sensitive booking information from Google Sheets, or potentially command execution on the backend system if the injection vector is used in a shell context.",
+              "technical_analysis": "The customerEmail parameter appears to be processed by a backend component that interacts with Google Sheets. When payloads containing SQL-like syntax or Google Sheets formulas are submitted, the server consistently returns a 500 Internal Server Error. This indicates a failure to properly sanitize or validate user input before it is processed by the backend system, leading to a potential injection vulnerability.",
+              "remediation_steps": "Implement robust server-side input validation and sanitization for all user-supplied data, especially for fields that interact with backend systems like Google Sheets. Ensure that special characters are properly escaped or encoded, and that input conforms to expected formats (e.g., valid email address regex). If using Google Sheets formulas, explicitly disable formula parsing for user-supplied data or use secure methods to write data.",
+              "poc": {
+                "description": "1. Intercept a legitimate POST request to /api/bookings.\n2. Modify the customerEmail field with a SQL injection payload (e.g., ' OR 1=1--@example.com').\n3. Send the modified request and observe a 500 Internal Server Error.\n4. Repeat with a Google Sheets formula injection payload (e.g., '=HYPERLINK(\"http://evil.com\")@example.com').\n5. Observe another 500 Internal Server Error.",
+                "script_available": true
+              }
+            }
+          }
+        },
+        {
+          "ruleId": "CWE-862",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "Broken Function Level Authorization: Unauthenticated Booking Creation\n\nThe /api/bookings endpoint allows unauthenticated users to create new car rental bookings. This bypasses any intended authorization controls, enabling unauthorized individuals to create bookings."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SECURITY.md"
+                }
+              }
+            },
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "/api/bookings",
+                  "kind": "endpoint"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "862ed3f7b967b114d6246d4ce89e072c24f8671c9c5d8d9b647ae97da76e0709"
+          },
+          "properties": {
+            "security-severity": "6.5",
+            "strix_vuln_class_hash": "adeee36c5373305886bf0374b3af30a1acc52f3f4942d24e5a497535d396de1a",
+            "synthetic_location": true,
+            "strix": {
+              "id": "vuln-0004",
+              "severity": "medium",
+              "cvss": 6.5,
+              "timestamp": "2026-08-27 19:51:24 UTC",
+              "target": "https://rentals.onlineverywhere.com",
+              "endpoint": "/api/bookings",
+              "method": "POST",
+              "cwe": "CWE-862",
+              "impact": "Unauthorized users can create bookings, leading to potential abuse of the system, creation of fraudulent bookings, and resource exhaustion. This can result in financial losses, operational disruption, and reputational damage for the rental service.",
+              "technical_analysis": "The /api/bookings endpoint does not enforce any authentication or authorization mechanisms, allowing any unauthenticated client to successfully create car rental bookings. This exposes a critical vulnerability where an attacker can interact with a core business function without proper access control.",
+              "remediation_steps": "Implement robust authentication and authorization checks on the /api/bookings endpoint. Ensure that only authenticated and authorized users (e.g., administrative staff or legitimate, logged-in customers) can create bookings. This typically involves requiring an authentication token (e.g., JWT) in the request headers and validating it on the server-side.",
+              "poc": {
+                "description": "1. Construct a valid JSON payload for a new booking.\n2. Send a POST request to /api/bookings with the payload, without including any authentication headers or session cookies.\n3. Observe that the booking is successfully created, as indicated by a 200 OK response and a new booking ID.",
+                "script_available": true
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "syntheticLocationCount": 4
+      }
+    }
+  ]
+}

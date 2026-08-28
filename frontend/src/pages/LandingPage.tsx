@@ -401,7 +401,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
                   </div>
                   <div style={{ padding: 'var(--space-6)' }}>
                     <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 'var(--space-3)' }}>{v.name}</h3>
-                    <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-medium-gray)', lineHeight: 1.7, marginBottom: 'var(--space-5)' }}>{v.description}</p>
+                    <p style={{ fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: 'var(--space-5)' }}>{v.description}</p>
                     {v.features && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
                         {v.features.slice(0, 3).map((f) => (
@@ -412,7 +412,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-dark-gray)', paddingTop: 'var(--space-4)' }}>
                       <div>
                         <span style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--color-yellow)', fontFamily: 'var(--font-mono)' }}>${v.rate}</span>
-                        <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-medium-gray)', marginLeft: 'var(--space-2)' }}>/ day</span>
+                        <span style={{ fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.65)', marginLeft: 'var(--space-2)' }}>/ day</span>
                       </div>
                       <motion.button whileHover={{ scale: 1.08, boxShadow: '0 0 25px rgba(255,204,0,0.35)' }} whileTap={{ scale: 0.94 }} onClick={onBookNow} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                         Book Now <Icons.arrowRight style={{ width: 14, height: 14 }} />
@@ -520,17 +520,17 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
               <Icons.bolt style={{ width: 24, height: 24, stroke: 'var(--color-yellow)' }} />
               <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: 'var(--font-size-lg)' }}>Don's Car Rental</span>
-              <span style={{ color: 'var(--color-medium-gray)', marginLeft: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>Barbados</span>
+              <span style={{ color: 'rgba(255,255,255,0.65)', marginLeft: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>Barbados</span>
             </div>
-            <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)' }}>
-              <a href="/privacy" style={{ color: 'var(--color-medium-gray)', textDecoration: 'none' }}>Privacy</a>
-              <a href="/terms" style={{ color: 'var(--color-medium-gray)', textDecoration: 'none' }}>Terms</a>
-              <a href="mailto:bookings@donsrental.com" style={{ color: 'var(--color-medium-gray)', textDecoration: 'none' }}>Contact</a>
+            <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.65)' }}>
+              <a href="/privacy" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Privacy</a>
+              <a href="/terms" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Terms</a>
+              <a href="mailto:bookings@donsrental.com" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Contact</a>
             </div>
           </div>
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)' }}>© {new Date().getFullYear()} Don's Car Rental. All rights reserved.</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.5)' }}>© {new Date().getFullYear()} Don's Car Rental. All rights reserved.</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.5)' }}>
               <span>Built by</span>
               <a href="https://onlineverywhere.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-yellow)', textDecoration: 'none', fontWeight: 600 }}>OnlineVeryWhere</a>
             </div>

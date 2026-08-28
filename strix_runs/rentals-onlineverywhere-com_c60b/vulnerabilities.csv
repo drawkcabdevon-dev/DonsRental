@@ -1,0 +1,5 @@
+id,title,severity,timestamp,file
+vuln-0003,Google Sheets Formula/Command Injection via customerEmail,HIGH,2026-08-27 19:50:59 UTC,vulnerabilities/vuln-0003.md
+vuln-0001,Business Logic Flaw: Return Date Before Pickup Date in /api/check-availability,MEDIUM,2026-08-27 19:49:04 UTC,vulnerabilities/vuln-0001.md
+vuln-0002,Exposed Google API Key in Client-Side Code,MEDIUM,2026-08-27 19:49:18 UTC,vulnerabilities/vuln-0002.md
+vuln-0004,Broken Function Level Authorization: Unauthenticated Booking Creation,MEDIUM,2026-08-27 19:51:24 UTC,vulnerabilities/vuln-0004.md

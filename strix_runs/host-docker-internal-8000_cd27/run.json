@@ -1,0 +1,441 @@
+{
+  "run_id": "host-docker-internal-8000_cd27",
+  "run_name": "host-docker-internal-8000_cd27",
+  "start_time": "2026-08-25T03:31:32.102249+00:00",
+  "end_time": "2026-08-25T03:32:21.313991+00:00",
+  "status": "completed",
+  "auth_mode": "api_key",
+  "targets_info": [
+    {
+      "type": "web_application",
+      "details": {
+        "target_url": "http://host.docker.internal:8000"
+      },
+      "original": "http://localhost:8000"
+    }
+  ],
+  "llm_usage": {
+    "requests": 14,
+    "input_tokens": 557011,
+    "input_tokens_details": [
+      {
+        "cache_write_tokens": 0,
+        "cached_tokens": 123456
+      }
+    ],
+    "output_tokens": 2745,
+    "output_tokens_details": [
+      {
+        "reasoning_tokens": 1272
+      }
+    ],
+    "total_tokens": 559756,
+    "request_usage_entries": [
+      {
+        "input_tokens": 37685,
+        "output_tokens": 375,
+        "total_tokens": 38060,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 181
+        }
+      },
+      {
+        "input_tokens": 38284,
+        "output_tokens": 172,
+        "total_tokens": 38456,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 81
+        }
+      },
+      {
+        "input_tokens": 37960,
+        "output_tokens": 69,
+        "total_tokens": 38029,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 69
+        }
+      },
+      {
+        "input_tokens": 38045,
+        "output_tokens": 82,
+        "total_tokens": 38127,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 57
+        }
+      },
+      {
+        "input_tokens": 38702,
+        "output_tokens": 161,
+        "total_tokens": 38863,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 161
+        }
+      },
+      {
+        "input_tokens": 38787,
+        "output_tokens": 130,
+        "total_tokens": 38917,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "input_tokens": 39147,
+        "output_tokens": 219,
+        "total_tokens": 39366,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 90
+        }
+      },
+      {
+        "input_tokens": 39509,
+        "output_tokens": 117,
+        "total_tokens": 39626,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 117
+        }
+      },
+      {
+        "input_tokens": 39594,
+        "output_tokens": 107,
+        "total_tokens": 39701,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 39452
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "input_tokens": 46585,
+        "output_tokens": 203,
+        "total_tokens": 46788,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 203
+        }
+      },
+      {
+        "input_tokens": 46670,
+        "output_tokens": 135,
+        "total_tokens": 46805,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 45585
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      {
+        "input_tokens": 38359,
+        "output_tokens": 103,
+        "total_tokens": 38462,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 81
+        }
+      },
+      {
+        "input_tokens": 38738,
+        "output_tokens": 130,
+        "total_tokens": 38868,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 103
+        }
+      },
+      {
+        "input_tokens": 38946,
+        "output_tokens": 742,
+        "total_tokens": 39688,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 38419
+        },
+        "output_tokens_details": {
+          "reasoning_tokens": 129
+        }
+      }
+    ],
+    "cost": 0.14063268,
+    "agents": [
+      {
+        "requests": 6,
+        "input_tokens": 229733,
+        "input_tokens_details": [
+          {
+            "cache_write_tokens": 0,
+            "cached_tokens": 38419
+          }
+        ],
+        "output_tokens": 1501,
+        "output_tokens_details": [
+          {
+            "reasoning_tokens": 620
+          }
+        ],
+        "total_tokens": 231234,
+        "request_usage_entries": [
+          {
+            "input_tokens": 37685,
+            "output_tokens": 375,
+            "total_tokens": 38060,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 181
+            }
+          },
+          {
+            "input_tokens": 37960,
+            "output_tokens": 69,
+            "total_tokens": 38029,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 69
+            }
+          },
+          {
+            "input_tokens": 38045,
+            "output_tokens": 82,
+            "total_tokens": 38127,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 57
+            }
+          },
+          {
+            "input_tokens": 38359,
+            "output_tokens": 103,
+            "total_tokens": 38462,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 81
+            }
+          },
+          {
+            "input_tokens": 38738,
+            "output_tokens": 130,
+            "total_tokens": 38868,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 103
+            }
+          },
+          {
+            "input_tokens": 38946,
+            "output_tokens": 742,
+            "total_tokens": 39688,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 38419
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 129
+            }
+          }
+        ],
+        "agent_id": "10442d81",
+        "agent_name": "Root Agent",
+        "model": "gemini/gemini-2.5-flash",
+        "cost": 0.0580950577
+      },
+      {
+        "requests": 8,
+        "input_tokens": 327278,
+        "input_tokens_details": [
+          {
+            "cache_write_tokens": 0,
+            "cached_tokens": 85037
+          }
+        ],
+        "output_tokens": 1244,
+        "output_tokens_details": [
+          {
+            "reasoning_tokens": 652
+          }
+        ],
+        "total_tokens": 328522,
+        "request_usage_entries": [
+          {
+            "input_tokens": 38284,
+            "output_tokens": 172,
+            "total_tokens": 38456,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 81
+            }
+          },
+          {
+            "input_tokens": 38702,
+            "output_tokens": 161,
+            "total_tokens": 38863,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 161
+            }
+          },
+          {
+            "input_tokens": 38787,
+            "output_tokens": 130,
+            "total_tokens": 38917,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          },
+          {
+            "input_tokens": 39147,
+            "output_tokens": 219,
+            "total_tokens": 39366,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 90
+            }
+          },
+          {
+            "input_tokens": 39509,
+            "output_tokens": 117,
+            "total_tokens": 39626,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 117
+            }
+          },
+          {
+            "input_tokens": 39594,
+            "output_tokens": 107,
+            "total_tokens": 39701,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 39452
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          },
+          {
+            "input_tokens": 46585,
+            "output_tokens": 203,
+            "total_tokens": 46788,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 203
+            }
+          },
+          {
+            "input_tokens": 46670,
+            "output_tokens": 135,
+            "total_tokens": 46805,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 45585
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ],
+        "agent_id": "8d7f7e04",
+        "agent_name": "Reconnaissance Agent",
+        "model": "gemini/gemini-2.5-flash",
+        "cost": 0.0825376223
+      }
+    ]
+  },
+  "scan_mode": "quick",
+  "instruction": "This is a car rental booking API. Test all endpoints for injection, XSS, IDOR, broken access control, and business logic flaws. No test accounts available - focus on unauthenticated testing.",
+  "user_instruction": "This is a car rental booking API. Test all endpoints for injection, XSS, IDOR, broken access control, and business logic flaws. No test accounts available - focus on unauthenticated testing.",
+  "non_interactive": true,
+  "local_sources": [],
+  "workspace_mount": null,
+  "diff_scope": {
+    "active": false,
+    "mode": "auto"
+  },
+  "scope_mode": "auto",
+  "diff_base": null,
+  "scan_results": {
+    "scan_completed": true,
+    "executive_summary": "# Executive Summary\n\nThis security assessment targeted a car rental booking API at `http://host.docker.internal:8000`. \n\n**Overall risk posture:** Indeterminate due to environment issues.\n\n**Key findings:** The target application was found to be unreachable from the testing environment. All attempts to connect resulted in a 'Connection refused' error. \n\n**Business impact:** The security assessment could not be performed due to the unavailability of the target application.",
+    "methodology": "# Methodology\n\nThe assessment began with an attempt to perform reconnaissance and map API endpoints of the target application, `http://host.docker.internal:8000`.\n\n**Engagement type:** Black-box external test.\n**Scope:** `http://host.docker.internal:8000`.\n\n**Activities:** \n- Attempted to spawn a Reconnaissance Agent to map endpoints using `httpx` and `katana`.\n- Executed `ping host.docker.internal` to verify network connectivity.\n- Executed `nc -z -v host.docker.internal 8000` to check if the port was open.",
+    "technical_analysis": "# Technical Analysis\n\nThe Reconnaissance Agent reported a 'Connection refused' error, indicating the target application was unreachable. Further investigation was conducted:\n\n1.  **Network Connectivity:** A `ping` to `host.docker.internal` (172.17.0.1) was successful, confirming network reachability from the sandbox environment to the host machine.\n\n2.  **Port Accessibility:** A `netcat` scan (`nc -z -v host.docker.internal 8000`) confirmed that port 8000 on `host.docker.internal` is not open or actively listening, resulting in a 'Connection refused' error.\n\n**Systemic themes:** The core issue preventing the assessment is the unavailability of the target application at the specified address and port. This prevents any form of web-based security testing.",
+    "recommendations": "# Recommendations\n\n**Immediate:**\n1.  Ensure the car rental booking API application is properly deployed, running, and listening on `http://host.docker.internal:8000`.\n2.  Verify that no firewall rules or network configurations are blocking access to port `8000` from within the Docker container (where the agent is running).\n\n**Next Steps:**\nOnce the application is confirmed to be running and accessible, re-initiate the security assessment to proceed with reconnaissance, vulnerability discovery, and validation.\n\n**Retest & validation:** Confirm the application is accessible via `curl http://host.docker.internal:8000` or a similar tool before attempting another security assessment run.",
+    "success": true
+  }
+}

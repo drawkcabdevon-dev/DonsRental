@@ -1,0 +1,240 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Strix",
+          "informationUri": "https://strix.ai",
+          "rules": [
+            {
+              "id": "CWE-942",
+              "name": "Wildcard CORS Policy in FastAPI Application",
+              "shortDescription": {
+                "text": "Wildcard CORS Policy in FastAPI Application"
+              },
+              "fullDescription": {
+                "text": "The FastAPI application at `backend/main.py` is configured with a Cross-Origin Resource Sharing (CORS) policy that allows all origins (`'*'`). This permissive setting can lead to security vulnerabilities if sensitive data is handled, as it allows any domain to make requests to the API, potentially bypassing same-origin policy protections."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "The FastAPI application at `backend/main.py` is configured with a Cross-Origin Resource Sharing (CORS) policy that allows all origins (`'*'`). This permissive setting can lead to security vulnerabilities if sensitive data is handled, as it allows any domain to make requests to the API, potentially bypassing same-origin policy protections.\n\nA malicious website could make unauthorized requests to the API, potentially leading to data leakage, unauthorized actions, or other security bypasses, especially if authentication mechanisms are misconfigured or have other flaws.\n\nRestrict the `allow_origins` list in the CORS middleware to only include trusted domains that are expected to access the API. Avoid using the wildcard `*` unless the API is explicitly designed to be publicly accessible and handles no sensitive data or actions.",
+                "markdown": "The FastAPI application at `backend/main.py` is configured with a Cross-Origin Resource Sharing (CORS) policy that allows all origins (`'*'`). This permissive setting can lead to security vulnerabilities if sensitive data is handled, as it allows any domain to make requests to the API, potentially bypassing same-origin policy protections.\n\nA malicious website could make unauthorized requests to the API, potentially leading to data leakage, unauthorized actions, or other security bypasses, especially if authentication mechanisms are misconfigured or have other flaws.\n\nRestrict the `allow_origins` list in the CORS middleware to only include trusted domains that are expected to access the API. Avoid using the wildcard `*` unless the API is explicitly designed to be publicly accessible and handles no sensitive data or actions."
+              },
+              "properties": {
+                "security-severity": "5.3",
+                "tags": [
+                  "security",
+                  "CWE-942",
+                  "stride:T",
+                  "stride:I"
+                ]
+              },
+              "helpUri": "https://cwe.mitre.org/data/definitions/942.html"
+            },
+            {
+              "id": "CWE-319",
+              "name": "Insecure HTTP Request for License Scan",
+              "shortDescription": {
+                "text": "Insecure HTTP Request for License Scan"
+              },
+              "fullDescription": {
+                "text": "The application at `backend/main.py` makes an HTTP request to `http://api.example.com/license-scan` without using HTTPS. This cleartext transmission of data can expose sensitive information to attackers who might be eavesdropping on the network."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "The application at `backend/main.py` makes an HTTP request to `http://api.example.com/license-scan` without using HTTPS. This cleartext transmission of data can expose sensitive information to attackers who might be eavesdropping on the network.\n\nSensitive information transmitted during the license scanning process could be intercepted and viewed by attackers, leading to privacy violations or further attacks.\n\nUpdate the request to `http://api.example.com/license-scan` to use `https://` to ensure that the data is encrypted during transit. This protects against passive network attackers.",
+                "markdown": "The application at `backend/main.py` makes an HTTP request to `http://api.example.com/license-scan` without using HTTPS. This cleartext transmission of data can expose sensitive information to attackers who might be eavesdropping on the network.\n\nSensitive information transmitted during the license scanning process could be intercepted and viewed by attackers, leading to privacy violations or further attacks.\n\nUpdate the request to `http://api.example.com/license-scan` to use `https://` to ensure that the data is encrypted during transit. This protects against passive network attackers."
+              },
+              "properties": {
+                "security-severity": "5.3",
+                "tags": [
+                  "security",
+                  "CWE-319",
+                  "stride:I"
+                ]
+              },
+              "helpUri": "https://cwe.mitre.org/data/definitions/319.html"
+            }
+          ],
+          "version": "1.5.3"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CWE-942",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Wildcard CORS Policy in FastAPI Application\n\nThe FastAPI application at `backend/main.py` is configured with a Cross-Origin Resource Sharing (CORS) policy that allows all origins (`'*'`). This permissive setting can lead to security vulnerabilities if sensitive data is handled, as it allows any domain to make requests to the API, potentially bypassing same-origin policy protections."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "backend/main.py"
+                },
+                "region": {
+                  "startLine": 180,
+                  "endLine": 180,
+                  "snippet": {
+                    "text": "allow_origins=[\"*\"],"
+                  }
+                }
+              },
+              "message": {
+                "text": "Restrict CORS origins"
+              }
+            },
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "/",
+                  "kind": "endpoint"
+                }
+              ]
+            }
+          ],
+          "fixes": [
+            {
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "backend/main.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 180,
+                        "endLine": 180
+                      },
+                      "insertedContent": {
+                        "text": "allow_origins=[], # TODO: Replace with specific trusted origins"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "description": {
+                "text": "Restrict the `allow_origins` list in the CORS middleware to only include trusted domains that are expected to access the API. Avoid using the wildcard `*` unless the API is explicitly designed to be publicly accessible and handles no sensitive data or actions.",
+                "markdown": "Restrict the `allow_origins` list in the CORS middleware to only include trusted domains that are expected to access the API. Avoid using the wildcard `*` unless the API is explicitly designed to be publicly accessible and handles no sensitive data or actions."
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "672ebc467df5bb4bacddc41e23aab20f5e19d048611b2e076d867c34ba02602f"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "strix_vuln_class_hash": "8723d102092a4bb80893e7df312af661bae27ca936597a1e9190f803fb3da60e",
+            "strix": {
+              "id": "vuln-0001",
+              "severity": "medium",
+              "cvss": 5.3,
+              "timestamp": "2026-08-25 03:38:57 UTC",
+              "target": "/workspace/backend",
+              "endpoint": "/",
+              "cwe": "CWE-942",
+              "impact": "A malicious website could make unauthorized requests to the API, potentially leading to data leakage, unauthorized actions, or other security bypasses, especially if authentication mechanisms are misconfigured or have other flaws.",
+              "technical_analysis": "The `CORS` middleware is initialized with `allow_origins=[\"*\"]`, which explicitly enables cross-origin requests from any domain. This is found in `backend/main.py`.",
+              "remediation_steps": "Restrict the `allow_origins` list in the CORS middleware to only include trusted domains that are expected to access the API. Avoid using the wildcard `*` unless the API is explicitly designed to be publicly accessible and handles no sensitive data or actions.",
+              "poc": {
+                "description": "1. Intercept a request to any endpoint on the application.\n2. Modify the `Origin` header to a malicious domain.\n3. Observe that the request is successfully processed, indicating the permissive CORS policy.",
+                "script_available": true
+              }
+            }
+          }
+        },
+        {
+          "ruleId": "CWE-319",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Insecure HTTP Request for License Scan\n\nThe application at `backend/main.py` makes an HTTP request to `http://api.example.com/license-scan` without using HTTPS. This cleartext transmission of data can expose sensitive information to attackers who might be eavesdropping on the network."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "backend/main.py"
+                },
+                "region": {
+                  "startLine": 223,
+                  "endLine": 223,
+                  "snippet": {
+                    "text": "requests.get(\"http://api.example.com/license-scan\", params=params)"
+                  }
+                }
+              },
+              "message": {
+                "text": "Use HTTPS for requests"
+              }
+            },
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "/api/scan-license",
+                  "kind": "endpoint"
+                }
+              ]
+            }
+          ],
+          "fixes": [
+            {
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "backend/main.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 223,
+                        "endLine": 223
+                      },
+                      "insertedContent": {
+                        "text": "requests.get(\"https://api.example.com/license-scan\", params=params)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "description": {
+                "text": "Update the request to `http://api.example.com/license-scan` to use `https://` to ensure that the data is encrypted during transit. This protects against passive network attackers.",
+                "markdown": "Update the request to `http://api.example.com/license-scan` to use `https://` to ensure that the data is encrypted during transit. This protects against passive network attackers."
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "243615a5509a7010a3836b0a7acbe16db1886bf35ae8f7a878d4016b70ea0582"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "strix_vuln_class_hash": "4492b9b9ad828a1c1c3b777bcbecc06fbfea257cee0e8305e8847b5fff69f570",
+            "strix": {
+              "id": "vuln-0002",
+              "severity": "medium",
+              "cvss": 5.3,
+              "timestamp": "2026-08-25 03:39:06 UTC",
+              "target": "/workspace/backend",
+              "endpoint": "/api/scan-license",
+              "cwe": "CWE-319",
+              "impact": "Sensitive information transmitted during the license scanning process could be intercepted and viewed by attackers, leading to privacy violations or further attacks.",
+              "technical_analysis": "The `requests.get` call on line 223 of `backend/main.py` uses an `http://` scheme for the external API call, which transmits data in cleartext.",
+              "remediation_steps": "Update the request to `http://api.example.com/license-scan` to use `https://` to ensure that the data is encrypted during transit. This protects against passive network attackers.",
+              "poc": {
+                "description": "1. Monitor network traffic while the `/api/scan-license` endpoint is being used.\n2. Observe that the request to `http://api.example.com/license-scan` is sent over unencrypted HTTP.",
+                "script_available": true
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

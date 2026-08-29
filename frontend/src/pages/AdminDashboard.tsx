@@ -24,8 +24,7 @@ interface Booking {
 type SortKey = 'bookingId' | 'customerName' | 'vehicleId' | 'pickupDate' | 'returnDate' | 'totalDays' | 'totalCost';
 
 export function AdminDashboard() {
-  const [token, setToken] = useState(() => localStorage.getItem('adminSessionToken') || '');
-  const [adminEmail, setAdminEmail] = useState(() => localStorage.getItem('adminEmail') || '');
+  const [adminEmail, setAdminEmail] = useState('');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,6 +47,7 @@ export function AdminDashboard() {
       const res = await fetch(`${API_BASE}/admin/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ credential: response.credential }),
       });
       const data = await res.json();
@@ -56,10 +56,7 @@ export function AdminDashboard() {
         setAuthenticated(false);
         return;
       }
-      setToken(data.token);
       setAdminEmail(data.email);
-      localStorage.setItem('adminSessionToken', data.token);
-      localStorage.setItem('adminEmail', data.email);
       setAuthenticated(true);
     } catch {
       setError('Failed to verify credentials with server');
@@ -94,19 +91,15 @@ export function AdminDashboard() {
   }, [handleGoogleCredential, authenticated]);
 
   const fetchBookings = async () => {
-    if (!token) return;
     setLoading(true);
     setError('');
     try {
       const response = await fetch(`${API_BASE}/bookings`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       if (response.status === 401) {
         setError('Session expired — please sign in again');
         setAuthenticated(false);
-        setToken('');
-        localStorage.removeItem('adminSessionToken');
-        localStorage.removeItem('adminEmail');
         return;
       }
       if (!response.ok) throw new Error('Failed to fetch bookings');
@@ -120,9 +113,9 @@ export function AdminDashboard() {
     }
   };
 
-  // Validate existing token on mount
+  // Try loading bookings on mount (cookie may still be valid)
   useEffect(() => {
-    if (token) fetchBookings();
+    fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -132,7 +125,7 @@ export function AdminDashboard() {
     try {
       const response = await fetch(`${API_BASE}/bookings/${bookingId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to cancel booking');
       setBookings((prev) => prev.filter((b) => b.bookingId !== bookingId));
@@ -143,13 +136,11 @@ export function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
     setAuthenticated(false);
     setBookings([]);
-    setToken('');
     setAdminEmail('');
-    localStorage.removeItem('adminSessionToken');
-    localStorage.removeItem('adminEmail');
     if (typeof window.google !== 'undefined') {
       window.google.accounts.id.disableAutoSelect();
     }

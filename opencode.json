@@ -1,0 +1,6 @@
+{
+  "plugin": [
+    "@dietrichgebert/ponytail",
+    "opencode-security@git+https://github.com/ismkdc/opencode-security.git"
+  ]
+}

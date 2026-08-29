@@ -50,3 +50,5 @@ npm-debug.log*
 # Secrets (never commit)
 *-credentials.json
 *service-account*.json
+strix_runs/
+node_modules/

@@ -8,6 +8,8 @@ import logging
 import os
 import re
 import base64
+import secrets
+import time
 from datetime import datetime, date, timedelta
 from typing import Optional
 import uuid
@@ -20,10 +22,10 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi import FastAPI, HTTPException, Request, Header, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 from google.auth import default as google_default
 from google.oauth2 import service_account
@@ -51,6 +53,35 @@ COMPANY_NAME = os.environ.get("COMPANY_NAME", "Don's Rental")
 COMPANY_EMAIL = os.environ.get("COMPANY_EMAIL", "bookings@donsrental.com")
 COMPANY_PHONE = os.environ.get("COMPANY_PHONE", "+1 (246) 268-2842")
 OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "")
+
+# ── CORS origins (env-configurable) ───────────────────
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "").split(",") if os.environ.get("CORS_ORIGINS") else [
+    "https://rentals.onlineverywhere.com",
+    "https://donsrental-wof62rve3a-ew.a.run.app",
+    "http://localhost:5173",
+]
+
+# ── Simple in-memory cache with TTL ───────────────────
+class TTLCache:
+    """In-memory cache with per-key TTL."""
+    def __init__(self):
+        self._store: dict[str, tuple[float, any]] = {}
+
+    def get(self, key: str) -> any:
+        if key in self._store:
+            expires, value = self._store[key]
+            if time.time() < expires:
+                return value
+            del self._store[key]
+        return None
+
+    def set(self, key: str, value: any, ttl_seconds: int = 60):
+        self._store[key] = (time.time() + ttl_seconds, value)
+
+    def invalidate(self, key: str):
+        self._store.pop(key, None)
+
+_cache = TTLCache()
 
 app = FastAPI(title="Don's Rental Backend")
 
@@ -338,11 +369,8 @@ _bookings: list[dict] = []  # Deprecated — Sheet is source of truth
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://rentals.onlineverywhere.com",
-        "https://donsrental-wof62rve3a-ew.a.run.app",
-        "http://localhost:5173",
-    ],
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -374,12 +402,20 @@ class RateLimiter:
 _rate_limiter = RateLimiter(max_requests=30, window_seconds=60)
 
 @app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    # Only rate-limit mutation endpoints (POST), skip GETs and health checks
-    if request.method == "POST" and not request.url.path.startswith("/api/health"):
+async def rate_limit_and_security_middleware(request: Request, call_next):
+    # Rate-limit all API endpoints (skip health checks)
+    if request.url.path.startswith("/api/") and not request.url.path.startswith("/api/health"):
         if not _rate_limiter.is_allowed(request):
             raise HTTPException(429, "Too many requests. Please try again shortly.")
-    return await call_next(request)
+    response = await call_next(request)
+    # Add security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if request.url.path.startswith("/api/"):
+        response.headers["Content-Security-Policy"] = "default-src 'none'"
+    return response
 
 class ChatRequest(BaseModel):
     message: str
@@ -476,6 +512,9 @@ VEHICLES_FALLBACK = [
 ]
 
 def _fetch_vehicles_from_sheet() -> list[dict]:
+    cached = _cache.get("vehicles")
+    if cached is not None:
+        return cached
     if not SPREADSHEET_ID:
         return VEHICLES_FALLBACK
     try:
@@ -503,12 +542,17 @@ def _fetch_vehicles_from_sheet() -> list[dict]:
         for v in vehicles:
             if isinstance(v.get('features'), str):
                 v['features'] = [f.strip() for f in v['features'].split('|') if f.strip()]
-        return vehicles if vehicles else VEHICLES_FALLBACK
+        result = vehicles if vehicles else VEHICLES_FALLBACK
+        _cache.set("vehicles", result, ttl_seconds=300)  # cache 5 min
+        return result
     except Exception as e:
         logger.error("Failed to read vehicles from sheet: %s — using fallback", e)
         return VEHICLES_FALLBACK
 
 def _fetch_bookings_from_sheet() -> list[dict]:
+    cached = _cache.get("bookings")
+    if cached is not None:
+        return cached
     if not SPREADSHEET_ID:
         return []
     try:
@@ -526,6 +570,7 @@ def _fetch_bookings_from_sheet() -> list[dict]:
             for i, h in enumerate(headers):
                 obj[h] = row[i] if i < len(row) else ''
             bookings.append(obj)
+        _cache.set("bookings", bookings, ttl_seconds=60)  # cache 1 min
         return bookings
     except Exception as e:
         logger.warning("Could not read bookings from sheet: %s", e)
@@ -932,26 +977,152 @@ async def create_booking(req: BookingRequest):
         "sheetStored": sheet_ok,
     }
 
-ADMIN_KEY = os.getenv("ADMIN_KEY", "")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "devon@onlineverywhere.com")
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "450188951493-kb2oaaugj0esli53sa5hroag335ahkt6.apps.googleusercontent.com")
 
-def _verify_admin(x_api_key: str = ""):
-    """Verify admin API key from X-API-Key header."""
-    if not ADMIN_KEY:
-        raise HTTPException(503, "Admin key not configured")
-    if x_api_key != ADMIN_KEY:
-        raise HTTPException(401, "Unauthorized")
+# In-memory admin session store: { token: { email, expires_at } }
+_admin_sessions: dict[str, dict] = {}
+ADMIN_TOKEN_TTL = 3600  # 1 hour
+
+
+def _create_admin_token(email: str) -> str:
+    """Create a short-lived admin session token."""
+    token = f"admin_{secrets.token_urlsafe(32)}"
+    _admin_sessions[token] = {
+        "email": email,
+        "expires_at": time.time() + ADMIN_TOKEN_TTL,
+    }
+    return token
+
+
+def _verify_admin_token(request: Request) -> str:
+    """Verify admin session token from httpOnly cookie or Authorization header. Returns the admin email."""
+    # Try cookie first (preferred — httpOnly, SameSite=Strict)
+    token = request.cookies.get("admin_session")
+    # Fallback to Authorization header (for API clients)
+    if not token:
+        auth = request.headers.get("authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+    if not token:
+        raise HTTPException(401, "Not authenticated")
+    session = _admin_sessions.get(token)
+    if not session:
+        raise HTTPException(401, "Invalid or expired session")
+    if time.time() > session["expires_at"]:
+        del _admin_sessions[token]
+        raise HTTPException(401, "Session expired")
+    return session["email"]
+
+
+def _verify_customer_auth(request: Request) -> str:
+    """Verify customer authentication via Google credential cookie. Returns email."""
+    token = request.cookies.get("customer_session")
+    if not token:
+        auth = request.headers.get("authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+    if not token:
+        raise HTTPException(401, "Not authenticated")
+    session = _admin_sessions.get(token)
+    if not session:
+        raise HTTPException(401, "Invalid or expired session")
+    if time.time() > session["expires_at"]:
+        del _admin_sessions[token]
+        raise HTTPException(401, "Session expired")
+    return session["email"]
+
+
+async def _verify_google_credential(credential: str) -> dict:
+    """Verify a Google ID token via Google's tokeninfo endpoint. Returns token payload."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": credential},
+        )
+        if resp.status_code != 200:
+            raise HTTPException(401, "Invalid Google credential")
+        payload = resp.json()
+        if payload.get("aud") != GOOGLE_OAUTH_CLIENT_ID:
+            raise HTTPException(401, "Invalid audience in credential")
+        if float(payload.get("exp", 0)) < time.time():
+            raise HTTPException(401, "Google credential expired")
+        return payload
+
+
+@app.post("/api/admin/verify")
+async def verify_admin(request: Request, response: Response):
+    """Verify Google credential and create admin session. Only ADMIN_EMAIL is allowed."""
+    body = await request.json()
+    credential = body.get("credential", "")
+    if not credential:
+        raise HTTPException(400, "Missing credential")
+
+    payload = await _verify_google_credential(credential)
+    email = payload.get("email", "").lower()
+    if email != ADMIN_EMAIL.lower():
+        raise HTTPException(403, "Not authorized — admin access denied")
+
+    token = _create_admin_token(email)
+    # Set httpOnly cookie (SameSite=Strict, Secure in production)
+    is_production = os.environ.get("ENVIRONMENT") == "production"
+    response.set_cookie(
+        key="admin_session",
+        value=token,
+        httponly=True,
+        samesite="strict",
+        secure=is_production,
+        max_age=ADMIN_TOKEN_TTL,
+        path="/",
+    )
+    return {"email": email}
+
+
+@app.post("/api/auth/google")
+async def auth_google(request: Request, response: Response):
+    """Verify Google credential for customer authentication."""
+    body = await request.json()
+    credential = body.get("credential", "")
+    if not credential:
+        raise HTTPException(400, "Missing credential")
+
+    payload = await _verify_google_credential(credential)
+    email = payload.get("email", "").lower()
+
+    token = _create_admin_token(email)  # reuse token store
+    is_production = os.environ.get("ENVIRONMENT") == "production"
+    response.set_cookie(
+        key="customer_session",
+        value=token,
+        httponly=True,
+        samesite="strict",
+        secure=is_production,
+        max_age=ADMIN_TOKEN_TTL,
+        path="/",
+    )
+    return {"email": email, "name": payload.get("name", "")}
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(response: Response):
+    """Clear authentication cookies."""
+    response.delete_cookie("admin_session", path="/")
+    response.delete_cookie("customer_session", path="/")
+    return {"success": True}
+
 
 @app.get("/api/bookings")
-async def list_bookings(x_api_key: str = Header("")):
-    """List all bookings — admin only (requires X-API-Key header)."""
-    _verify_admin(x_api_key)
+async def list_bookings(request: Request):
+    """List all bookings — admin only (requires auth)."""
+    _verify_admin_token(request)
     return {"bookings": _fetch_bookings_from_sheet()}
 
 @app.get("/api/my-bookings/{email}")
-async def get_my_bookings(email: str):
-    """Get bookings for a specific customer email."""
-    if not SPREADSHEET_ID:
-        raise HTTPException(503, "Sheets not configured")
+async def get_my_bookings(email: str, request: Request):
+    """Get bookings for a specific customer email — requires auth (must match own email)."""
+    caller_email = _verify_customer_auth(request)
+    if caller_email != email.strip().lower():
+        raise HTTPException(403, "Cannot access another user's bookings")
     bookings = _fetch_bookings_from_sheet()
     target = email.strip().lower()
     mine = []
@@ -964,9 +1135,10 @@ async def get_my_bookings(email: str):
     return {"bookings": mine}
 
 @app.delete("/api/bookings/{booking_id}")
-async def cancel_booking(booking_id: str, x_api_key: str = Header("")):
+async def cancel_booking(booking_id: str, request: Request):
     """Cancel a booking — admin only. Removes from Sheet and Calendar."""
-    _verify_admin(x_api_key)
+    _verify_admin_token(request)
+    _cache.invalidate("bookings")
     # Find and delete from Sheet
     if SPREADSHEET_ID:
         try:
@@ -1000,9 +1172,10 @@ async def cancel_booking(booking_id: str, x_api_key: str = Header("")):
     return {"success": True, "message": f"Booking {booking_id} canceled"}
 
 @app.delete("/api/bookings")
-async def clear_all_bookings(x_api_key: str = Header("")):
+async def clear_all_bookings(request: Request):
     """Clear all bookings — admin only. Removes all data rows from the Bookings sheet."""
-    _verify_admin(x_api_key)
+    _verify_admin_token(request)
+    _cache.invalidate("bookings")
     cleared_sheet = 0
     cleared_calendar = 0
 
@@ -1079,8 +1252,14 @@ def _get_profiles_sheet_id() -> int:
     return -1
 
 @app.get("/api/profiles/{email}")
-async def get_profile(email: str):
-    """Get a user profile by email."""
+async def get_profile(email: str, request: Request):
+    """Get a user profile by email — requires auth (must match own email)."""
+    caller_email = _verify_customer_auth(request)
+    if caller_email != email.strip().lower():
+        raise HTTPException(403, "Cannot access another user's profile")
+    cached = _cache.get(f"profile:{email.lower()}")
+    if cached is not None:
+        return {"profile": cached}
     if not SPREADSHEET_ID:
         raise HTTPException(503, "Sheets not configured")
     try:
@@ -1095,16 +1274,20 @@ async def get_profile(email: str):
         for row in rows[1:]:
             obj = dict(zip(headers, row))
             if obj.get('email', '').strip().lower() == email.strip().lower():
+                _cache.set(f"profile:{email.lower()}", obj, ttl_seconds=120)
                 return {"profile": obj}
         raise HTTPException(404, "Profile not found")
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(500, f"Failed to get profile: {e}")
+    except Exception:
+        raise HTTPException(500, "Failed to get profile")
 
 @app.post("/api/profiles")
-async def create_or_update_profile(req: ProfileRequest):
-    """Create or update a user profile."""
+async def create_or_update_profile(req: ProfileRequest, request: Request):
+    """Create or update a user profile — requires auth (must match own email)."""
+    caller_email = _verify_customer_auth(request)
+    if caller_email != req.email.strip().lower():
+        raise HTTPException(403, "Cannot update another user's profile")
     if not SPREADSHEET_ID:
         raise HTTPException(503, "Sheets not configured")
     try:
@@ -1143,7 +1326,6 @@ async def create_or_update_profile(req: ProfileRequest):
                 valueInputOption='RAW',
                 body={'values': [profile_data]},
             ).execute()
-            logger.info("Profile updated for %s", req.email)
         else:
             svc.spreadsheets().values().append(
                 spreadsheetId=SPREADSHEET_ID,
@@ -1151,18 +1333,18 @@ async def create_or_update_profile(req: ProfileRequest):
                 valueInputOption='RAW',
                 body={'values': [profile_data]},
             ).execute()
-            logger.info("Profile created for %s", req.email)
 
+        _cache.invalidate(f"profile:{req.email.lower()}")
         return {"success": True, "email": req.email}
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(500, f"Failed to save profile: {e}")
+    except Exception:
+        raise HTTPException(500, "Failed to save profile")
 
 @app.post("/api/profiles/from-booking")
-async def save_profile_from_booking(req: ProfileRequest):
+async def save_profile_from_booking(req: ProfileRequest, request: Request):
     """Save profile data from a completed booking (called after booking confirmation)."""
-    return await create_or_update_profile(req)
+    return await create_or_update_profile(req, request)
 
 @app.post("/api/scan-license")
 async def scan_license(req: ScanLicenseRequest):
@@ -1191,7 +1373,7 @@ Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
   "customerAddress": address on the license.
 If a field is not visible, set it to null."""
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     body = {
         "contents": [{
             "parts": [
@@ -1203,7 +1385,7 @@ If a field is not visible, set it to null."""
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(url, json=body)
+            resp = await client.post(url, json=body, headers={"x-goog-api-key": GEMINI_API_KEY})
             if resp.status_code != 200:
                 logger.error("Gemini API error: %s - %s", resp.status_code, resp.text[:300])
                 raise HTTPException(502, f"Vision API error ({resp.status_code})")

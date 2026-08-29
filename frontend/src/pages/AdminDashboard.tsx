@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Button, Input, Alert, Spinner } from '../components/index';
-import { Zap, Car, DollarSign, Calendar, Search, ArrowUpDown, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Button, Alert, Spinner } from '../components/index';
+import { Zap, Car, DollarSign, Calendar, Search, ArrowUpDown, Trash2, ChevronUp, ChevronDown, LogOut } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const GOOGLE_CLIENT_ID = '450188951493-kb2oaaugj0esli53sa5hroag335ahkt6.apps.googleusercontent.com';
 
 interface Booking {
   bookingId: string;
@@ -23,7 +24,7 @@ interface Booking {
 type SortKey = 'bookingId' | 'customerName' | 'vehicleId' | 'pickupDate' | 'returnDate' | 'totalDays' | 'totalCost';
 
 export function AdminDashboard() {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('adminApiKey') || '');
+  const [adminEmail, setAdminEmail] = useState('');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -33,29 +34,78 @@ export function AdminDashboard() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  const fetchBookings = async () => {
-    if (!apiKey) {
-      setError('API key required');
+  const handleGoogleCredential = useCallback(async (response: { credential?: string }) => {
+    if (!response.credential) {
+      setError('Google sign-in failed — no credential received');
       return;
     }
     setLoading(true);
     setError('');
     try {
+      const res = await fetch(`${API_BASE}/admin/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ credential: response.credential }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || 'Not authorized — admin access denied');
+        setAuthenticated(false);
+        return;
+      }
+      setAdminEmail(data.email);
+      setAuthenticated(true);
+    } catch {
+      setError('Failed to verify credentials with server');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initialize Google Sign-In for admin
+  useEffect(() => {
+    const initGoogle = () => {
+      if (typeof window.google === 'undefined') return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      if (googleBtnRef.current) {
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          shape: 'rectangular',
+          width: 300,
+        });
+      }
+    };
+    const timer = setTimeout(initGoogle, 500);
+    return () => clearTimeout(timer);
+  }, [handleGoogleCredential, authenticated]);
+
+  const fetchBookings = async () => {
+    setLoading(true);
+    setError('');
+    try {
       const response = await fetch(`${API_BASE}/bookings`, {
-        headers: { 'X-API-Key': apiKey },
+        credentials: 'include',
       });
       if (response.status === 401) {
-        setError('Invalid API key');
+        setError('Session expired — please sign in again');
         setAuthenticated(false);
-        localStorage.removeItem('adminApiKey');
         return;
       }
       if (!response.ok) throw new Error('Failed to fetch bookings');
       const data = await response.json();
       setBookings(data.bookings || []);
       setAuthenticated(true);
-      localStorage.setItem('adminApiKey', apiKey);
     } catch {
       setError('Failed to connect to backend');
     } finally {
@@ -63,8 +113,9 @@ export function AdminDashboard() {
     }
   };
 
+  // Try loading bookings on mount (cookie may still be valid)
   useEffect(() => {
-    if (apiKey) fetchBookings();
+    fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -74,7 +125,7 @@ export function AdminDashboard() {
     try {
       const response = await fetch(`${API_BASE}/bookings/${bookingId}`, {
         method: 'DELETE',
-        headers: { 'X-API-Key': apiKey },
+        credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to cancel booking');
       setBookings((prev) => prev.filter((b) => b.bookingId !== bookingId));
@@ -82,6 +133,16 @@ export function AdminDashboard() {
       setError('Failed to cancel booking');
     } finally {
       setCancelling(null);
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' });
+    setAuthenticated(false);
+    setBookings([]);
+    setAdminEmail('');
+    if (typeof window.google !== 'undefined') {
+      window.google.accounts.id.disableAutoSelect();
     }
   };
 
@@ -128,6 +189,7 @@ export function AdminDashboard() {
   }).length;
   const past = bookings.length - upcoming;
 
+  // Login screen
   if (!authenticated) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-background)' }}>
@@ -138,7 +200,7 @@ export function AdminDashboard() {
               Owner Dashboard
             </h1>
             <p style={{ color: 'var(--color-dark-gray)', marginTop: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>
-              Enter your API key to manage bookings.
+              Sign in with your Google account to manage bookings.
             </p>
           </div>
           {error && (
@@ -146,26 +208,24 @@ export function AdminDashboard() {
               <Alert type="error">{error}</Alert>
             </div>
           )}
-          <Input
-            label="API Key"
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your admin API key"
-          />
-          <Button
-            variant="primary"
-            onClick={fetchBookings}
-            isLoading={loading}
-            style={{ width: '100%', marginTop: 'var(--space-4)' }}
-          >
-            Sign In
-          </Button>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
+              <Spinner message="Verifying credentials..." />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div ref={googleBtnRef} />
+            </div>
+          )}
+          <p style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)' }}>
+            Only authorized admin accounts can access this dashboard.
+          </p>
         </div>
       </div>
     );
   }
 
+  // Dashboard
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
       {/* Header */}
@@ -176,13 +236,14 @@ export function AdminDashboard() {
             <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-extrabold)', textTransform: 'uppercase', margin: 0 }}>
               Owner Dashboard
             </h1>
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)', marginLeft: 'var(--space-2)' }}>{adminEmail}</span>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
             <Button variant="outline" onClick={fetchBookings} isLoading={loading} style={{ borderColor: 'var(--color-yellow)', color: 'var(--color-yellow)' }}>
               Refresh
             </Button>
-            <Button variant="outline" onClick={() => { setAuthenticated(false); setBookings([]); localStorage.removeItem('adminApiKey'); }} style={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>
-              Logout
+            <Button variant="outline" onClick={handleLogout} style={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>
+              <LogOut size={14} style={{ marginRight: 6 }} /> Logout
             </Button>
           </div>
         </div>

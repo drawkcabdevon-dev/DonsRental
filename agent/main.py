@@ -125,41 +125,13 @@ def _owner_email():
 # ══════════════════════════════════════════
 
 def get_vehicles() -> list:
-    """Fetch available rental vehicles with their daily rates.
+    """Return the single available vehicle (Swift).
 
-    Returns a list of dicts: [{id, name, type, rate, description, icon}].
-    Falls back to defaults if the sheet is unavailable.
+    Returns a list with one dict: [{id, name, type, rate, description}].
     """
-    defaults = [
-        {'id': 'v1', 'name': 'Standard Rental Car', 'type': 'standard', 'rate': 120, 'icon': '🚗', 'desc': 'Clean, reliable car for getting around Barbados. 2-day minimum. Weekend & weekly specials available.', 'image_url': '/vehicle.png'},
+    return [
+        {'id': 'v1', 'name': 'Suzuki Swift', 'type': 'standard', 'rate': 120, 'icon': '🚗', 'desc': 'Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum.', 'image_url': '/vehicle.png'},
     ]
-    sid = _env('SPREADSHEET_ID')
-    try:
-        svc = _get_sheets()
-        if not svc or not sid:
-            return defaults
-        result = svc.spreadsheets().values().get(
-            spreadsheetId=sid, range='Vehicles!A:G',
-        ).execute()
-        rows = result.get('values', [])
-        if len(rows) < 2:
-            return defaults
-        headers = [h.strip().lower() for h in rows[0]]
-        vehicles = []
-        for row in rows[1:]:
-            obj = {}
-            for i, h in enumerate(headers):
-                obj[h] = row[i] if i < len(row) else ''
-            if obj.get('id'):
-                try:
-                    obj['rate'] = int(obj.get('rate', 0))
-                except ValueError:
-                    obj['rate'] = 0
-                vehicles.append(obj)
-        return vehicles
-    except Exception as e:
-        logging.error(f'Vehicles error: {e}')
-        return defaults
 
 
 def scan_license(image_base64: str) -> dict:
@@ -515,9 +487,10 @@ def _build_instruction(ctx=None):
 You are a friendly car rental booking assistant for {_company()}, based in Barbados.
 
 VEHICLE & PRICING:
-- Standard Rental Car at Bds$120/day (Barbados dollars).
+- Suzuki Swift at Bds$120/day (Barbados dollars).
 - Minimum 2-day rental. Weekend specials and weekly discounts available.
 - All prices are in Barbados dollars (Bds$).
+- There is only ONE vehicle — the Suzuki Swift. Always use vehicle_id "v1" and vehicle_name "Suzuki Swift".
 
 DATE HANDLING — you MUST resolve natural language into YYYY-MM-DD dates:
 Today is {{{{today}}}}.

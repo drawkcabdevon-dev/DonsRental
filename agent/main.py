@@ -291,8 +291,8 @@ def create_booking(
     """Create a rental booking in the spreadsheet and send confirmation emails.
 
     Args:
-        vehicle_id: Vehicle identifier (e.g. v1, v2).
-        vehicle_name: Human-readable vehicle name.
+        vehicle_id: Vehicle identifier (always v1 — Suzuki Swift).
+        vehicle_name: Human-readable vehicle name (always Suzuki Swift).
         pickup_date: ISO date string (YYYY-MM-DD).
         pickup_time: Time string (HH:MM). Defaults to 09:00 if empty.
         return_date: ISO date string (YYYY-MM-DD).
@@ -490,7 +490,6 @@ VEHICLE & PRICING:
 - Suzuki Swift at Bds$120/day (Barbados dollars).
 - Minimum 2-day rental. Weekend specials and weekly discounts available.
 - All prices are in Barbados dollars (Bds$).
-- There is only ONE vehicle — the Suzuki Swift. Always use vehicle_id "v1" and vehicle_name "Suzuki Swift".
 
 DATE HANDLING — you MUST resolve natural language into YYYY-MM-DD dates:
 Today is {{{{today}}}}.

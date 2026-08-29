@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { Button, Input, Alert, Spinner } from '../components';
+import { User, Car, FileText, ArrowLeft, Check, Calendar } from 'lucide-react';
 
 interface ProfileUser {
   email: string;
@@ -68,13 +69,15 @@ export function ProfilePage({ user, onSignOut }: { user: ProfileUser | null; onS
 
   if (!user) {
     return (
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: 'var(--space-8) var(--space-4)' }}>
-        <Alert type="info" title="Not signed in">
-          <p>Please sign in to view and manage your profile.</p>
-          <p style={{ marginTop: 'var(--space-3)' }}>
-            <Link to="/" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>← Back to booking</Link>
-          </p>
-        </Alert>
+      <div className="profile-page">
+        <div className="profile-empty-state">
+          <Alert type="info" title="Not signed in">
+            <p>Please sign in to view and manage your profile.</p>
+            <p style={{ marginTop: 'var(--space-3)' }}>
+              <Link to="/" style={{ color: 'var(--color-yellow)', fontWeight: 600 }}>← Back to booking</Link>
+            </p>
+          </Alert>
+        </div>
       </div>
     );
   }
@@ -119,118 +122,134 @@ export function ProfilePage({ user, onSignOut }: { user: ProfileUser | null; onS
     const pickup = b.pickupDate || b.pickupdate || '';
     const ret = b.returnDate || b.returndate || '';
     const today = new Date().toISOString().split('T')[0];
-    if (ret && ret < today) return { label: 'Completed', color: '#059669' };
-    if (pickup && pickup <= today) return { label: 'Active', color: '#2563eb' };
-    return { label: 'Upcoming', color: '#d97706' };
+    if (ret && ret < today) return { label: 'Completed', color: 'var(--color-success)' };
+    if (pickup && pickup <= today) return { label: 'Active', color: 'var(--color-info)' };
+    return { label: 'Upcoming', color: 'var(--color-warning)' };
   };
 
+  const initials = (form.name || user.email || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: 'var(--space-8) var(--space-4)', fontFamily: 'var(--font-family-base)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
-        <h1 style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', color: '#1a1a1a' }}>
-          My Profile
-        </h1>
-        <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-          <Link to="/" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>← Book a car</Link>
-          <Button variant="outline" size="sm" onClick={onSignOut}>Sign out</Button>
+    <div className="profile-page">
+      {/* Profile Header */}
+      <div className="profile-header">
+        <div className="profile-header-inner">
+          <Link to="/" className="profile-back-link">
+            <ArrowLeft size={18} /> Book a car
+          </Link>
+          <div className="profile-user-block">
+            <div className="profile-avatar">{initials}</div>
+            <div>
+              <h1 className="profile-name">{form.name || 'Your Profile'}</h1>
+              <p className="profile-email">{user.email}</p>
+            </div>
+          </div>
+          <button onClick={onSignOut} className="profile-signout-btn">Sign out</button>
         </div>
       </div>
 
-      {error && (
-        <div style={{ marginBottom: 'var(--space-6)' }}>
-          <Alert type="error" title="Error">
-            <p>{error}</p>
-          </Alert>
-        </div>
-      )}
-
-      {saved && (
-        <div style={{ marginBottom: 'var(--space-6)' }}>
-          <Alert type="success" title="Profile saved">
-            <p>Your info has been updated. It will auto-fill on your next booking.</p>
-          </Alert>
-        </div>
-      )}
-
-      {/* Personal Info */}
-      <section style={{ background: '#fff', border: '2px solid #e0e0e0', borderRadius: '12px', padding: 'var(--space-6)', marginBottom: 'var(--space-8)' }}>
-        <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-4)', color: '#1a1a1a' }}>
-          Personal Information
-        </h2>
-        {loading ? (
-          <Spinner size="md" message="Loading profile..." />
-        ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-4)' }}>
-              <Input label="Email" type="email" value={form.email} disabled />
-              <Input label="Full Name *" value={form.name} onChange={handleChange('name')} />
-              <Input label="Phone *" variant="tel" value={form.phone} onChange={handleChange('phone')} />
-              <Input label="Address" value={form.address} onChange={handleChange('address')} />
-            </div>
-
-            <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-bold)', margin: 'var(--space-6) 0 var(--space-4)', color: '#1a1a1a' }}>
-              Driver's License
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-4)' }}>
-              <Input label="License Number" value={form.licenseNumber} onChange={handleChange('licenseNumber')} />
-              <Input label="License Expiry" variant="date" value={form.licenseExpiry} onChange={handleChange('licenseExpiry')} />
-              <Input label="Issuing Authority" value={form.licenseIssuer} onChange={handleChange('licenseIssuer')} />
-              <Input label="License Class" value={form.licenseClass} onChange={handleChange('licenseClass')} />
-            </div>
-
-            <div style={{ marginTop: 'var(--space-6)' }}>
-              <Button variant="primary" onClick={handleSave} isLoading={saving}>
-                Save Changes
-              </Button>
-            </div>
-          </>
-        )}
-      </section>
-
-      {/* Previous Bookings */}
-      <section style={{ background: '#fff', border: '2px solid #e0e0e0', borderRadius: '12px', padding: 'var(--space-6)' }}>
-        <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-4)', color: '#1a1a1a' }}>
-          My Bookings
-        </h2>
-        {loadingBookings ? (
-          <Spinner size="md" message="Loading bookings..." />
-        ) : bookings.length === 0 ? (
-          <Alert type="info" title="No bookings yet">
-            <p>You haven't made any bookings with this account yet.</p>
-          </Alert>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-            {bookings.map((b) => {
-              const ref = b.bookingId || b.bookingid || '';
-              const st = statusOf(b);
-              return (
-                <div key={ref} style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: 'var(--space-4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-                      <strong style={{ color: '#1a1a1a' }}>{ref}</strong>
-                      <span style={{ fontSize: 'var(--font-size-xs)', padding: '2px 10px', borderRadius: '999px', color: '#fff', background: st.color }}>
-                        {st.label}
-                      </span>
-                    </div>
-                    <p style={{ color: '#666', fontSize: 'var(--font-size-sm)', marginTop: 'var(--space-2)' }}>
-                      {formatDate(b.pickupDate || b.pickupdate)} → {formatDate(b.returnDate || b.returndate)}
-                      {' · '}{b.vehicleId || b.vehicleid || 'Car'}
-                    </p>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontWeight: 'var(--font-weight-bold)', color: '#1a1a1a' }}>
-                      Bds${Number(b.totalAmount || b.totalCost || 0).toLocaleString()}
-                    </p>
-                    <p style={{ color: '#999', fontSize: 'var(--font-size-xs)' }}>
-                      {formatDate(b.createdAt || b.createdat)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+      <div className="profile-content">
+        {error && (
+          <div className="profile-alert">
+            <Alert type="error" title="Error"><p>{error}</p></Alert>
           </div>
         )}
-      </section>
+
+        {saved && (
+          <div className="profile-alert">
+            <Alert type="success" title="Profile saved">
+              <p>Your info has been updated. It will auto-fill on your next booking.</p>
+            </Alert>
+          </div>
+        )}
+
+        {/* Personal Information Card */}
+        <section className="profile-card">
+          <div className="profile-card-header">
+            <User size={20} />
+            <h2>Personal Information</h2>
+          </div>
+          {loading ? (
+            <Spinner size="md" message="Loading profile..." />
+          ) : (
+            <>
+              <div className="profile-fields">
+                <Input label="Email" type="email" value={form.email} disabled />
+                <Input label="Full Name *" value={form.name} onChange={handleChange('name')} />
+                <Input label="Phone *" variant="tel" value={form.phone} onChange={handleChange('phone')} />
+                <Input label="Address" value={form.address} onChange={handleChange('address')} />
+              </div>
+
+              <div className="profile-card-header" style={{ marginTop: 'var(--space-8)' }}>
+                <FileText size={20} />
+                <h2>Driver's License</h2>
+              </div>
+              <div className="profile-fields">
+                <Input label="License Number" value={form.licenseNumber} onChange={handleChange('licenseNumber')} />
+                <Input label="License Expiry" variant="date" value={form.licenseExpiry} onChange={handleChange('licenseExpiry')} />
+                <Input label="Issuing Authority" value={form.licenseIssuer} onChange={handleChange('licenseIssuer')} />
+                <Input label="License Class" value={form.licenseClass} onChange={handleChange('licenseClass')} />
+              </div>
+
+              <div className="profile-save-row">
+                <Button variant="primary" onClick={handleSave} isLoading={saving}>
+                  Save Changes
+                </Button>
+                {saved && (
+                  <span className="profile-saved-inline">
+                    <Check size={14} /> Saved
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* Bookings Card */}
+        <section className="profile-card">
+          <div className="profile-card-header">
+            <Car size={20} />
+            <h2>My Bookings</h2>
+          </div>
+          {loadingBookings ? (
+            <Spinner size="md" message="Loading bookings..." />
+          ) : bookings.length === 0 ? (
+            <div className="profile-empty-bookings">
+              <Calendar size={40} />
+              <p>No bookings yet</p>
+              <Link to="/" className="btn btn-primary" style={{ marginTop: 'var(--space-4)', textDecoration: 'none' }}>
+                Book Your First Rental
+              </Link>
+            </div>
+          ) : (
+            <div className="profile-bookings-list">
+              {bookings.map((b) => {
+                const ref = b.bookingId || b.bookingid || '';
+                const st = statusOf(b);
+                return (
+                  <div key={ref} className="profile-booking-row">
+                    <div className="profile-booking-main">
+                      <div className="profile-booking-ref">
+                        <strong>{ref}</strong>
+                        <span className="profile-status-badge" style={{ backgroundColor: st.color }}>{st.label}</span>
+                      </div>
+                      <div className="profile-booking-dates">
+                        <Calendar size={14} />
+                        {formatDate(b.pickupDate || b.pickupdate)} → {formatDate(b.returnDate || b.returndate)}
+                        <span className="profile-booking-vehicle">{b.vehicleId || b.vehicleid || 'Car'}</span>
+                      </div>
+                    </div>
+                    <div className="profile-booking-price">
+                      <span className="profile-booking-amount">Bds${Number(b.totalAmount || b.totalCost || 0).toLocaleString()}</span>
+                      <span className="profile-booking-date">{formatDate(b.createdAt || b.createdat)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

@@ -3,6 +3,12 @@ import { useRef, useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Vehicle } from '../types';
 
+interface LandingPageProps {
+  onBookNow: () => void;
+  user: { email: string; name: string; googleId: string } | null;
+  onRenderGoogleButton: (containerId: string) => void;
+}
+
 /* ─── SVG Icons ────────────────────────────────────── */
 const Icons = {
   car: (props: React.SVGProps<SVGSVGElement>) => (
@@ -256,8 +262,9 @@ function HowItWorksTabs() {
 }
 
 /* ─── Main Landing Page ────────────────────────────── */
-export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
+export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPageProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll();
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 25 });
@@ -266,6 +273,37 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
   const heroOpacity = useTransform(smoothProgress, [0, 0.25], [1, 0]);
 
   useEffect(() => { api.getVehicles().then(setVehicles).catch(() => {}); }, []);
+
+  // Render Google button in modal when it opens
+  useEffect(() => {
+    if (showProfileModal && !user) {
+      const timer = setTimeout(() => onRenderGoogleButton('landing-google-signin'), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [showProfileModal, user, onRenderGoogleButton]);
+
+  const handleBookNowClick = () => {
+    if (user) {
+      onBookNow();
+    } else {
+      setShowProfileModal(true);
+    }
+  };
+
+  // Close modal on Escape
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowProfileModal(false);
+    };
+    if (showProfileModal) {
+      document.addEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = '';
+    };
+  }, [showProfileModal]);
 
   return (
     <div style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh' }}>
@@ -329,7 +367,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
 
             {/* CTA buttons */}
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 1.3 }} className="landing-hero-cta" style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <motion.button whileHover={{ scale: 1.06, boxShadow: '0 0 60px rgba(255,204,0,0.5)' }} whileTap={{ scale: 0.95 }} onClick={onBookNow} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <motion.button whileHover={{ scale: 1.06, boxShadow: '0 0 60px rgba(255,204,0,0.5)' }} whileTap={{ scale: 0.95 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                 <Icons.bolt style={{ width: 20, height: 20 }} /> Book Now
               </motion.button>
               <motion.a whileHover={{ scale: 1.06, borderColor: 'var(--color-yellow)', color: 'var(--color-yellow)' }} whileTap={{ scale: 0.95 }} href="#how-it-works" style={{ color: 'var(--color-white)', border: '2px solid rgba(255,255,255,0.3)', padding: 'var(--space-5) var(--space-10)', fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -414,7 +452,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
                         <span style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--color-yellow)', fontFamily: 'var(--font-mono)' }}>${v.rate}</span>
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.65)', marginLeft: 'var(--space-2)' }}>/ day</span>
                       </div>
-                      <motion.button whileHover={{ scale: 1.08, boxShadow: '0 0 25px rgba(255,204,0,0.35)' }} whileTap={{ scale: 0.94 }} onClick={onBookNow} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <motion.button whileHover={{ scale: 1.08, boxShadow: '0 0 25px rgba(255,204,0,0.35)' }} whileTap={{ scale: 0.94 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                         Book Now <Icons.arrowRight style={{ width: 14, height: 14 }} />
                       </motion.button>
                     </div>
@@ -507,7 +545,7 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
           <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.15 }} style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-charcoal)', marginBottom: 'var(--space-10)', lineHeight: 1.6 }}>
             No phone calls. No waiting. No middlemen.<br />Book your Barbados car rental <strong>in under 2 minutes</strong>.
           </motion.p>
-          <motion.button initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.3 }} whileHover={{ scale: 1.06, boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }} whileTap={{ scale: 0.95 }} onClick={onBookNow} style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-yellow)', border: 'none', padding: 'var(--space-6) var(--space-14)', fontSize: 'var(--font-size-xl)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <motion.button initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.3 }} whileHover={{ scale: 1.06, boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }} whileTap={{ scale: 0.95 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-yellow)', border: 'none', padding: 'var(--space-6) var(--space-14)', fontSize: 'var(--font-size-xl)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <Icons.bolt style={{ width: 22, height: 22 }} /> Book Now
           </motion.button>
         </div>
@@ -537,6 +575,46 @@ export function LandingPage({ onBookNow }: { onBookNow: () => void }) {
           </div>
         </div>
       </footer>
+
+      {/* Profile Creation Modal */}
+      <AnimatePresence>
+        {showProfileModal && (
+          <motion.div
+            className="profile-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowProfileModal(false)}
+          >
+            <motion.div
+              className="profile-modal"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button className="profile-modal-close" onClick={() => setShowProfileModal(false)} aria-label="Close">✕</button>
+              <div className="profile-modal-icon">
+                <Icons.bolt style={{ width: 32, height: 32, stroke: 'var(--color-yellow)', strokeWidth: 2.5 }} />
+              </div>
+              <h2 className="profile-modal-title">Save time on every booking</h2>
+              <p className="profile-modal-subtitle">Create a free account and your info auto-fills next time.</p>
+              <ul className="profile-modal-benefits">
+                <li><Icons.check style={{ width: 16, height: 16, stroke: 'var(--color-yellow)', strokeWidth: 3 }} /> Your details auto-fill next time</li>
+                <li><Icons.check style={{ width: 16, height: 16, stroke: 'var(--color-yellow)', strokeWidth: 3 }} /> View all your bookings in one place</li>
+                <li><Icons.check style={{ width: 16, height: 16, stroke: 'var(--color-yellow)', strokeWidth: 3 }} /> License details saved securely</li>
+              </ul>
+              <div className="profile-modal-actions">
+                <div id="landing-google-signin" style={{ width: '100%' }}></div>
+                <button className="profile-modal-skip" onClick={() => { setShowProfileModal(false); onBookNow(); }}>
+                  Skip for now →
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

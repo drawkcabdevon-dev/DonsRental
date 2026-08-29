@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Button, Alert, Spinner } from '../components/index';
-import { Zap, Car, DollarSign, Calendar, Search, ArrowUpDown, Trash2, ChevronUp, ChevronDown, LogOut } from 'lucide-react';
+import { Zap, Car, DollarSign, Calendar, Search, ArrowUpDown, Trash2, ChevronUp, ChevronDown, LogOut, X, User, Mail, Phone, MapPin, CreditCard, FileText } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 const GOOGLE_CLIENT_ID = '450188951493-kb2oaaugj0esli53sa5hroag335ahkt6.apps.googleusercontent.com';
@@ -8,17 +8,24 @@ const GOOGLE_CLIENT_ID = '450188951493-kb2oaaugj0esli53sa5hroag335ahkt6.apps.goo
 interface Booking {
   bookingId: string;
   vehicleId: string;
+  vehicleName: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  customerAddress: string;
   pickupDate: string;
   pickupTime: string;
   returnDate: string;
   returnTime: string;
   licenseNumber: string;
+  licenseExpiry: string;
+  licenseIssuer: string;
+  licenseClass: string;
+  paymentMethod: string;
   totalDays: number;
   totalCost: number;
   created: string;
+  status: string;
 }
 
 type SortKey = 'bookingId' | 'customerName' | 'vehicleId' | 'pickupDate' | 'returnDate' | 'totalDays' | 'totalCost';
@@ -34,6 +41,7 @@ export function AdminDashboard() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
   const handleGoogleCredential = useCallback(async (response: { credential?: string }) => {
@@ -129,6 +137,7 @@ export function AdminDashboard() {
       });
       if (!response.ok) throw new Error('Failed to cancel booking');
       setBookings((prev) => prev.filter((b) => b.bookingId !== bookingId));
+      setSelectedBooking(null);
     } catch {
       setError('Failed to cancel booking');
     } finally {
@@ -329,8 +338,12 @@ export function AdminDashboard() {
                 </thead>
                 <tbody>
                   {filtered.map((booking, i) => (
-                    <tr key={booking.bookingId || i} style={{ borderTop: '2px solid var(--color-charcoal)', backgroundColor: i % 2 === 0 ? 'var(--color-surface)' : 'var(--color-background)' }}>
-                      <td style={{ padding: 'var(--space-3) var(--space-4)', fontFamily: 'var(--font-mono)', fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--font-size-xs)' }}>
+                    <tr
+                      key={booking.bookingId || i}
+                      style={{ borderTop: '2px solid var(--color-charcoal)', backgroundColor: i % 2 === 0 ? 'var(--color-surface)' : 'var(--color-background)', cursor: 'pointer' }}
+                      onClick={() => setSelectedBooking(booking)}
+                    >
+                      <td style={{ padding: 'var(--space-3) var(--space-4)', fontFamily: 'var(--font-mono)', fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--font-size-xs)', color: 'var(--color-yellow)' }}>
                         {booking.bookingId}
                       </td>
                       <td style={{ padding: 'var(--space-3) var(--space-4)' }}>
@@ -352,7 +365,7 @@ export function AdminDashboard() {
                       </td>
                       <td style={{ padding: 'var(--space-3) var(--space-4)', textAlign: 'center' }}>
                         {confirmCancel === booking.bookingId ? (
-                          <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                          <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => handleCancel(booking.bookingId)}
                               disabled={cancelling === booking.bookingId}
@@ -369,7 +382,7 @@ export function AdminDashboard() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => setConfirmCancel(booking.bookingId)}
+                            onClick={(e) => { e.stopPropagation(); setConfirmCancel(booking.bookingId); }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-dark-gray)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             title="Cancel booking"
                           >
@@ -385,6 +398,180 @@ export function AdminDashboard() {
           )}
         </div>
       </main>
+
+      {/* Detail Modal */}
+      {selectedBooking && (
+        <div
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 'var(--space-4)' }}
+          onClick={() => setSelectedBooking(null)}
+        >
+          <div
+            style={{ backgroundColor: 'var(--color-surface)', border: '4px solid var(--color-charcoal)', maxWidth: '560px', width: '100%', maxHeight: '90vh', overflow: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ padding: 'var(--space-5) var(--space-6)', borderBottom: '3px solid var(--color-charcoal)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-extrabold)', textTransform: 'uppercase', margin: 0 }}>
+                  {selectedBooking.customerName}
+                </h3>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', fontWeight: 'var(--font-weight-bold)', margin: 'var(--space-1) 0 0' }}>
+                  {selectedBooking.bookingId}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedBooking(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-dark-gray)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: 'var(--space-6)' }}>
+              {/* Status Badge */}
+              <div style={{ marginBottom: 'var(--space-5)' }}>
+                <span style={{
+                  display: 'inline-block',
+                  padding: 'var(--space-1) var(--space-3)',
+                  fontSize: 'var(--font-size-xs)',
+                  fontWeight: 'var(--font-weight-bold)',
+                  textTransform: 'uppercase',
+                  border: '2px solid',
+                  borderColor: 'var(--color-success)',
+                  color: 'var(--color-success)',
+                }}>
+                  {selectedBooking.status || 'Confirmed'}
+                </span>
+              </div>
+
+              {/* Customer Info */}
+              <div style={{ marginBottom: 'var(--space-5)' }}>
+                <h4 style={{ fontSize: 'var(--font-size-xs)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-dark-gray)', marginBottom: 'var(--space-3)' }}>Customer</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <User size={14} style={{ color: 'var(--color-medium-gray)' }} />
+                    <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>{selectedBooking.customerName}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <Mail size={14} style={{ color: 'var(--color-medium-gray)' }} />
+                    <span>{selectedBooking.customerEmail}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <Phone size={14} style={{ color: 'var(--color-medium-gray)' }} />
+                    <span>{selectedBooking.customerPhone || '—'}</span>
+                  </div>
+                  {selectedBooking.customerAddress && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <MapPin size={14} style={{ color: 'var(--color-medium-gray)' }} />
+                      <span>{selectedBooking.customerAddress}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Rental Details */}
+              <div style={{ marginBottom: 'var(--space-5)' }}>
+                <h4 style={{ fontSize: 'var(--font-size-xs)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-dark-gray)', marginBottom: 'var(--space-3)' }}>Rental</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                  <div>
+                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)', marginBottom: 2 }}>Pickup</div>
+                    <div style={{ fontWeight: 'var(--font-weight-bold)' }}>{selectedBooking.pickupDate}</div>
+                    <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-dark-gray)' }}>{selectedBooking.pickupTime}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)', marginBottom: 2 }}>Return</div>
+                    <div style={{ fontWeight: 'var(--font-weight-bold)' }}>{selectedBooking.returnDate}</div>
+                    <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-dark-gray)' }}>{selectedBooking.returnTime}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Vehicle & Cost */}
+              <div style={{ marginBottom: 'var(--space-5)' }}>
+                <h4 style={{ fontSize: 'var(--font-size-xs)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-dark-gray)', marginBottom: 'var(--space-3)' }}>Vehicle & Cost</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                  <div>
+                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)', marginBottom: 2 }}>Vehicle</div>
+                    <div style={{ fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase' }}>{selectedBooking.vehicleName || selectedBooking.vehicleId}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)', marginBottom: 2 }}>Duration</div>
+                    <div style={{ fontWeight: 'var(--font-weight-bold)' }}>{selectedBooking.totalDays} day{selectedBooking.totalDays !== 1 ? 's' : ''}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)', marginBottom: 2 }}>Total Cost</div>
+                    <div style={{ fontWeight: 'var(--font-weight-extrabold)', fontFamily: 'var(--font-mono)', color: 'var(--color-yellow)', fontSize: 'var(--font-size-lg)' }}>Bds${Number(selectedBooking.totalCost).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)', marginBottom: 2 }}>Payment</div>
+                    <div style={{ fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase' }}>{selectedBooking.paymentMethod || 'Pay on Pickup'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* License */}
+              <div style={{ marginBottom: 'var(--space-5)' }}>
+                <h4 style={{ fontSize: 'var(--font-size-xs)', fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-dark-gray)', marginBottom: 'var(--space-3)' }}>License</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <CreditCard size={14} style={{ color: 'var(--color-medium-gray)' }} />
+                    <span>{selectedBooking.licenseNumber || '—'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <FileText size={14} style={{ color: 'var(--color-medium-gray)' }} />
+                    <span>Expires: {selectedBooking.licenseExpiry || '—'}</span>
+                  </div>
+                  {selectedBooking.licenseIssuer && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <FileText size={14} style={{ color: 'var(--color-medium-gray)' }} />
+                      <span>{selectedBooking.licenseIssuer}</span>
+                    </div>
+                  )}
+                  {selectedBooking.licenseClass && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <FileText size={14} style={{ color: 'var(--color-medium-gray)' }} />
+                      <span>Class: {selectedBooking.licenseClass}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Booked */}
+              {selectedBooking.created && (
+                <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)', borderTop: '2px solid var(--color-charcoal)', paddingTop: 'var(--space-3)' }}>
+                  Booked: {new Date(selectedBooking.created).toLocaleString()}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: 'var(--space-4) var(--space-6)', borderTop: '3px solid var(--color-charcoal)', display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+              <Button variant="outline" onClick={() => setSelectedBooking(null)} style={{ borderColor: 'var(--color-charcoal)' }}>
+                Close
+              </Button>
+              {confirmCancel === selectedBooking.bookingId ? (
+                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                  <Button
+                    variant="danger"
+                    onClick={() => handleCancel(selectedBooking.bookingId)}
+                    isLoading={cancelling === selectedBooking.bookingId}
+                  >
+                    Confirm Cancel
+                  </Button>
+                  <Button variant="outline" onClick={() => setConfirmCancel(null)} style={{ borderColor: 'var(--color-charcoal)' }}>
+                    Nevermind
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="danger" onClick={() => setConfirmCancel(selectedBooking.bookingId)}>
+                  Cancel Booking
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

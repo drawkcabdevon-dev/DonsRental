@@ -564,11 +564,33 @@ def _fetch_bookings_from_sheet() -> list[dict]:
         if len(rows) < 2:
             return []
         headers = [h.strip() for h in rows[0]]
+        # Map sheet column names to frontend camelCase
+        _FIELD_MAP = {
+            'custName': 'customerName',
+            'custEmail': 'customerEmail',
+            'custPhone': 'customerPhone',
+            'custAddress': 'customerAddress',
+            'licenseNum': 'licenseNumber',
+            'totalAmount': 'totalCost',
+        }
         bookings = []
         for row in rows[1:]:
             obj = {}
             for i, h in enumerate(headers):
-                obj[h] = row[i] if i < len(row) else ''
+                val = row[i] if i < len(row) else ''
+                key = _FIELD_MAP.get(h, h)
+                obj[key] = val
+            # Calculate totalDays if missing
+            if not obj.get('totalDays'):
+                pu = _parse_date(obj.get('pickupDate', ''))
+                re = _parse_date(obj.get('returnDate', ''))
+                if pu and re:
+                    obj['totalDays'] = (re - pu).days
+            # Ensure totalCost is numeric
+            try:
+                obj['totalCost'] = float(obj.get('totalCost', 0) or 0)
+            except (ValueError, TypeError):
+                obj['totalCost'] = 0
             bookings.append(obj)
         _cache.set("bookings", bookings, ttl_seconds=60)  # cache 1 min
         return bookings
@@ -694,7 +716,7 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0):
             'Confirmed',
             datetime.utcnow().isoformat(),
             req.vehicleId or 'v1',
-            'Standard Rental Car',
+            'Suzuki Swift',
             _sanitize_sheet_value(req.pickupDate or ''),
             _sanitize_sheet_value(req.pickupTime or ''),
             _sanitize_sheet_value(req.returnDate or ''),

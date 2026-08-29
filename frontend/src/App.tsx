@@ -22,7 +22,7 @@ import { LandingPage } from './pages/LandingPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { useStepTransition, useStaggerEntrance } from './hooks/useAnimations';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck, Zap } from 'lucide-react';
+import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck, Zap, Shield } from 'lucide-react';
 
 interface Toast {
   id: number;
@@ -585,6 +585,11 @@ function App() {
           {user ? (
             <div className="site-header-user">
               <span>Hello, {user.name || user.email}</span>
+              {user.email === 'devon@onlineverywhere.com' && (
+                <Link to="/admin" className="site-header-profile-link" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Shield size={14} /> Admin
+                </Link>
+              )}
               <Link to="/profile" className="site-header-profile-link">
                 My Profile
               </Link>

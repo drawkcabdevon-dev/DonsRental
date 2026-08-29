@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { Button, Input, Alert, Spinner } from '../components';
-import { User, Car, FileText, ArrowLeft, Check, Calendar } from 'lucide-react';
+import { User, Car, FileText, ArrowLeft, Check, Calendar, Shield } from 'lucide-react';
+
+const ADMIN_EMAIL = 'devon@onlineverywhere.com';
 
 interface ProfileUser {
   email: string;
@@ -149,6 +151,19 @@ export function ProfilePage({ user, onSignOut }: { user: ProfileUser | null; onS
       </div>
 
       <div className="profile-content">
+        {user?.email === ADMIN_EMAIL && (
+          <Link to="/admin" className="profile-admin-link" style={{
+            display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
+            padding: 'var(--space-3) var(--space-4)',
+            backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)',
+            fontWeight: 'var(--font-weight-bold)', textTransform: 'uppercase',
+            fontSize: 'var(--font-size-sm)', textDecoration: 'none',
+            border: '3px solid var(--color-charcoal)', marginBottom: 'var(--space-6)',
+          }}>
+            <Shield size={16} />
+            Owner Dashboard
+          </Link>
+        )}
         {error && (
           <div className="profile-alert">
             <Alert type="error" title="Error"><p>{error}</p></Alert>

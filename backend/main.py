@@ -8,12 +8,15 @@ import logging
 import os
 import re
 import base64
+import secrets
+import time
 from datetime import datetime, date, timedelta
 from typing import Optional
 import uuid
 import asyncio
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+import httpx
 
 # Load .env file in development (not available in Cloud Run)
 from dotenv import load_dotenv
@@ -933,18 +936,84 @@ async def create_booking(req: BookingRequest):
     }
 
 ADMIN_KEY = os.getenv("ADMIN_KEY", "")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "devon@onlineverywhere.com")
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "450188951493-kb2oaaugj0esli53sa5hroag335ahkt6.apps.googleusercontent.com")
+
+# In-memory admin session store: { token: { email, expires_at } }
+_admin_sessions: dict[str, dict] = {}
+ADMIN_TOKEN_TTL = 3600  # 1 hour
+
+
+def _create_admin_token(email: str) -> str:
+    """Create a short-lived admin session token."""
+    token = f"admin_{secrets.token_urlsafe(32)}"
+    _admin_sessions[token] = {
+        "email": email,
+        "expires_at": time.time() + ADMIN_TOKEN_TTL,
+    }
+    return token
+
+
+def _verify_admin_token(authorization: str = "") -> str:
+    """Verify admin session token from Authorization header. Returns the admin email."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Missing or invalid Authorization header")
+    token = authorization[7:]
+    session = _admin_sessions.get(token)
+    if not session:
+        raise HTTPException(401, "Invalid or expired session")
+    if time.time() > session["expires_at"]:
+        del _admin_sessions[token]
+        raise HTTPException(401, "Session expired")
+    return session["email"]
+
 
 def _verify_admin(x_api_key: str = ""):
-    """Verify admin API key from X-API-Key header."""
+    """Legacy: Verify admin API key from X-API-Key header."""
     if not ADMIN_KEY:
         raise HTTPException(503, "Admin key not configured")
     if x_api_key != ADMIN_KEY:
         raise HTTPException(401, "Unauthorized")
 
+
+async def _verify_google_credential(credential: str) -> dict:
+    """Verify a Google ID token via Google's tokeninfo endpoint. Returns token payload."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            "https://oauth2.googleapis.com/tokeninfo",
+            params={"id_token": credential},
+        )
+        if resp.status_code != 200:
+            raise HTTPException(401, "Invalid Google credential")
+        payload = resp.json()
+        if payload.get("aud") != GOOGLE_OAUTH_CLIENT_ID:
+            raise HTTPException(401, "Invalid audience in credential")
+        if float(payload.get("exp", 0)) < time.time():
+            raise HTTPException(401, "Google credential expired")
+        return payload
+
+
+@app.post("/api/admin/verify")
+async def verify_admin(request: Request):
+    """Verify Google credential and create admin session. Only ADMIN_EMAIL is allowed."""
+    body = await request.json()
+    credential = body.get("credential", "")
+    if not credential:
+        raise HTTPException(400, "Missing credential")
+
+    payload = await _verify_google_credential(credential)
+    email = payload.get("email", "").lower()
+    if email != ADMIN_EMAIL.lower():
+        raise HTTPException(403, "Not authorized — admin access denied")
+
+    token = _create_admin_token(email)
+    return {"token": token, "email": email}
+
+
 @app.get("/api/bookings")
-async def list_bookings(x_api_key: str = Header("")):
-    """List all bookings — admin only (requires X-API-Key header)."""
-    _verify_admin(x_api_key)
+async def list_bookings(authorization: str = Header("")):
+    """List all bookings — admin only (requires Bearer token)."""
+    _verify_admin_token(authorization)
     return {"bookings": _fetch_bookings_from_sheet()}
 
 @app.get("/api/my-bookings/{email}")
@@ -964,9 +1033,9 @@ async def get_my_bookings(email: str):
     return {"bookings": mine}
 
 @app.delete("/api/bookings/{booking_id}")
-async def cancel_booking(booking_id: str, x_api_key: str = Header("")):
+async def cancel_booking(booking_id: str, authorization: str = Header("")):
     """Cancel a booking — admin only. Removes from Sheet and Calendar."""
-    _verify_admin(x_api_key)
+    _verify_admin_token(authorization)
     # Find and delete from Sheet
     if SPREADSHEET_ID:
         try:
@@ -1000,9 +1069,9 @@ async def cancel_booking(booking_id: str, x_api_key: str = Header("")):
     return {"success": True, "message": f"Booking {booking_id} canceled"}
 
 @app.delete("/api/bookings")
-async def clear_all_bookings(x_api_key: str = Header("")):
+async def clear_all_bookings(authorization: str = Header("")):
     """Clear all bookings — admin only. Removes all data rows from the Bookings sheet."""
-    _verify_admin(x_api_key)
+    _verify_admin_token(authorization)
     cleared_sheet = 0
     cleared_calendar = 0
 

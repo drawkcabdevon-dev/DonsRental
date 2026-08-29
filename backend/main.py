@@ -1201,19 +1201,21 @@ async def clear_all_bookings(request: Request):
         except Exception as e:
             logger.warning("Failed to clear sheet bookings: %s", e)
 
-    # Clear Google Calendar events
+    # Clear ALL Google Calendar events (no time restriction)
     try:
         svc = _get_calendar()
-        now = datetime.now()
-        time_min = f"{now.year}-01-01T00:00:00-04:00"
-        time_max = f"{now.year + 1}-12-31T23:59:59-04:00"
-        events = svc.events().list(
-            calendarId=CALENDAR_ID, timeMin=time_min, timeMax=time_max,
-            singleEvents=True, maxResults=250,
-        ).execute()
-        for event in events.get('items', []):
-            svc.events().delete(calendarId=CALENDAR_ID, eventId=event['id']).execute()
-            cleared_calendar += 1
+        page_token = None
+        while True:
+            events = svc.events().list(
+                calendarId=CALENDAR_ID, pageToken=page_token,
+                singleEvents=True, maxResults=250,
+            ).execute()
+            for event in events.get('items', []):
+                svc.events().delete(calendarId=CALENDAR_ID, eventId=event['id']).execute()
+                cleared_calendar += 1
+            page_token = events.get('nextPageToken')
+            if not page_token:
+                break
     except Exception as e:
         logger.warning("Failed to clear calendar events: %s", e)
 

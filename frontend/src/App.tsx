@@ -277,6 +277,14 @@ function App() {
     }
   }, [bookingRef, user]);
 
+  // Render Google Sign-In button in header when not signed in
+  useEffect(() => {
+    if (!user && !isLanding) {
+      const timer = setTimeout(() => handleRenderGoogleButton('header-google-signin'), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [user, isLanding]);
+
   useEffect(() => {
     const loadVehicles = async () => {
       setLoading(true);
@@ -574,7 +582,7 @@ function App() {
             </h1>
             <p className="site-header-subtitle">Barbados car rental — book online, no calls needed</p>
           </Link>
-          {user && (
+          {user ? (
             <div className="site-header-user">
               <span>Hello, {user.name || user.email}</span>
               <Link to="/profile" className="site-header-profile-link">
@@ -586,6 +594,10 @@ function App() {
               >
                 Sign out
               </button>
+            </div>
+          ) : (
+            <div className="site-header-user">
+              <div id="header-google-signin" style={{ display: 'inline-block' }}></div>
             </div>
           )}
         </div>
@@ -1081,7 +1093,7 @@ function App() {
         )}
             </>
           } />
-          <Route path="*" element={<LandingPage onBookNow={() => navigate('/book')} />} />
+          <Route path="*" element={<LandingPage onBookNow={() => navigate('/book')} user={user} onRenderGoogleButton={handleRenderGoogleButton} />} />
         </Routes>
       </main>
 

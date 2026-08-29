@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -934,11 +934,17 @@ async def create_booking(req: BookingRequest):
 
 ADMIN_KEY = os.getenv("ADMIN_KEY", "")
 
+def _verify_admin(x_api_key: str = ""):
+    """Verify admin API key from X-API-Key header."""
+    if not ADMIN_KEY:
+        raise HTTPException(503, "Admin key not configured")
+    if x_api_key != ADMIN_KEY:
+        raise HTTPException(401, "Unauthorized")
+
 @app.get("/api/bookings")
-async def list_bookings(key: str = ""):
-    """List all bookings — admin only (requires ?key=...)"""
-    if key != ADMIN_KEY:
-        raise HTTPException(403, "Forbidden")
+async def list_bookings(x_api_key: str = Header("")):
+    """List all bookings — admin only (requires X-API-Key header)."""
+    _verify_admin(x_api_key)
     return {"bookings": _fetch_bookings_from_sheet()}
 
 @app.get("/api/my-bookings/{email}")
@@ -958,8 +964,9 @@ async def get_my_bookings(email: str):
     return {"bookings": mine}
 
 @app.delete("/api/bookings/{booking_id}")
-async def cancel_booking(booking_id: str):
-    """Cancel a booking — removes from Sheet and Calendar."""
+async def cancel_booking(booking_id: str, x_api_key: str = Header("")):
+    """Cancel a booking — admin only. Removes from Sheet and Calendar."""
+    _verify_admin(x_api_key)
     # Find and delete from Sheet
     if SPREADSHEET_ID:
         try:
@@ -993,10 +1000,9 @@ async def cancel_booking(booking_id: str):
     return {"success": True, "message": f"Booking {booking_id} canceled"}
 
 @app.delete("/api/bookings")
-async def clear_all_bookings(key: str = ""):
+async def clear_all_bookings(x_api_key: str = Header("")):
     """Clear all bookings — admin only. Removes all data rows from the Bookings sheet."""
-    if key != ADMIN_KEY:
-        raise HTTPException(403, "Forbidden")
+    _verify_admin(x_api_key)
     cleared_sheet = 0
     cleared_calendar = 0
 

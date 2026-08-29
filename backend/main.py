@@ -777,7 +777,27 @@ async def check_availability_batch(req: dict):
                     booked_dates.add(current.isoformat())
                     current = current + __import__('datetime').timedelta(days=1)
     except Exception as e:
-        logger.warning("Batch availability check failed: %s", e)
+        logger.warning("Batch availability check (sheet) failed: %s", e)
+
+    # Also check Google Calendar events (bookings, maintenance, blocks)
+    try:
+        cal_events = _fetch_calendar_events(start_date, end_date)
+        for event in cal_events:
+            start = event.get('start', {})
+            end = event.get('end', {})
+            if 'date' in start:
+                ev_start = _parse_date(start['date'])
+                ev_end = _parse_date(end['date'])
+            else:
+                ev_start = _parse_date(start.get('dateTime', '')[:10])
+                ev_end = _parse_date(end.get('dateTime', '')[:10])
+            if ev_start and ev_end:
+                current = ev_start
+                while current <= ev_end:
+                    booked_dates.add(current.isoformat())
+                    current = current + __import__('datetime').timedelta(days=1)
+    except Exception as e:
+        logger.warning("Batch availability check (calendar) failed: %s", e)
 
     return {"bookedDates": sorted(list(booked_dates))}
 
@@ -971,6 +991,54 @@ async def cancel_booking(booking_id: str):
         logger.warning("Failed to delete from calendar: %s", e)
 
     return {"success": True, "message": f"Booking {booking_id} canceled"}
+
+@app.delete("/api/bookings")
+async def clear_all_bookings(key: str = ""):
+    """Clear all bookings — admin only. Removes all data rows from the Bookings sheet."""
+    if key != ADMIN_KEY:
+        raise HTTPException(403, "Forbidden")
+    cleared_sheet = 0
+    cleared_calendar = 0
+
+    # Clear sheet rows (keep header)
+    if SPREADSHEET_ID:
+        try:
+            svc = _get_sheets()
+            result = svc.spreadsheets().values().get(
+                spreadsheetId=SPREADSHEET_ID, range='Bookings!A:V',
+            ).execute()
+            rows = result.get('values', [])
+            if len(rows) >= 2:
+                svc.spreadsheets().batchUpdate(
+                    spreadsheetId=SPREADSHEET_ID,
+                    body={'requests': [{'deleteDimension': {'range': {
+                        'sheetId': 613814778,
+                        'dimension': 'ROWS',
+                        'startIndex': 1,
+                        'endIndex': len(rows),
+                    }}}]}
+                ).execute()
+                cleared_sheet = len(rows) - 1
+        except Exception as e:
+            logger.warning("Failed to clear sheet bookings: %s", e)
+
+    # Clear Google Calendar events
+    try:
+        svc = _get_calendar()
+        now = datetime.now()
+        time_min = f"{now.year}-01-01T00:00:00-04:00"
+        time_max = f"{now.year + 1}-12-31T23:59:59-04:00"
+        events = svc.events().list(
+            calendarId=CALENDAR_ID, timeMin=time_min, timeMax=time_max,
+            singleEvents=True, maxResults=250,
+        ).execute()
+        for event in events.get('items', []):
+            svc.events().delete(calendarId=CALENDAR_ID, eventId=event['id']).execute()
+            cleared_calendar += 1
+    except Exception as e:
+        logger.warning("Failed to clear calendar events: %s", e)
+
+    return {"success": True, "clearedSheet": cleared_sheet, "clearedCalendar": cleared_calendar}
 
 # ── Profile Endpoints ──────────────────────────────────
 

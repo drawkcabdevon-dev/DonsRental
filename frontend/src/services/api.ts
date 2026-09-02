@@ -135,6 +135,18 @@ export const api = {
     }
   },
 
+  async getMyBookings(email: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${API_BASE}/bookings/mine?email=${encodeURIComponent(email)}`);
+      if (!response.ok) throw new Error('Failed to fetch bookings');
+      const data = await response.json();
+      return data.bookings || [];
+    } catch (error) {
+      console.error('Error fetching my bookings:', error);
+      return [];
+    }
+  },
+
   async saveProfile(profile: {
     email: string;
     name?: string;

@@ -1242,6 +1242,20 @@ async def list_bookings(key: str = ""):
         raise HTTPException(403, "Forbidden")
     return {"bookings": _fetch_bookings_from_sheet()}
 
+@app.get("/api/bookings/mine")
+async def list_my_bookings(email: str = ""):
+    """List bookings for a specific customer email."""
+    if not email:
+        raise HTTPException(400, "Email is required")
+    
+    all_bookings = _fetch_bookings_from_sheet()
+    # Filter bookings where custEmail matches
+    my_bookings = [
+        b for b in all_bookings
+        if (b.get("custEmail") or b.get("customerEmail") or b.get("customeremail") or "").lower() == email.lower()
+    ]
+    return {"bookings": my_bookings}
+
 @app.delete("/api/bookings/{booking_id}")
 async def cancel_booking(booking_id: str, key: str = ""):
     """Cancel a booking — removes from Sheet and Calendar."""

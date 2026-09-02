@@ -17,7 +17,7 @@ import { BookingSummary, BookingConfirmation } from './components/Summary';
 import { AvailabilityCalendar } from './components/AvailabilityCalendar';
 import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
-import AdminDashboard from './pages/AdminDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
 import { useStepTransition } from './hooks/useAnimations';
 import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 

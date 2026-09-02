@@ -2,6 +2,8 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - build
+      - --build-arg
+      - VITE_ADMIN_KEY=${_ADMIN_KEY}
       - -t
       - >-
         ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${SHORT_SHA}
@@ -40,7 +42,7 @@ steps:
         GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:latest,GOOGLE_CALENDAR_ID=google-calendar-id:latest,ADMIN_KEY=admin-api-key:latest
       - --set-env-vars
       - >-
-        AGENT_ENGINE=${_AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=us-central1,SPREADSHEET_ID=${_SPREADSHEET_ID},OWNER_EMAIL=${_OWNER_EMAIL},GCS_BUCKET=${_GCS_BUCKET},GCS_PHOTOS_PREFIX=${_GCS_PHOTOS_PREFIX}
+        AGENT_ENGINE=${_AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=us-central1,SPREADSHEET_ID=${_SPREADSHEET_ID},OWNER_EMAIL=${_OWNER_EMAIL},GCS_BUCKET=${_GCS_BUCKET},GCS_PHOTOS_PREFIX=${_GCS_PHOTOS_PREFIX},MAIL_FROM=${_MAIL_FROM},COMPANY_NAME=${_COMPANY_NAME},COMPANY_PHONE=${_COMPANY_PHONE}
     id: Deploy
     waitFor:
       - Push
@@ -54,6 +56,10 @@ substitutions:
   _OWNER_EMAIL: devon@onlineverywhere.com
   _GCS_BUCKET: donsrental-license-photos
   _GCS_PHOTOS_PREFIX: license-photos
+  _MAIL_FROM: bookings@onlineverywhere.com
+  _COMPANY_NAME: "Don's Rental"
+  _COMPANY_PHONE: "+1 (246) 268-2842"
+  _ADMIN_KEY: ""
 
 options:
   machineType: E2_HIGHCPU_8

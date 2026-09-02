@@ -61,3 +61,68 @@ export interface ApiResponse<T> {
   error?: string;
   bookingRef?: string;
 }
+
+// ── Admin Dashboard Types ─────────────────────────────
+
+export interface DashboardProfile {
+  email: string;
+  name: string;
+  phone: string;
+  address: string;
+  licenseNumber: string;
+  licenseExpiry: string;
+  licenseIssuer: string;
+  licenseClass: string;
+  licensePhotoUrl: string;
+}
+
+export interface DashboardBooking {
+  bookingId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  vehicleId: string;
+  vehicleName: string;
+  pickupDate: string;
+  returnDate: string;
+  totalDays: number;
+  totalCost: number;
+  created: string;
+  licensePhotoUrl: string;
+  profile: DashboardProfile;
+}
+
+export interface DashboardMonthBucket {
+  month: string; // YYYY-MM
+  revenue: number;
+  count: number;
+}
+
+export interface DashboardVehicleBucket {
+  vehicleId: string;
+  vehicleName: string;
+  revenue: number;
+  count: number;
+}
+
+export interface DashboardData {
+  totalRevenue: number;
+  totalBookings: number;
+  currentBookings: number;
+  recentBookings: DashboardBooking[];
+  bookingsByMonth: DashboardMonthBucket[];
+  bookingsByVehicle: DashboardVehicleBucket[];
+}
+
+export interface CustomerProfile {
+  email: string;
+  name: string;
+  phone: string;
+  address: string;
+  licenseNumber: string;
+  licenseExpiry: string;
+  licenseIssuer: string;
+  licenseClass: string;
+  licensePhotoUrl: string;
+  googleId?: string;
+}

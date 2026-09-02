@@ -1,6 +1,7 @@
-import type { Vehicle, BookingData, ApiResponse } from '../types';
+import type { Vehicle, BookingData, ApiResponse, DashboardData } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || '';
 
 export const api = {
   // Get available vehicles
@@ -16,14 +17,14 @@ export const api = {
       return [
         {
           id: 'v1',
-          name: 'Suzuki Swift',
+          name: 'Standard Rental Car',
           rate: 120,
           seats: 5,
           transmission: 'automatic',
           fuelType: 'petrol',
-          description: 'Reliable and comfortable. Great for exploring the island at your own pace.',
+          description: 'Clean, reliable car for getting around Barbados. 2-day minimum. Weekend & weekly specials available.',
           imageUrl: '/vehicle.png',
-          features: ['Air Conditioning', '2-Day Minimum', 'Bluetooth', 'Free Drop-off'],
+          features: ['Air Conditioning', '2-Day Minimum', 'Weekend Specials', 'Free Drop-off'],
         },
       ];
     }
@@ -143,6 +144,7 @@ export const api = {
     licenseExpiry?: string;
     licenseIssuer?: string;
     licenseClass?: string;
+    licensePhotoUrl?: string;
     googleId?: string;
   }): Promise<{ success: boolean }> {
     const response = await fetch(`${API_BASE}/profiles`, {
@@ -154,15 +156,10 @@ export const api = {
     return await response.json();
   },
 
-  // Bookings for a specific customer
-  async getMyBookings(email: string): Promise<Record<string, string>[]> {
-    try {
-      const response = await fetch(`${API_BASE}/my-bookings/${encodeURIComponent(email)}`);
-      if (!response.ok) throw new Error('Failed to fetch bookings');
-      const data = await response.json();
-      return data.bookings || [];
-    } catch {
-      return [];
-    }
+  // Admin dashboard
+  async getAdminDashboard(): Promise<DashboardData> {
+    const response = await fetch(`${API_BASE}/admin/dashboard?key=${encodeURIComponent(ADMIN_KEY)}`);
+    if (!response.ok) throw new Error('Failed to load dashboard data');
+    return await response.json();
   },
 };

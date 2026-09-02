@@ -1,4 +1,6 @@
 FROM node:22-slim AS frontend-builder
+ARG VITE_ADMIN_KEY=""
+ENV VITE_ADMIN_KEY=${VITE_ADMIN_KEY}
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install

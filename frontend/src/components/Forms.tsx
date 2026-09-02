@@ -203,40 +203,46 @@ export function LicenseVerificationForm({
           </div>
         )}
       </div>
-      
+
       <hr className="divider-dashed" />
-      
-      <p className="text-sm font-semibold text-uppercase text-bau-gray">Or enter manually:</p>
-      
+
+      <p className="text-sm font-semibold text-uppercase text-bau-gray">
+        Review the details extracted from your license
+      </p>
+
       <Input
         label="License Number *"
         placeholder="e.g., ABC123456"
         value={data.licenseNumber}
         onChange={(e) => onChange('licenseNumber', e.target.value)}
         error={errors.licenseNumber}
+        disabled={!data.photoUrl}
       />
-      
+
       <Input
         label="License Expiry *"
         variant="date"
         value={data.licenseExpiry}
         onChange={(e) => onChange('licenseExpiry', e.target.value)}
         error={errors.licenseExpiry}
+        disabled={!data.photoUrl}
       />
-      
+
       <Input
         label="Issuing Authority *"
         placeholder="e.g., DMV"
         value={data.licenseIssuer}
         onChange={(e) => onChange('licenseIssuer', e.target.value)}
         error={errors.licenseIssuer}
+        disabled={!data.photoUrl}
       />
-      
+
       <Input
         label="License Class"
         placeholder="e.g., B"
         value={data.licenseClass}
         onChange={(e) => onChange('licenseClass', e.target.value)}
+        disabled={!data.photoUrl}
       />
     </div>
   );

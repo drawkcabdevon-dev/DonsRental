@@ -319,16 +319,22 @@ def _send_customer_confirmation(req: BookingRequest, ref: str, total_cost: float
 <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border:2px solid #2d2d2d;overflow:hidden;">
 
   <!-- Header -->
-  <tr><td style="background:#1a1a1a;padding:32px 40px 24px;border-bottom:4px solid #FFCC00;">
-    <div style="font-size:28px;font-weight:800;color:#ffffff;text-transform:uppercase;letter-spacing:-0.5px;">{ _escape_html(COMPANY_NAME) }</div>
-    <div style="font-size:12px;color:#FFCC00;margin-top:4px;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Car Rental</div>
+  <tr><td style="background:#1a1a1a;padding:28px 40px 24px;border-bottom:4px solid #FFCC00;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td valign="middle">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 48 46" style="vertical-align:middle;margin-right:10px;"><path fill="#FFCC00" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z"/></svg>
+        <span style="font-size:28px;font-weight:800;color:#ffffff;text-transform:uppercase;letter-spacing:-0.5px;vertical-align:middle;">{ _escape_html(COMPANY_NAME) }</span>
+      </td>
+      <td style="text-align:right;vertical-align:middle;">
+        <span style="font-size:12px;color:#FFCC00;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Car Rental</span>
+      </td>
+    </tr></table>
   </td></tr>
 
   <!-- Confirmed Bar -->
   <tr><td style="background:#FFCC00;padding:14px 40px;">
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
       <td style="font-size:14px;font-weight:700;color:#1a1a1a;text-transform:uppercase;letter-spacing:1px;">&#10003;&nbsp; Booking Confirmed</td>
-      <td style="text-align:right;font-size:12px;color:#2d2d2d;font-weight:600;">{ _escape_html(ref) }</td>
     </tr></table>
   </td></tr>
 
@@ -373,19 +379,8 @@ def _send_customer_confirmation(req: BookingRequest, ref: str, total_cost: float
     </table>
   </td></tr>
 
-  <!-- Total Due -->
-  <tr><td style="padding:8px 40px 16px;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#1a1a1a;border:2px solid #2d2d2d;">
-    <tr><td style="padding:24px;text-align:center;">
-      <div style="font-size:11px;color:#FFCC00;text-transform:uppercase;letter-spacing:2px;font-weight:700;">Total Due</div>
-      <div style="font-size:36px;font-weight:800;color:#ffffff;margin-top:8px;">Bds${total_cost:.2f}</div>
-      <div style="font-size:13px;color:#999;margin-top:6px;">Pay at pick-up &mdash; Cash or Card</div>
-    </td></tr>
-    </table>
-  </td></tr>
-
   <!-- License Info -->
-  <tr><td style="padding:0 40px 24px;">
+  <tr><td style="padding:0 40px 16px;">
     <table width="100%" cellpadding="0" cellspacing="0" style="border:2px solid #2d2d2d;">
       <tr><td style="background:#f5f5f0;padding:10px 20px;border-bottom:2px solid #2d2d2d;">
         <span style="font-size:12px;color:#5c5c5c;font-weight:700;text-transform:uppercase;letter-spacing:1px;">License on File</span>
@@ -400,11 +395,63 @@ def _send_customer_confirmation(req: BookingRequest, ref: str, total_cost: float
     </table>
   </td></tr>
 
+  <!-- Booking Summary -->
+  <tr><td style="padding:0 40px 24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:2px solid #2d2d2d;">
+      <tr><td style="background:#1a1a1a;padding:12px 20px;">
+        <span style="color:#FFCC00;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Booking Summary</span>
+      </td></tr>
+      <tr><td style="padding:20px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:6px 0;font-size:13px;color:#5c5c5c;">Reference</td>
+            <td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:700;text-align:right;">{_escape_html(ref)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;font-size:13px;color:#5c5c5c;">Vehicle</td>
+            <td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:600;text-align:right;">{_escape_html(req.vehicleId or 'Standard Rental Car')}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;font-size:13px;color:#5c5c5c;">Duration</td>
+            <td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:600;text-align:right;">{days} day(s)</td>
+          </tr>
+          <tr><td colspan="2" style="padding:8px 0;"><div style="border-top:2px solid #2d2d2d;"></div></td></tr>
+          <tr>
+            <td style="padding:6px 0;font-size:14px;color:#1a1a1a;font-weight:700;">Total Due</td>
+            <td style="padding:6px 0;font-size:22px;color:#1a1a1a;font-weight:800;text-align:right;">Bds${total_cost:.2f}</td>
+          </tr>
+        </table>
+        <div style="margin-top:12px;padding:10px 14px;background:#f5f5f0;border:1px solid #e0e0e0;">
+          <span style="font-size:12px;color:#5c5c5c;">Pay at pick-up &mdash; Cash or Card accepted</span>
+        </div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Pay Online -->
+  <tr><td style="padding:0 40px 24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:2px solid #2d2d2d;">
+      <tr><td style="background:#1a1a1a;padding:12px 20px;">
+        <span style="color:#FFCC00;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Pay Online</span>
+      </td></tr>
+      <tr><td style="padding:20px;text-align:center;">
+        <p style="margin:0 0 12px;font-size:14px;color:#5c5c5c;line-height:1.5;">Scan the QR code below to pay via <strong>CIBC 1stPay</strong></p>
+        <img src="https://storage.googleapis.com/donsrental-license-photos/cibc-1stpay-qr.png" alt="CIBC 1stPay QR Code" width="220" style="display:block;margin:0 auto;border:2px solid #2d2d2d;" />
+        <p style="margin:12px 0 0;font-size:12px;color:#999;">Include your booking reference in the payment memo</p>
+      </td></tr>
+    </table>
+  </td></tr>
+
   <!-- Footer -->
   <tr><td style="background:#1a1a1a;padding:24px 40px;border-top:4px solid #FFCC00;">
     <p style="margin:0;font-size:13px;color:#999;line-height:1.6;">
       {_escape_html(COMPANY_NAME)} &bull; {_escape_html(COMPANY_PHONE)}<br>
       <a href="mailto:{_escape_html(MAIL_FROM)}" style="color:#FFCC00;text-decoration:none;">{_escape_html(MAIL_FROM)}</a>
+    </p>
+    <p style="margin:12px 0 0;font-size:11px;color:#666;">
+      <a href="https://onlineverywhere.com/privacy" style="color:#FFCC00;text-decoration:none;">Privacy Policy</a>
+      &nbsp;&bull;&nbsp;
+      <a href="https://onlineverywhere.com/terms" style="color:#FFCC00;text-decoration:none;">Terms &amp; Conditions</a>
     </p>
     <p style="margin:12px 0 0;font-size:11px;color:#666;">Thank you for choosing us. Safe travels!</p>
   </td></tr>
@@ -1716,7 +1763,19 @@ async def reconcile_status(key: str = ""):
         raise HTTPException(500, f"Status check failed: {e}")
 
 
-# ── Static file mount (MUST be last — catches all unmatched routes) ──
+# ── SPA catch-all (serves index.html for client-side routes) ──
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
+
 if os.path.isdir(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    from fastapi.responses import FileResponse
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve static files or fall back to index.html for SPA routing."""
+        file_path = os.path.join(FRONTEND_DIR, full_path)
+        if full_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        if os.path.isfile(INDEX_HTML):
+            return FileResponse(INDEX_HTML)
+        raise HTTPException(404, "Not Found")

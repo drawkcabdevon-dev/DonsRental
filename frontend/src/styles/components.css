@@ -2751,6 +2751,22 @@ h2:focus-visible {
   border-color: rgba(255, 255, 255, 0.6);
 }
 
+.booking-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  color: var(--color-dark-gray);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.booking-back-link:hover {
+  color: var(--color-black);
+}
+
 /* Mobile header */
 @media (max-width: 768px) {
   .site-header {

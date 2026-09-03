@@ -1,6 +1,6 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Link, Routes, Route, useNavigate } from 'react-router-dom';
 import { api } from './services/api';
 import {
   Button,
@@ -600,6 +600,10 @@ function App() {
           } />
           <Route path="/book" element={
             <>
+              <Link to="/" className="booking-back-link">
+                <ArrowLeft size={16} aria-hidden="true" /> Back to Don's Rental
+              </Link>
+
               {/* Driving Stepper */}
         <div style={{ marginBottom: 'var(--space-8)' }}>
           <DrivingStepper

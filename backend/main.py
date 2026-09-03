@@ -8,6 +8,9 @@ import logging
 import os
 import re
 import base64
+import hmac
+import hashlib
+import time
 from datetime import datetime, date, timedelta
 from typing import Optional
 import uuid
@@ -674,6 +677,21 @@ def _fetch_vehicles_from_sheet() -> list[dict]:
                 except ValueError:
                     obj['rate'] = 0
                 vehicles.append(obj)
+        # Ensure every vehicle has required frontend fields
+        _vehicle_defaults = {
+            "features": ["Air Conditioning"],
+            "description": "",
+            "imageUrl": "",
+            "icon": "",
+            "fuelType": "petrol",
+        }
+        for v in vehicles:
+            for key, default in _vehicle_defaults.items():
+                if key not in v or not v[key]:
+                    v[key] = default
+            # Normalize fueltype → fuelType (sheet may use lowercase)
+            if "fueltype" in v and "fuelType" not in v:
+                v["fuelType"] = v.pop("fueltype")
         return vehicles if vehicles else VEHICLES_FALLBACK
     except Exception as e:
         logger.warning("Could not read vehicles from sheet: %s", e)
@@ -1282,10 +1300,91 @@ async def create_booking(req: BookingRequest):
 
 ADMIN_KEY = os.getenv("ADMIN_KEY", "")
 
+# ── Admin session helpers ────────────────────────────────
+_SESSION_SECRET = os.environ.get("SESSION_SECRET", hashlib.sha256(
+    (OWNER_EMAIL + "donsrental-session-salt").encode()
+).hexdigest())
+
+def _make_session_token(email: str) -> str:
+    """Create an HMAC-signed session token."""
+    payload = f"{email}:{int(time.time())}"
+    sig = hmac.new(_SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}:{sig}"
+
+def _verify_session_token(token: str) -> Optional[str]:
+    """Verify session token, return email if valid, None otherwise."""
+    try:
+        parts = token.rsplit(":", 1)
+        if len(parts) != 2:
+            return None
+        payload, sig = parts
+        expected = hmac.new(_SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            return None
+        email = payload.rsplit(":", 1)[0]
+        return email
+    except Exception:
+        return None
+
+def _get_admin_email_from_cookie(request: Request) -> Optional[str]:
+    """Extract admin email from session cookie, or None if not authenticated."""
+    cookie = request.cookies.get("donsrental_admin_session", "")
+    if not cookie:
+        return None
+    return _verify_session_token(cookie)
+
+def _verify_google_credential(credential: str) -> Optional[str]:
+    """Verify a Google ID token and return the email, or None on failure."""
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as ga_requests
+        payload = id_token.verify_oauth2_token(
+            credential, ga_requests.Request(), GOOGLE_OAUTH_CLIENT_ID
+        )
+        return payload.get("email")
+    except Exception as e:
+        logger.warning("Google credential verification failed: %s", e)
+        return None
+
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "450188951493-kb2oaaugj0esli53sa5hroag335ahkt6.apps.googleusercontent.com")
+
+
+class AdminVerifyRequest(BaseModel):
+    credential: str
+
+
+@app.post("/api/admin/verify")
+async def admin_verify(req: AdminVerifyRequest):
+    """Verify Google credential and create admin session."""
+    email = _verify_google_credential(req.credential)
+    if not email:
+        raise HTTPException(401, "Invalid Google credential")
+    if email.lower() != OWNER_EMAIL.lower():
+        raise HTTPException(403, "Not authorized — admin access denied")
+    token = _make_session_token(email)
+    from fastapi.responses import JSONResponse
+    response = JSONResponse({"email": email, "authenticated": True})
+    response.set_cookie(
+        "donsrental_admin_session", token,
+        httponly=True, secure=True, samesite="lax", max_age=86400
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+async def auth_logout():
+    """Clear admin session cookie."""
+    from fastapi.responses import JSONResponse
+    response = JSONResponse({"success": True})
+    response.delete_cookie("donsrental_admin_session")
+    return response
+
 @app.get("/api/bookings")
-async def list_bookings(key: str = ""):
-    """List all bookings — admin only (requires ?key=...)"""
-    if key != ADMIN_KEY:
+async def list_bookings(request: Request, key: str = ""):
+    """List all bookings — admin only (requires ?key=... or valid session cookie)"""
+    # Allow access via API key OR session cookie
+    session_email = _get_admin_email_from_cookie(request)
+    if key != ADMIN_KEY and not session_email:
         raise HTTPException(403, "Forbidden")
     return {"bookings": _fetch_bookings_from_sheet()}
 
@@ -1767,15 +1866,25 @@ async def reconcile_status(key: str = ""):
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
 
+import mimetypes
+mimetypes.init()
+
 if os.path.isdir(FRONTEND_DIR):
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, HTMLResponse
+
+    _SPA_CATCH_ALL_DEFINED = True
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         """Serve static files or fall back to index.html for SPA routing."""
-        file_path = os.path.join(FRONTEND_DIR, full_path)
-        if full_path and os.path.isfile(file_path):
-            return FileResponse(file_path)
+        # Try to serve the exact file first
+        if full_path:
+            file_path = os.path.join(FRONTEND_DIR, full_path)
+            if os.path.isfile(file_path):
+                content_type, _ = mimetypes.guess_type(file_path)
+                return FileResponse(file_path, media_type=content_type or "application/octet-stream")
+
+        # Fall back to index.html for SPA client-side routing
         if os.path.isfile(INDEX_HTML):
-            return FileResponse(INDEX_HTML)
+            return FileResponse(INDEX_HTML, media_type="text/html")
         raise HTTPException(404, "Not Found")

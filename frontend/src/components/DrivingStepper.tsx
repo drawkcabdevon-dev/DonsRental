@@ -106,7 +106,7 @@ export function DrivingStepper({ steps, currentStep }: DrivingStepperProps) {
       </div>
 
       {/* Checkpoints */}
-      <div className="stepper-checkpoints">
+      <div className="stepper-checkpoints" role="navigation" aria-label="Booking progress">
         {steps.map((step, i) => {
           const isCompleted = currentStep > i + 1;
           const isActive = currentStep === i + 1;
@@ -115,14 +115,15 @@ export function DrivingStepper({ steps, currentStep }: DrivingStepperProps) {
             <div
               key={step}
               className={`stepper-checkpoint ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}`}
+              aria-current={isActive ? 'step' : undefined}
             >
               <div className="checkpoint-icon">
                 {isCompleted ? (
-                  <Check size={14} className="checkmark-icon" />
+                  <Check size={14} className="checkmark-icon" aria-hidden="true" />
                 ) : (
                   (() => {
                     const Icon = STEP_ICONS[step] || MapPin;
-                    return <Icon size={14} className="checkpoint-lucide" />;
+                    return <Icon size={14} className="checkpoint-lucide" aria-hidden="true" />;
                   })()
                 )}
               </div>

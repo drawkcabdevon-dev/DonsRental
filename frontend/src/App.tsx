@@ -1,6 +1,6 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { api } from './services/api';
 import {
   Button,
@@ -18,6 +18,7 @@ import { AvailabilityCalendar } from './components/AvailabilityCalendar';
 import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { LandingPage } from './pages/LandingPage';
 import { useStepTransition } from './hooks/useAnimations';
 import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 
@@ -44,6 +45,7 @@ declare global {
 let _toastId = 0;
 
 function App() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<BookingStep>(1);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -546,16 +548,15 @@ function App() {
       </a>
 
       {/* Toast Container */}
-      <div className="toast-container" aria-live="polite" aria-label="Notifications">
+      <div className="toast-container" role="status" aria-live="polite">
         {toasts.map((t) => (
           <div
             key={t.id}
             className={`toast-item toast-${t.type}`}
-            role="alert"
           >
-            {t.type === 'success' && <Check size={16} />}
-            {t.type === 'error' && <X size={16} />}
-            {t.type === 'warning' && <AlertTriangle size={16} />}
+            {t.type === 'success' && <Check size={16} aria-hidden="true" />}
+            {t.type === 'error' && <X size={16} aria-hidden="true" />}
+            {t.type === 'warning' && <AlertTriangle size={16} aria-hidden="true" />}
             {t.message}
           </div>
         ))}
@@ -590,7 +591,14 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="*" element={
+          <Route path="/" element={
+            <LandingPage
+              onBookNow={() => navigate('/book')}
+              user={user}
+              onRenderGoogleButton={handleRenderGoogleButton}
+            />
+          } />
+          <Route path="/book" element={
             <>
               {/* Driving Stepper */}
         <div style={{ marginBottom: 'var(--space-8)' }}>
@@ -624,9 +632,9 @@ function App() {
             gap: 'var(--space-4)'
           }}>
             <div>
-              <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-2)' }}>
-                <MessageSquare size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> Prefer to chat?
-              </h3>
+              <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-2)' }}>
+                <MessageSquare size={20} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} /> Prefer to chat?
+              </h2>
               <p style={{ opacity: 0.9, marginBottom: 0 }}>
                 Talk to our AI booking assistant to book your rental naturally. Ask questions, get recommendations, and complete your booking through conversation.
               </p>
@@ -979,7 +987,7 @@ function App() {
           <div className="post-confirmation-actions">
             <Button
               variant="primary"
-              onClick={() => window.location.href = '/'}
+              onClick={() => navigate('/book')}
               style={{ flex: 1 }}
             >
               Book Another Vehicle
@@ -988,6 +996,7 @@ function App() {
         )}
             </>
           } />
+          <Route path="*" element={<LandingPage onBookNow={() => navigate('/book')} user={user} onRenderGoogleButton={handleRenderGoogleButton} />} />
         </Routes>
       </main>
 

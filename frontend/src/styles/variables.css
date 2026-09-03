@@ -13,6 +13,7 @@
   --color-white: #ffffff;
   --color-yellow: #FFCC00;
   --color-yellow-dark: #e6b800;
+  --color-yellow-accessible: #997a00; /* WCAG AA on white/light backgrounds */
   
   /* Semantic colors */
   --color-success: #059669;

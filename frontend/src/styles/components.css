@@ -637,6 +637,7 @@ h2:focus-visible {
 .text-bau-black { color: var(--color-black); }
 .text-bau-gray { color: var(--color-dark-gray); }
 .text-bau-yellow { color: var(--color-yellow); }
+.text-bau-yellow-accessible { color: var(--color-yellow-accessible); }
 .text-white { color: var(--color-white); }
 
 /* Colors: border */
@@ -1064,7 +1065,7 @@ h2:focus-visible {
 }
 
 .calendar-day.available:not(.selected):not(.in-range) .calendar-day-number {
-  color: #16a34a;
+  color: #117a37;
 }
 
 /* Booked dates — RED coding */
@@ -2114,7 +2115,7 @@ h2:focus-visible {
 }
 
 .stepper-checkpoint.active .checkpoint-label {
-  color: var(--color-yellow);
+  color: var(--color-yellow-accessible);
   font-weight: var(--font-weight-bold);
 }
 

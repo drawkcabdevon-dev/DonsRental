@@ -7,7 +7,7 @@ SERVICE_NAME="${SERVICE_NAME:-donsrental}"
 SPREADSHEET_ID="${SPREADSHEET_ID:-1i8rkv11Zmuv_btAiJNji1MAj9GylHOJZEUucAqqb6-0}"
 OWNER_EMAIL="${OWNER_EMAIL:-devon@onlineverywhere.com}"
 MAIL_FROM="${MAIL_FROM:-bookings@onlineverywhere.com}"
-COMPANY_NAME="${COMPANY_NAME:-Don'\''s Rental}"
+COMPANY_NAME="${COMPANY_NAME:-Dons Rental}"
 COMPANY_PHONE="${COMPANY_PHONE:-+1 (246) 268-2842}"
 GOOGLE_OAUTH_CLIENT_ID="${GOOGLE_OAUTH_CLIENT_ID:-450188951493-kb2oaaugj0esli53sa5hroag335ahkt6.apps.googleusercontent.com}"
 

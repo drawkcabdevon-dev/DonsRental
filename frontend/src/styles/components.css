@@ -637,6 +637,7 @@ h2:focus-visible {
 .text-bau-black { color: var(--color-black); }
 .text-bau-gray { color: var(--color-dark-gray); }
 .text-bau-yellow { color: var(--color-yellow); }
+.text-bau-yellow-accessible { color: var(--color-yellow-accessible); }
 .text-white { color: var(--color-white); }
 
 /* Colors: border */
@@ -1064,7 +1065,7 @@ h2:focus-visible {
 }
 
 .calendar-day.available:not(.selected):not(.in-range) .calendar-day-number {
-  color: #16a34a;
+  color: #117a37;
 }
 
 /* Booked dates — RED coding */
@@ -1440,6 +1441,21 @@ h2:focus-visible {
    Landing Page — Mobile-First Fixes
    ───────────────────────────────────────────────── */
 
+.landing-section {
+  width: 100%;
+}
+
+.landing-page {
+  align-self: stretch;
+  min-width: 0;
+}
+
+.landing-section-inner {
+  width: 100%;
+  max-width: var(--max-width-container);
+  margin: 0 auto;
+}
+
 /* Tablet and below */
 @media (max-width: 768px) {
   /* Hero: tighter spacing on mobile */
@@ -1451,8 +1467,20 @@ h2:focus-visible {
 
   /* Ensure landing page fills full width on tablets */
   .landing-section, .landing-section-compact, .landing-cta-section {
-    max-width: none !important;
     width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    min-width: 0;
+  }
+  .landing-page {
+    width: 100%;
+    max-width: none;
+  }
+  .landing-section-inner {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
   }
   .landing-hero-bolt {
     margin-bottom: var(--space-3) !important;
@@ -1581,6 +1609,10 @@ h2:focus-visible {
     background: var(--color-black);
     margin: 0;
     padding: 0;
+  }
+  .landing-section, .landing-section-compact, .landing-cta-section {
+    width: 100% !important;
+    max-width: none !important;
   }
 
   /* Hero: even tighter */
@@ -2114,7 +2146,7 @@ h2:focus-visible {
 }
 
 .stepper-checkpoint.active .checkpoint-label {
-  color: var(--color-yellow);
+  color: var(--color-yellow-accessible);
   font-weight: var(--font-weight-bold);
 }
 
@@ -2663,6 +2695,15 @@ h2:focus-visible {
   gap: var(--space-2);
 }
 
+.site-header-logo {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  color: var(--color-yellow);
+  fill: var(--color-yellow);
+  stroke: var(--color-yellow);
+}
+
 .site-header-subtitle {
   font-size: var(--font-size-lg);
   opacity: 0.75;
@@ -2710,6 +2751,22 @@ h2:focus-visible {
   border-color: rgba(255, 255, 255, 0.6);
 }
 
+.booking-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  color: var(--color-dark-gray);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.booking-back-link:hover {
+  color: var(--color-black);
+}
+
 /* Mobile header */
 @media (max-width: 768px) {
   .site-header {
@@ -2718,6 +2775,11 @@ h2:focus-visible {
 
   .site-header-title {
     font-size: var(--font-size-2xl);
+  }
+
+  .site-header-logo {
+    width: 26px;
+    height: 26px;
   }
 
   .site-header-subtitle {
@@ -2742,16 +2804,18 @@ h2:focus-visible {
    ───────────────────────────────────────────────── */
 
 .site-main {
-  flex: 1;
-  max-width: var(--max-width-container);
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
+  max-width: none;
   width: 100%;
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-8) 0;
 }
 
 @media (max-width: 768px) {
   .site-main {
-    padding: var(--space-6) var(--space-4);
+    padding: var(--space-6) 0;
   }
 }
 

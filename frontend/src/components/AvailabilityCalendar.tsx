@@ -390,6 +390,7 @@ export function AvailabilityCalendar({
               onClick={() => handleClick(day)}
               disabled={!canSelect(day)}
               aria-label={`${day.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — ${day.isAvailable ? 'Available' : day.isPast ? 'Past' : 'Booked'}`}
+              aria-selected={toDateStr(day.date) === selectedPickup || toDateStr(day.date) === selectedReturn}
             >
               <span className="calendar-day-number">{day.day}</span>
             </button>

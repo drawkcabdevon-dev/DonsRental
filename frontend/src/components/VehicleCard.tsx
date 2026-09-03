@@ -61,7 +61,7 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
       
       <h3 className="text-2xl font-bold mb-sm text-uppercase">{vehicle.name}</h3>
       
-      <p className="text-2xl font-bold text-bau-yellow mb-lg">
+      <p className="text-2xl font-bold text-bau-yellow-accessible mb-lg" aria-label={`${vehicle.rate} Barbados dollars per day`}>
         Bds${vehicle.rate}
         <span className="text-sm font-normal text-bau-gray">/day (BBD)</span>
       </p>
@@ -80,7 +80,7 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
       </div>
       
       <div className="flex flex-wrap gap-sm">
-        {vehicle.features.map((feature, idx) => (
+        {(vehicle.features || []).map((feature, idx) => (
           <Badge key={idx} variant="secondary">{feature}</Badge>
         ))}
       </div>
@@ -179,8 +179,8 @@ export function PricingBreakdown({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
     >
-      <Card className="bg-bau-off-white border-4 border-bau-yellow">
-        <h4 className="text-lg font-bold text-uppercase mb-lg">Pricing Summary</h4>
+      <Card className="bg-bau-off-white border-4 border-bau-yellow" aria-labelledby="pricing-summary-heading">
+        <h4 id="pricing-summary-heading" className="text-lg font-bold text-uppercase mb-lg">Pricing Summary</h4>
         
         <div className="space-y-md mb-lg">
           <motion.div 
@@ -221,7 +221,7 @@ export function PricingBreakdown({
         transition={{ duration: 0.4, delay: 0.4 }}
       >
         <span className="font-extrabold text-uppercase">Total:</span>
-        <span className="font-extrabold text-bau-yellow text-2xl">Bds${totalCost}</span>
+        <span className="font-extrabold text-bau-yellow-accessible text-2xl" aria-label={`Total ${totalCost} Barbados dollars`}>Bds${totalCost}</span>
       </motion.div>
     </Card>
     </motion.div>

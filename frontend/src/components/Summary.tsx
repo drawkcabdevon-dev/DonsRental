@@ -26,8 +26,8 @@ export function BookingSummary({ booking, vehicle, capturedPhotoPreview }: Booki
 
   return (
     <div className="space-y-lg">
-      <Card className="border-4 border-bau-yellow">
-        <h3 className="text-2xl font-bold text-uppercase mb-lg">Booking Summary</h3>
+      <Card className="border-4 border-bau-yellow" aria-labelledby="booking-summary-heading">
+        <h3 id="booking-summary-heading" className="text-2xl font-bold text-uppercase mb-lg">Booking Summary</h3>
         
         <div className="space-y-md">
           {reviewItems.map((item, idx) => (
@@ -43,8 +43,8 @@ export function BookingSummary({ booking, vehicle, capturedPhotoPreview }: Booki
 
       {/* License Photo Preview */}
       {capturedPhotoPreview && (
-        <Card className="border-4 border-bau-yellow">
-          <h3 className="text-2xl font-bold text-uppercase mb-lg">License Photo</h3>
+        <Card className="border-4 border-bau-yellow" aria-labelledby="license-photo-heading">
+          <h3 id="license-photo-heading" className="text-2xl font-bold text-uppercase mb-lg">License Photo</h3>
           <p className="text-sm text-bau-gray mb-md">Your license photo will be uploaded after booking confirmation.</p>
           <img
             src={capturedPhotoPreview}
@@ -54,7 +54,7 @@ export function BookingSummary({ booking, vehicle, capturedPhotoPreview }: Booki
         </Card>
       )}
 
-      <Card className="bg-bau-black text-white p-2xl border-4 border-bau-yellow">
+      <Card className="bg-bau-black text-white p-2xl border-4 border-bau-yellow" aria-label={`Total cost: ${booking.totalCost} Barbados dollars`}>
         <p className="text-sm text-uppercase opacity-75 mb-sm">Total Cost (BBD)</p>
         <p className="text-4xl font-extrabold text-bau-yellow">Bds${booking.totalCost}</p>
       </Card>
@@ -80,8 +80,8 @@ export function BookingConfirmation({ bookingRef, email, photoUrl, headingRef }:
       </div>
       <h2 ref={headingRef} tabIndex={-1} style={{ outline: 'none' }} className="text-3xl font-extrabold text-uppercase">Booking Confirmed</h2>
       
-      <Card className="border-4 border-bau-yellow bg-bau-off-white confirm-card-enter">
-        <p className="text-sm text-bau-gray text-uppercase font-semibold mb-md">Booking Reference</p>
+      <Card className="border-4 border-bau-yellow bg-bau-off-white confirm-card-enter" aria-labelledby="booking-ref-heading">
+        <p id="booking-ref-heading" className="text-sm text-bau-gray text-uppercase font-semibold mb-md">Booking Reference</p>
         <p className="text-2xl font-mono font-bold text-bau-black mb-lg confirm-ref-typein">{bookingRef}</p>
         <p className="text-sm text-bau-gray">
           A confirmation email has been sent to <span className="font-bold">{email}</span>
@@ -89,8 +89,8 @@ export function BookingConfirmation({ bookingRef, email, photoUrl, headingRef }:
       </Card>
 
       {photoUrl && (
-        <Card className="border-4 border-bau-yellow bg-bau-off-white confirm-card-enter">
-          <p className="text-sm text-bau-gray text-uppercase font-semibold mb-md"><Image size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> License Photo Uploaded</p>
+        <Card className="border-4 border-bau-yellow bg-bau-off-white confirm-card-enter" aria-labelledby="license-uploaded-heading">
+          <p id="license-uploaded-heading" className="text-sm text-bau-gray text-uppercase font-semibold mb-md"><Image size={16} aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> License Photo Uploaded</p>
           <img
             src={photoUrl}
             alt="Uploaded driver's license photo"

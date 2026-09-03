@@ -1441,6 +1441,16 @@ h2:focus-visible {
    Landing Page — Mobile-First Fixes
    ───────────────────────────────────────────────── */
 
+.landing-section {
+  width: 100%;
+}
+
+.landing-section-inner {
+  width: 100%;
+  max-width: var(--max-width-container);
+  margin: 0 auto;
+}
+
 /* Tablet and below */
 @media (max-width: 768px) {
   /* Hero: tighter spacing on mobile */
@@ -1454,6 +1464,9 @@ h2:focus-visible {
   .landing-section, .landing-section-compact, .landing-cta-section {
     max-width: none !important;
     width: 100% !important;
+  }
+  .landing-section-inner {
+    max-width: none;
   }
   .landing-hero-bolt {
     margin-bottom: var(--space-3) !important;
@@ -2743,16 +2756,18 @@ h2:focus-visible {
    ───────────────────────────────────────────────── */
 
 .site-main {
-  flex: 1;
-  max-width: var(--max-width-container);
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
+  max-width: none;
   width: 100%;
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-8) 0;
 }
 
 @media (max-width: 768px) {
   .site-main {
-    padding: var(--space-6) var(--space-4);
+    padding: var(--space-6) 0;
   }
 }
 

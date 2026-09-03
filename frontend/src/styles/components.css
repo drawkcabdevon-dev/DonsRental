@@ -1445,6 +1445,11 @@ h2:focus-visible {
   width: 100%;
 }
 
+.landing-page {
+  align-self: stretch;
+  min-width: 0;
+}
+
 .landing-section-inner {
   width: 100%;
   max-width: var(--max-width-container);
@@ -1462,11 +1467,15 @@ h2:focus-visible {
 
   /* Ensure landing page fills full width on tablets */
   .landing-section, .landing-section-compact, .landing-cta-section {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    margin-left: calc(50% - 50vw) !important;
-    margin-right: calc(50% - 50vw) !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
     min-width: 0;
+  }
+  .landing-page {
+    width: 100%;
+    max-width: none;
   }
   .landing-section-inner {
     width: 100%;
@@ -1602,8 +1611,8 @@ h2:focus-visible {
     padding: 0;
   }
   .landing-section, .landing-section-compact, .landing-cta-section {
-    width: 100vw !important;
-    max-width: 100vw !important;
+    width: 100% !important;
+    max-width: none !important;
   }
 
   /* Hero: even tighter */

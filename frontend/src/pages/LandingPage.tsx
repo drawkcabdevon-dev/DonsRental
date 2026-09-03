@@ -306,7 +306,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
   }, [showProfileModal]);
 
   return (
-    <div style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh' }}>
+    <div className="landing-page" style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh' }}>
       <Marquee />
 
       {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}

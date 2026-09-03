@@ -1462,11 +1462,16 @@ h2:focus-visible {
 
   /* Ensure landing page fills full width on tablets */
   .landing-section, .landing-section-compact, .landing-cta-section {
-    max-width: none !important;
-    width: 100% !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+    min-width: 0;
   }
   .landing-section-inner {
+    width: 100%;
     max-width: none;
+    min-width: 0;
   }
   .landing-hero-bolt {
     margin-bottom: var(--space-3) !important;
@@ -1595,6 +1600,10 @@ h2:focus-visible {
     background: var(--color-black);
     margin: 0;
     padding: 0;
+  }
+  .landing-section, .landing-section-compact, .landing-cta-section {
+    width: 100vw !important;
+    max-width: 100vw !important;
   }
 
   /* Hero: even tighter */

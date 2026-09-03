@@ -20,7 +20,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { useStepTransition } from './hooks/useAnimations';
-import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
+import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, Zap, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 
 interface Toast {
   id: number;
@@ -567,7 +567,7 @@ function App() {
         <div className="site-header-inner">
           <div>
             <h1 className="site-header-title">
-              <Car size={24} aria-hidden="true" /> Don's Car Rental
+              <Zap className="site-header-logo" aria-hidden="true" /> Don's Car Rental
             </h1>
             <p className="site-header-subtitle">Barbados car rental — book online, no calls needed</p>
           </div>

@@ -2686,6 +2686,15 @@ h2:focus-visible {
   gap: var(--space-2);
 }
 
+.site-header-logo {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  color: var(--color-yellow);
+  fill: var(--color-yellow);
+  stroke: var(--color-yellow);
+}
+
 .site-header-subtitle {
   font-size: var(--font-size-lg);
   opacity: 0.75;
@@ -2741,6 +2750,11 @@ h2:focus-visible {
 
   .site-header-title {
     font-size: var(--font-size-2xl);
+  }
+
+  .site-header-logo {
+    width: 26px;
+    height: 26px;
   }
 
   .site-header-subtitle {

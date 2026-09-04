@@ -102,7 +102,8 @@ def _ensure_bookings_sheet(svc):
                     'pickupDate','pickupTime','returnDate','returnTime',
                     'custName','custEmail','custPhone','custAddress',
                     'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
-                    'paymentMethod','totalAmount','invoiceSentAt','notes',
+                    'paymentMethod','totalAmount','totalDays','invoiceSentAt','notes',
+                    'licensePhotoUrl',
                 ]]},
             ).execute()
     except Exception as e:
@@ -346,7 +347,8 @@ def create_booking(
         pickup_date, pickup_time, return_date, return_time,
         customer_name, customer_email, customer_phone, customer_address,
         license_number, license_expiry, license_issuer, license_class,
-        payment_method, total, '', '',
+        payment_method, total, days, '', '',
+        '',
     ]
 
     sid = _env('SPREADSHEET_ID')

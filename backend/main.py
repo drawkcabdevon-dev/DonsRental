@@ -697,6 +697,31 @@ def _fetch_vehicles_from_sheet() -> list[dict]:
         logger.warning("Could not read vehicles from sheet: %s", e)
         return VEHICLES_FALLBACK
 
+_SHEET_TO_FRONTEND = {
+    'custName': 'customerName',
+    'custEmail': 'customerEmail',
+    'custPhone': 'customerPhone',
+    'custAddress': 'customerAddress',
+    'licenseNum': 'licenseNumber',
+    'totalAmount': 'totalCost',
+    'totalDays': 'totalDays',
+    'createdAt': 'created',
+    'bookingstatus': 'status',
+    'pickupdate': 'pickupDate',
+    'returndate': 'returnDate',
+    'pickuptime': 'pickupTime',
+    'returntime': 'returnTime',
+    'totaldays': 'totalDays',
+    'vehicleid': 'vehicleId',
+    'vehicleName': 'vehicleName',
+    'licenseexpiry': 'licenseExpiry',
+    'licenseissuer': 'licenseIssuer',
+    'licenseclass': 'licenseClass',
+    'licensephotourl': 'licensePhotoUrl',
+    'paymentmethod': 'paymentMethod',
+    'invoicesentat': 'invoiceSentAt',
+}
+
 def _fetch_bookings_from_sheet() -> list[dict]:
     if not SPREADSHEET_ID:
         return []
@@ -713,7 +738,18 @@ def _fetch_bookings_from_sheet() -> list[dict]:
         for row in rows[1:]:
             obj = {}
             for i, h in enumerate(headers):
-                obj[h] = row[i] if i < len(row) else ''
+                val = row[i] if i < len(row) else ''
+                frontend_key = _SHEET_TO_FRONTEND.get(h, h)
+                obj[frontend_key] = val
+            # Compute totalDays if missing
+            if not obj.get('totalDays') and obj.get('pickupDate') and obj.get('returnDate'):
+                try:
+                    pu = _parse_date(obj['pickupDate'])
+                    re = _parse_date(obj['returnDate'])
+                    if pu and re:
+                        obj['totalDays'] = max(1, (re - pu).days + 1)
+                except Exception:
+                    obj['totalDays'] = 0
             bookings.append(obj)
         return bookings
     except Exception as e:
@@ -996,12 +1032,30 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0) -> bo
     try:
         svc = _get_sheets()
 
+        # Look up vehicle name
+        vehicle_name = ''
+        for v in _fetch_vehicles_from_sheet():
+            if v.get('id') == (req.vehicleId or 'v1'):
+                vehicle_name = v.get('name', '')
+                break
+
+        # Compute totalDays
+        total_days = 0
+        if req.pickupDate and req.returnDate:
+            try:
+                pu = _parse_date(req.pickupDate)
+                re = _parse_date(req.returnDate)
+                if pu and re:
+                    total_days = max(1, (re - pu).days + 1)
+            except Exception:
+                pass
+
         row = [[
             ref,
             'Confirmed',
             datetime.utcnow().isoformat(),
             req.vehicleId or 'v1',
-            'Standard Rental Car',
+            vehicle_name,
             req.pickupDate or '',
             req.pickupTime or '',
             req.returnDate or '',
@@ -1016,6 +1070,7 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0) -> bo
             req.licenseClass or '',
             'pay_on_pickup',
             total_cost,  # Use server-calculated cost
+            total_days,
             '',  # invoice_sent_at
             '',  # notes
             req.licensePhotoUrl or '',  # licensePhotoUrl
@@ -1035,7 +1090,7 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0) -> bo
                 'pickupDate','pickupTime','returnDate','returnTime',
                 'custName','custEmail','custPhone','custAddress',
                 'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
-                'paymentMethod','totalAmount','invoiceSentAt','notes',
+                'paymentMethod','totalAmount','totalDays','invoiceSentAt','notes',
                 'licensePhotoUrl',
             ]]
             svc.spreadsheets().values().update(
@@ -1152,7 +1207,27 @@ async def check_availability_batch(req: dict):
                     booked_dates.add(current.isoformat())
                     current = current + __import__('datetime').timedelta(days=1)
     except Exception as e:
-        logger.warning("Batch availability check failed: %s", e)
+        logger.warning("Batch availability check (sheet) failed: %s", e)
+
+    # Also check Google Calendar events (blocked dates, maintenance, calendar-only bookings)
+    try:
+        cal_events = _fetch_calendar_events(start_date, end_date)
+        for event in cal_events:
+            start = event.get('start', {})
+            end = event.get('end', {})
+            if 'date' in start:
+                ev_start = _parse_date(start['date'])
+                ev_end = _parse_date(end.get('date', ''))
+            else:
+                ev_start = _parse_date(start.get('dateTime', '')[:10])
+                ev_end = _parse_date(end.get('dateTime', '')[:10])
+            if ev_start and ev_end:
+                current = ev_start
+                while current <= ev_end:
+                    booked_dates.add(current.isoformat())
+                    current = current + __import__('datetime').timedelta(days=1)
+    except Exception as e:
+        logger.warning("Batch availability check (calendar) failed: %s", e)
 
     return {"bookedDates": sorted(list(booked_dates))}
 

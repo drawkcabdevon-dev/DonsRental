@@ -585,10 +585,32 @@ def _get_token() -> str:
     return resp.json()["access_token"]
 
 def _extract_booking_ref(text: str) -> str:
+    """
+    Extracts a booking reference from text.
+    
+    Parameters:
+        text (str): Text that may contain a booking reference.
+    
+    Returns:
+        str: The normalized booking reference, or an empty string if none is found.
+    """
     m = re.search(r'(BK[-:][A-Z0-9]+)', text, re.I)
     return m.group(1).upper() if m else ""
 
 async def _query_agent(message: str, session_id: str = "") -> str:
+    """
+    Query Vertex AI Agent Engine and combine streamed text responses.
+    
+    Parameters:
+        message (str): The message to send to the agent.
+        session_id (str): Optional session identifier for maintaining conversation context.
+    
+    Returns:
+        str: The combined text returned by the agent.
+    
+    Raises:
+        HTTPException: If Agent Engine is not configured or returns a non-success response.
+    """
     if not AGENT_ENGINE:
         raise HTTPException(503, "Agent Engine not configured (set AGENT_ENGINE env var)")
 
@@ -627,6 +649,18 @@ async def _query_agent(message: str, session_id: str = "") -> str:
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
+    """
+    Forward a chat message to the agent and return its response with any booking reference.
+    
+    Parameters:
+        req (ChatRequest): Chat message and optional session identifier.
+    
+    Returns:
+        ChatResponse: Agent response and extracted booking reference, if present.
+    
+    Raises:
+        HTTPException: If the agent request fails.
+    """
     logger.info("Sending to agent (session=%s): %s", req.session_id or "none", req.message[:100])
     try:
         text = await _query_agent(req.message, req.session_id)

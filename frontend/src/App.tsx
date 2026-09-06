@@ -45,6 +45,9 @@ declare global {
 
 let _toastId = 0;
 
+/**
+ * Renders the rental application, including navigation, booking flow, authentication, and confirmation views.
+ */
 function App() {
   const navigate = useNavigate();
   const location = useLocation();

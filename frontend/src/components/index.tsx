@@ -251,10 +251,20 @@ interface AvailableDateSlot {
   label: string;
 }
 
+/**
+ * Generates a unique identifier for a chat session.
+ *
+ * @returns A timestamp- and random-value-based session identifier
+ */
 function generateSessionId(): string {
   return 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
 }
 
+/**
+ * Loads the saved chat session and restores message timestamps as `Date` objects.
+ *
+ * @returns The stored session and messages, or `null` when no valid session is available.
+ */
 function getStoredSession(): { sessionId: string; messages: ChatMessage[] } | null {
   try {
     const raw = localStorage.getItem('donrental_chat_session');
@@ -273,12 +283,23 @@ function getStoredSession(): { sessionId: string; messages: ChatMessage[] } | nu
   return null;
 }
 
+/**
+ * Persists a chat session and its messages in local storage.
+ *
+ * @param sessionId - The identifier for the chat session
+ * @param messages - The messages to save with the session
+ */
 function storeSession(sessionId: string, messages: ChatMessage[]) {
   try {
     localStorage.setItem('donrental_chat_session', JSON.stringify({ sessionId, messages }));
   } catch { /* ignore */ }
 }
 
+/**
+ * Extracts available date options from tagged response text and removes the tag.
+ *
+ * @returns The cleaned text and extracted date slots, or the original text with no dates when no tag is present.
+ */
 function parseAvailableDates(text: string): { clean: string; dates: AvailableDateSlot[] } {
   const match = text.match(/\[AVAILABLE_DATES\]\s*([\s\S]*?)\s*\[\/AVAILABLE_DATES\]/);
   if (match) {
@@ -292,6 +313,12 @@ function parseAvailableDates(text: string): { clean: string; dates: AvailableDat
   return { clean: text, dates: [] };
 }
 
+/**
+ * Extracts trailing suggestions from tagged response text and returns the cleaned content.
+ *
+ * @param text - The response text containing an optional `[SUGGESTIONS]` marker
+ * @returns The cleaned text and extracted suggestions
+ */
 function parseSuggestions(text: string): { clean: string; suggestions: string[] } {
   const match = text.match(/\[SUGGESTIONS\]\s*(.+?)$/m);
   if (match) {
@@ -302,6 +329,12 @@ function parseSuggestions(text: string): { clean: string; suggestions: string[] 
   return { clean: text, suggestions: [] };
 }
 
+/**
+ * Parses an agent response into cleaned text, suggestions, and available booking dates.
+ *
+ * @param text - The agent response containing optional suggestion and available-date markers
+ * @returns The cleaned response text, extracted suggestions, and available date slots
+ */
 function parseAgentResponse(text: string) {
   const { clean: afterDates, dates } = parseAvailableDates(text);
   const { clean, suggestions } = parseSuggestions(afterDates);
@@ -315,6 +348,11 @@ const INITIAL_SUGGESTIONS = [
   "Tell me about the car",
 ];
 
+/**
+ * Renders a persistent booking-assistant chat interface.
+ *
+ * @returns The chat widget interface.
+ */
 export function ChatWidget() {
   const stored = getStoredSession();
   const [isOpen, setIsOpen] = useState(false);

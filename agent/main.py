@@ -47,6 +47,7 @@ def _get_genai():
 
 _sheets_svc = None
 def _get_sheets():
+    """Return the initialized Google Sheets service client."""
     global _sheets_svc
     if _sheets_svc:
         return _sheets_svc
@@ -66,6 +67,12 @@ _calendar_svc = None
 CALENDAR_ID = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
 
 def _get_calendar():
+    """
+    Return the lazily initialized Google Calendar service client.
+    
+    Returns:
+    	_calendar_svc: Configured Google Calendar API service client.
+    """
     global _calendar_svc
     if _calendar_svc:
         return _calendar_svc
@@ -83,6 +90,9 @@ def _get_calendar():
 
 _gmail_svc = None
 def _get_gmail():
+    """
+    Return the cached Gmail service or initialize it with configured credentials.
+    """
     global _gmail_svc
     if _gmail_svc:
         return _gmail_svc
@@ -102,18 +112,46 @@ def _esc(s):
     return str(s or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
 def _bid():
+    """
+    Generate a unique booking identifier.
+    """
     return 'BK-' + uuid.uuid4().hex[:8].upper()
 
 def _parse_date(d: str):
+    """Parse an ISO-formatted date string.
+    
+    Parameters:
+    	d (str): The date string in `YYYY-MM-DD` format.
+    
+    Returns:
+    	The parsed date, or `None` if the input is invalid.
+    """
     try:
         return datetime.strptime(d, '%Y-%m-%d').date()
     except (ValueError, TypeError):
         return None
 
 def _dates_overlap(a1, a2, b1, b2):
+    """
+    Determine whether two inclusive date ranges overlap.
+    
+    Parameters:
+    	a1: Start date of the first range.
+    	a2: End date of the first range.
+    	b1: Start date of the second range.
+    	b2: End date of the second range.
+    
+    Returns:
+    	bool: `True` if the date ranges overlap, `False` otherwise.
+    """
     return a1 <= b2 and b1 <= a2
 
 def _ensure_bookings_sheet(svc):
+    """Ensure the configured spreadsheet contains a `Bookings` worksheet with the required headers.
+    
+    Parameters:
+    	svc: Google Sheets service client used to inspect and initialize the spreadsheet.
+    """
     sid = _env('SPREADSHEET_ID')
     if not sid:
         return
@@ -151,6 +189,7 @@ def _company_phone():
     return _env('COMPANY_PHONE', '+1 (555) 000-0000')
 
 def _owner_email():
+    """Return the configured owner email address."""
     return _env('OWNER_EMAIL', 'devon@onlineverywhere.com')
 
 
@@ -159,7 +198,14 @@ def _owner_email():
 # ══════════════════════════════════════════
 
 def _fetch_vehicles_from_sheet() -> list:
-    """Read vehicles from Google Sheets Vehicles tab."""
+    """
+    Read vehicle records from the Google Sheets ``Vehicles`` tab.
+    
+    Returns:
+        list: Vehicle dictionaries with normalized headers and integer rates, or an
+            empty list when the spreadsheet is unavailable or contains no valid
+            vehicle records.
+    """
     sid = _env('SPREADSHEET_ID')
     if not sid:
         return []
@@ -219,7 +265,15 @@ def _fetch_booked_dates_from_sheet() -> set:
 
 
 def _fetch_calendar_blocked_dates(start_date: str, end_date: str) -> set:
-    """Return all dates blocked by Google Calendar events."""
+    """Return dates blocked by Google Calendar events within the specified range.
+    
+    Parameters:
+    	start_date (str): Inclusive start date in ISO format.
+    	end_date (str): Inclusive end date in ISO format.
+    
+    Returns:
+    	set: ISO-formatted dates blocked by calendar events.
+    """
     blocked = set()
     try:
         svc = _get_calendar()
@@ -264,10 +318,13 @@ def _get_all_booked_dates(start_date: str, end_date: str) -> set:
 # ══════════════════════════════════════════
 
 def get_vehicles() -> list:
-    """Return available vehicles with pricing.
-
-    Reads from Google Sheets. Falls back to the Suzuki Swift if unavailable.
-    Returns a list of dicts: [{id, name, rate, description, features}].
+    """
+    Provide the available rental vehicles and their daily rates.
+    
+    Returns:
+    	list: Vehicle dictionaries containing identification, pricing, specifications,
+    	and descriptive information. Uses a default Suzuki Swift when spreadsheet
+    	data is unavailable.
     """
     vehicles = _fetch_vehicles_from_sheet()
     if vehicles:
@@ -295,18 +352,17 @@ def get_vehicles() -> list:
 
 
 def find_available_dates(duration_days: int, start_from: str = '') -> dict:
-    """Find the next available date windows for a given rental duration.
-
-    Checks both Google Sheets bookings AND Google Calendar events to find
-    real availability. Scans forward from start_from (default: today) and
-    returns the first 5 available windows.
-
+    """
+    Find the first five available rental windows for the requested duration.
+    
+    Searches up to 90 days from the specified start date, using booking and calendar records to identify conflicts. Durations below one day default to two days, and invalid or omitted start dates default to today.
+    
     Args:
-        duration_days: Number of days for the rental (e.g. 3 for a 3-day trip).
-        start_from: ISO date to start searching from (YYYY-MM-DD). Defaults to today.
-
+        duration_days: Rental duration in days.
+        start_from: ISO date from which to begin searching.
+    
     Returns:
-        Dict with {available_dates: [{pickup, return, total_days, label}], search_from, searched_days}.
+        A dictionary containing available date windows, the effective search start date, the search range, and the duration used.
     """
     if duration_days < 1:
         duration_days = 2
@@ -360,14 +416,15 @@ def find_available_dates(duration_days: int, start_from: str = '') -> dict:
 
 
 def scan_license(image_base64: str) -> dict:
-    """Extract driver's license fields from a photo using Gemini.
-
-    Args:
-        image_base64: Base64-encoded JPEG image (with or without data:image prefix).
-
+    """
+    Extract driver's license details from a base64-encoded JPEG image.
+    
+    Parameters:
+        image_base64 (str): Base64-encoded JPEG data, optionally prefixed with a data URI.
+    
     Returns:
-        Dict with keys: customerName, licenseNumber, licenseExpiry, licenseIssuer,
-        customerAddress, licenseClass (null if not visible).
+        dict: Extracted license fields, including normalized expiry date, or an ``error``
+            field when configuration, image decoding, or extraction fails.
     """
     client = _get_genai()
     if not client:
@@ -442,17 +499,17 @@ def _normalize_expiry(value) -> str:
 
 
 def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> dict:
-    """Check if a vehicle is available for the given date range.
-
-    Checks BOTH Google Sheets bookings AND Google Calendar events.
-
+    """
+    Determine whether a vehicle can be rented during a specified date range.
+    
     Args:
-        vehicle_id: Vehicle identifier (e.g. v1, v2).
-        pickup_date: ISO date string (YYYY-MM-DD).
-        return_date: ISO date string (YYYY-MM-DD).
-
+        vehicle_id: Vehicle identifier.
+        pickup_date: Pickup date in ISO format (YYYY-MM-DD).
+        return_date: Return date in ISO format (YYYY-MM-DD).
+    
     Returns:
-        Dict with {available: bool, conflicts: [...]}.
+        A dictionary containing `available` and `conflicts` keys. Invalid dates
+        produce an unavailable result with an error message.
     """
     pu = _parse_date(pickup_date)
     re_d = _parse_date(return_date)
@@ -545,27 +602,29 @@ def create_booking(
     license_class: str,
     payment_method: str = 'pay_on_pickup',
 ) -> dict:
-    """Create a rental booking in the spreadsheet and send confirmation emails.
-
-    Args:
-        vehicle_id: Vehicle identifier (e.g. v1).
-        vehicle_name: Human-readable vehicle name.
-        pickup_date: ISO date string (YYYY-MM-DD).
-        pickup_time: Time string (HH:MM). Defaults to 09:00 if empty.
-        return_date: ISO date string (YYYY-MM-DD).
-        return_time: Time string (HH:MM). Defaults to 09:00 if empty.
-        customer_name: Full name of the customer.
-        customer_email: Email for invoice.
-        customer_phone: Contact number.
-        customer_address: Physical address (optional).
-        license_number: Driver's license number.
-        license_expiry: License expiry date.
-        license_issuer: Issuing authority.
-        license_class: License class/type.
-        payment_method: pay_on_pickup, bank_transfer.
-
+    """
+    Create and store a rental booking after confirming vehicle availability.
+    
+    Parameters:
+        vehicle_id (str): Identifier of the vehicle to reserve.
+        vehicle_name (str): Display name of the vehicle.
+        pickup_date (str): Pickup date in YYYY-MM-DD format.
+        pickup_time (str): Pickup time in HH:MM format; defaults to 09:00 when empty.
+        return_date (str): Return date in YYYY-MM-DD format.
+        return_time (str): Return time in HH:MM format; defaults to 09:00 when empty.
+        customer_name (str): Customer's full name.
+        customer_email (str): Email address for the booking invoice.
+        customer_phone (str): Customer's contact number.
+        customer_address (str): Customer's physical address.
+        license_number (str): Driver's license number.
+        license_expiry (str): Driver's license expiry date.
+        license_issuer (str): Authority that issued the license.
+        license_class (str): Driver's license class.
+        payment_method (str): Payment method, such as ``pay_on_pickup`` or ``bank_transfer``.
+    
     Returns:
-        Dict with bookingId, success, message.
+        dict: Booking details including the booking ID, storage and email status,
+        total cost, rental days, and conflicts when the vehicle is unavailable.
     """
     b_id = _bid()
     now = datetime.utcnow().isoformat() + 'Z'
@@ -779,6 +838,13 @@ License: {lic_num} (exp {lic_exp}) — {lic_iss}
 # ══════════════════════════════════════════
 
 def _build_instruction(ctx=None):
+    """
+    Build the system instruction for the car-rental booking assistant.
+    
+    Returns:
+        str: The assistant instruction containing booking procedures, date handling,
+            tool usage, pricing guidance, and response-format requirements.
+    """
     return f"""
 You are a friendly car rental booking assistant for {_company()}, based in Barbados.
 

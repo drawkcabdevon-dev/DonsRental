@@ -579,24 +579,15 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
       {/* ═══ FOOTER ═════════════════════════════════════ */}
       <footer className="landing-footer" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-12) var(--space-6)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-6)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <motion.img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 96, width: 'auto' }} animate={{ filter: ['drop-shadow(0 0 8px rgba(255,204,0,0.4))', 'drop-shadow(0 0 20px rgba(255,204,0,0.8))', 'drop-shadow(0 0 8px rgba(255,204,0,0.4))'] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }} />
-              <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 'var(--font-size-sm)' }}>Barbados</span>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.65)' }}>
-              <a href="/privacy" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Privacy</a>
-              <a href="/terms" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Terms</a>
-              <a href="mailto:bookings@onlineverywhere.com" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Contact</a>
-            </div>
+        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-6)' }}>
+          <motion.img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 96, width: 'auto' }} animate={{ filter: ['drop-shadow(0 0 8px rgba(255,204,0,0.4))', 'drop-shadow(0 0 20px rgba(255,204,0,0.8))', 'drop-shadow(0 0 8px rgba(255,204,0,0.4))'] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }} />
+          <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.65)' }}>
+            <a href="/privacy" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Privacy</a>
+            <a href="/terms" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Terms</a>
+            <a href="mailto:bookings@onlineverywhere.com" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Contact</a>
           </div>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 'var(--space-6)', width: '100%', textAlign: 'center' }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.5)' }}>© {new Date().getFullYear()} Don's Car Rental. All rights reserved.</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.5)' }}>
-              <span>Built by</span>
-              <a href="https://onlineverywhere.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-yellow)', textDecoration: 'none', fontWeight: 600 }}>OnlineVeryWhere</a>
-            </div>
           </div>
         </div>
       </footer>

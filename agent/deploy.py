@@ -89,6 +89,7 @@ def deploy(env_vars: dict):
         'GEMINI_API_KEY': env_vars.get('GEMINI_API_KEY', os.environ.get('GEMINI_API_KEY', '')),
         'SPREADSHEET_ID': env_vars.get('SPREADSHEET_ID', os.environ.get('SPREADSHEET_ID', '')),
         'GOOGLE_SHEETS_CREDENTIALS': env_vars.get('GOOGLE_SHEETS_CREDENTIALS', os.environ.get('GOOGLE_SHEETS_CREDENTIALS', '')),
+        'GOOGLE_CALENDAR_ID': env_vars.get('GOOGLE_CALENDAR_ID', os.environ.get('GOOGLE_CALENDAR_ID', 'primary')),
         'COMPANY_NAME': env_vars.get('COMPANY_NAME', os.environ.get('COMPANY_NAME', "Don's Rental")),
         'COMPANY_EMAIL': env_vars.get('COMPANY_EMAIL', os.environ.get('COMPANY_EMAIL', 'bookings@onlineverywhere.com')),
         'COMPANY_PHONE': env_vars.get('COMPANY_PHONE', os.environ.get('COMPANY_PHONE', '')),

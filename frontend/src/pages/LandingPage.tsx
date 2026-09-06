@@ -555,7 +555,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
             <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.65)' }}>
               <a href="/privacy" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Privacy</a>
               <a href="/terms" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Terms</a>
-              <a href="mailto:bookings@donsrental.com" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Contact</a>
+              <a href="mailto:bookings@onlineverywhere.com" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Contact</a>
             </div>
           </div>
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>

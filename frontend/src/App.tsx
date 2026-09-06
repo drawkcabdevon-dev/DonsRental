@@ -1013,7 +1013,7 @@ function App() {
             {' | '}
             <a href="/privacy">Privacy Policy</a>
             {' | '}
-            <a href="mailto:bookings@donsrental.com">bookings@donsrental.com</a>
+            <a href="mailto:bookings@onlineverywhere.com">bookings@onlineverywhere.com</a>
             {' | '}
             <a href="tel:+12462682842">+1 (246) 268-2842</a>
           </p>

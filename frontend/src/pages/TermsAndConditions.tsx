@@ -98,7 +98,7 @@ const TermsAndConditions = () => {
         <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-3)', color: '#1a1a1a' }}>11. Contact</h2>
         <p style={{ lineHeight: '1.7', color: '#333' }}>
           For questions about these terms, contact us at:<br />
-          Email: bookings@donsrental.com<br />
+          Email: bookings@onlineverywhere.com<br />
           Phone: +1 (246) 268-2842
         </p>
       </section>

@@ -62,7 +62,7 @@ def interactive_setup():
 
     print('\n--- Optional ---')
     env['COMPANY_NAME'] = input(f'Company Name [Don\'s Rental]: ').strip() or "Don's Rental"
-    env['COMPANY_EMAIL'] = input('Invoice FROM email [bookings@donsrental.com]: ').strip() or 'bookings@donsrental.com'
+    env['COMPANY_EMAIL'] = input('Invoice FROM email [bookings@onlineverywhere.com]: ').strip() or 'bookings@onlineverywhere.com'
     env['COMPANY_PHONE'] = input('Company Phone: ').strip()
     env['OWNER_EMAIL'] = input('Owner notification email [devon@onlineverywhere.com]: ').strip() or 'devon@onlineverywhere.com'
 
@@ -90,7 +90,7 @@ def deploy(env_vars: dict):
         'SPREADSHEET_ID': env_vars.get('SPREADSHEET_ID', os.environ.get('SPREADSHEET_ID', '')),
         'GOOGLE_SHEETS_CREDENTIALS': env_vars.get('GOOGLE_SHEETS_CREDENTIALS', os.environ.get('GOOGLE_SHEETS_CREDENTIALS', '')),
         'COMPANY_NAME': env_vars.get('COMPANY_NAME', os.environ.get('COMPANY_NAME', "Don's Rental")),
-        'COMPANY_EMAIL': env_vars.get('COMPANY_EMAIL', os.environ.get('COMPANY_EMAIL', 'bookings@donsrental.com')),
+        'COMPANY_EMAIL': env_vars.get('COMPANY_EMAIL', os.environ.get('COMPANY_EMAIL', 'bookings@onlineverywhere.com')),
         'COMPANY_PHONE': env_vars.get('COMPANY_PHONE', os.environ.get('COMPANY_PHONE', '')),
         'OWNER_EMAIL': env_vars.get('OWNER_EMAIL', os.environ.get('OWNER_EMAIL', 'devon@onlineverywhere.com')),
     }

@@ -117,7 +117,7 @@ def _company():
     return _env('COMPANY_NAME', "Don's Rental")
 
 def _company_email():
-    return _env('COMPANY_EMAIL', 'bookings@donsrental.com')
+    return _env('COMPANY_EMAIL', 'bookings@onlineverywhere.com')
 
 def _company_phone():
     return _env('COMPANY_PHONE', '+1 (555) 000-0000')

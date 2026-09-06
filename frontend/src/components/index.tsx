@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { Check } from 'lucide-react';
 
@@ -241,6 +241,55 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   suggestions?: string[];
+  availableDates?: AvailableDateSlot[];
+}
+
+interface AvailableDateSlot {
+  pickup: string;
+  return: string;
+  total_days: number;
+  label: string;
+}
+
+function generateSessionId(): string {
+  return 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+}
+
+function getStoredSession(): { sessionId: string; messages: ChatMessage[] } | null {
+  try {
+    const raw = localStorage.getItem('donrental_chat_session');
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (data.sessionId && data.messages?.length) {
+      return {
+        sessionId: data.sessionId,
+        messages: data.messages.map((m: Record<string, unknown>) => ({
+          ...m,
+          timestamp: new Date(m.timestamp as string),
+        })),
+      };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function storeSession(sessionId: string, messages: ChatMessage[]) {
+  try {
+    localStorage.setItem('donrental_chat_session', JSON.stringify({ sessionId, messages }));
+  } catch { /* ignore */ }
+}
+
+function parseAvailableDates(text: string): { clean: string; dates: AvailableDateSlot[] } {
+  const match = text.match(/\[AVAILABLE_DATES\]\s*([\s\S]*?)\s*\[\/AVAILABLE_DATES\]/);
+  if (match) {
+    const raw = match[1].trim();
+    const dates: AvailableDateSlot[] = raw.split('|').map(s => s.trim()).filter(Boolean).map(label => {
+      return { pickup: label, return: label, total_days: 0, label };
+    });
+    const clean = text.replace(/\[AVAILABLE_DATES\]\s*[\s\S]*?\s*\[\/AVAILABLE_DATES\]/, '').trim();
+    return { clean, dates };
+  }
+  return { clean: text, dates: [] };
 }
 
 function parseSuggestions(text: string): { clean: string; suggestions: string[] } {
@@ -253,6 +302,12 @@ function parseSuggestions(text: string): { clean: string; suggestions: string[] 
   return { clean: text, suggestions: [] };
 }
 
+function parseAgentResponse(text: string) {
+  const { clean: afterDates, dates } = parseAvailableDates(text);
+  const { clean, suggestions } = parseSuggestions(afterDates);
+  return { clean, suggestions, availableDates: dates };
+}
+
 const INITIAL_GREETING = "Hi! I'm Don's Rental booking assistant. I can help you book a car in Barbados. What dates do you need a car for?";
 const INITIAL_SUGGESTIONS = [
   "I need a car for specific dates",
@@ -261,12 +316,34 @@ const INITIAL_SUGGESTIONS = [
 ];
 
 export function ChatWidget() {
+  const stored = getStoredSession();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: INITIAL_GREETING, timestamp: new Date(), suggestions: INITIAL_SUGGESTIONS }
-  ]);
+  const [sessionId] = useState(() => stored?.sessionId || generateSessionId());
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    stored?.messages?.length
+      ? stored.messages
+      : [{ role: 'assistant', content: INITIAL_GREETING, timestamp: new Date(), suggestions: INITIAL_SUGGESTIONS }]
+  );
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Persist session on every message change
+  useEffect(() => {
+    storeSession(sessionId, messages);
+  }, [sessionId, messages]);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+  // Listen for external open-chat events (from the booking page banner)
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener('donrental-open-chat', handleOpen);
+    return () => window.removeEventListener('donrental-open-chat', handleOpen);
+  }, []);
 
   const sendMessage = async (text?: string) => {
     const msg = text || input.trim();
@@ -276,9 +353,15 @@ export function ChatWidget() {
     setIsLoading(true);
 
     try {
-      const { response, bookingRef } = await api.chat(msg);
-      const { clean, suggestions } = parseSuggestions(response);
-      setMessages(prev => [...prev, { role: 'assistant', content: clean, timestamp: new Date(), suggestions }]);
+      const { response, bookingRef } = await api.chat(msg, sessionId);
+      const { clean, suggestions, availableDates } = parseAgentResponse(response);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: clean,
+        timestamp: new Date(),
+        suggestions,
+        availableDates: availableDates.length ? availableDates : undefined,
+      }]);
       if (bookingRef) {
         console.log('Booking created:', bookingRef);
       }
@@ -299,9 +382,10 @@ export function ChatWidget() {
   // Get suggestions from the last assistant message
   const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
   const activeSuggestions = lastAssistant?.suggestions || [];
+  const activeDates = lastAssistant?.availableDates || [];
 
   return (
-    <div className={`chat-widget ${isOpen ? 'open' : ''}`}>
+    <div className={`chat-widget ${isOpen ? 'open' : ''}`} data-session-id={sessionId}>
       <button
         className="chat-toggle"
         onClick={() => setIsOpen(!isOpen)}
@@ -330,7 +414,22 @@ export function ChatWidget() {
           {messages.map((msg, i) => (
             <div key={i} className={`chat-message ${msg.role}`}>
               <div className="message-bubble">
-                <p>{msg.content}</p>
+                {msg.content && <p>{msg.content}</p>}
+                {msg.availableDates && msg.availableDates.length > 0 && (
+                  <div className="chat-date-slots">
+                    <p className="date-slots-label">Available dates:</p>
+                    {msg.availableDates.map((slot, j) => (
+                      <button
+                        key={j}
+                        className="date-slot-chip"
+                        onClick={() => sendMessage(`I'll take ${slot.label}`)}
+                      >
+                        <span className="date-slot-icon">📅</span>
+                        <span className="date-slot-text">{slot.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <span className="message-time">{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
@@ -338,11 +437,28 @@ export function ChatWidget() {
           {isLoading && (
             <div className="chat-message assistant">
               <div className="message-bubble">
-                <p className="typing-dots">...</p>
+                <div className="typing-indicator">
+                  <span></span><span></span><span></span>
+                </div>
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
+        {activeDates.length > 0 && !isLoading && (
+          <div className="chat-date-slots-inline">
+            {activeDates.map((slot, i) => (
+              <button
+                key={i}
+                className="date-slot-chip"
+                onClick={() => sendMessage(`I'll take ${slot.label}`)}
+              >
+                <span className="date-slot-icon">📅</span>
+                <span className="date-slot-text">{slot.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {activeSuggestions.length > 0 && !isLoading && (
           <div className="chat-suggestions">
             {activeSuggestions.map((s, i) => (

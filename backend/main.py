@@ -562,6 +562,7 @@ async def rate_limit_middleware(request: Request, call_next):
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str = ""
 
 class ChatResponse(BaseModel):
     response: str
@@ -587,7 +588,7 @@ def _extract_booking_ref(text: str) -> str:
     m = re.search(r'(BK[-:][A-Z0-9]+)', text, re.I)
     return m.group(1).upper() if m else ""
 
-async def _query_agent(message: str) -> str:
+async def _query_agent(message: str, session_id: str = "") -> str:
     if not AGENT_ENGINE:
         raise HTTPException(503, "Agent Engine not configured (set AGENT_ENGINE env var)")
 
@@ -597,7 +598,9 @@ async def _query_agent(message: str) -> str:
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
-    body = {"input": {"message": message, "user_id": "web-user"}}
+    body = {"input": {"message": message, "user_id": session_id or "web-user"}}
+    if session_id:
+        body["session_id"] = session_id
 
     async with httpx.AsyncClient(timeout=120) as client:
         async with client.stream("POST", url, json=body, headers=headers) as resp:
@@ -624,9 +627,9 @@ async def _query_agent(message: str) -> str:
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    logger.info("Sending to agent: %s", req.message[:100])
+    logger.info("Sending to agent (session=%s): %s", req.session_id or "none", req.message[:100])
     try:
-        text = await _query_agent(req.message)
+        text = await _query_agent(req.message, req.session_id)
         ref = _extract_booking_ref(text)
         logger.info("Agent response (len=%d, ref=%s)", len(text), ref or "none")
         return ChatResponse(response=text, booking_ref=ref)

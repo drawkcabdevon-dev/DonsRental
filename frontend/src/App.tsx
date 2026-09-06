@@ -645,7 +645,7 @@ function App() {
                 Talk to our AI booking assistant to book your rental naturally. Ask questions, get recommendations, and complete your booking through conversation.
               </p>
             </div>
-            <Button variant="outline" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ background: 'transparent', borderColor: 'white', color: 'white' }}>
+            <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent('donrental-open-chat'))} style={{ background: 'transparent', borderColor: 'white', color: 'white' }}>
               Open Chat Assistant
             </Button>
           </div>

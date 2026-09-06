@@ -95,12 +95,12 @@ export const api = {
   },
 
   // Chat with the booking agent
-  async chat(message: string): Promise<{ response: string; bookingRef: string }> {
+  async chat(message: string, sessionId: string = ''): Promise<{ response: string; bookingRef: string }> {
     try {
       const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, session_id: sessionId }),
       });
       if (!response.ok) throw new Error('Chat failed');
       return await response.json();

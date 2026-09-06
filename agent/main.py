@@ -11,7 +11,7 @@ import uuid
 import base64
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
@@ -62,6 +62,25 @@ def _get_sheets():
     _sheets_svc = build('sheets', 'v4', credentials=creds)
     return _sheets_svc
 
+_calendar_svc = None
+CALENDAR_ID = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
+
+def _get_calendar():
+    global _calendar_svc
+    if _calendar_svc:
+        return _calendar_svc
+    _ensure_init()
+    creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
+    if creds_json:
+        creds = service_account.Credentials.from_service_account_info(
+            json.loads(creds_json),
+            scopes=['https://www.googleapis.com/auth/calendar'],
+        )
+    else:
+        creds, _ = default(scopes=['https://www.googleapis.com/auth/calendar'])
+    _calendar_svc = build('calendar', 'v3', credentials=creds)
+    return _calendar_svc
+
 _gmail_svc = None
 def _get_gmail():
     global _gmail_svc
@@ -84,6 +103,15 @@ def _esc(s):
 
 def _bid():
     return 'BK-' + uuid.uuid4().hex[:8].upper()
+
+def _parse_date(d: str):
+    try:
+        return datetime.strptime(d, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None
+
+def _dates_overlap(a1, a2, b1, b2):
+    return a1 <= b2 and b1 <= a2
 
 def _ensure_bookings_sheet(svc):
     sid = _env('SPREADSHEET_ID')
@@ -125,18 +153,210 @@ def _company_phone():
 def _owner_email():
     return _env('OWNER_EMAIL', 'devon@onlineverywhere.com')
 
+
+# ══════════════════════════════════════════
+#  DATA HELPERS
+# ══════════════════════════════════════════
+
+def _fetch_vehicles_from_sheet() -> list:
+    """Read vehicles from Google Sheets Vehicles tab."""
+    sid = _env('SPREADSHEET_ID')
+    if not sid:
+        return []
+    try:
+        svc = _get_sheets()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=sid, range='Vehicles!A:G',
+        ).execute()
+        rows = result.get('values', [])
+        if len(rows) < 2:
+            return []
+        headers = [h.strip().lower() for h in rows[0]]
+        vehicles = []
+        for row in rows[1:]:
+            obj = {}
+            for i, h in enumerate(headers):
+                obj[h] = row[i] if i < len(row) else ''
+            if obj.get('id'):
+                try:
+                    obj['rate'] = int(obj.get('rate', 0))
+                except ValueError:
+                    obj['rate'] = 0
+                vehicles.append(obj)
+        return vehicles
+    except Exception as e:
+        logging.error(f'Vehicles read: {e}')
+        return []
+
+
+def _fetch_booked_dates_from_sheet() -> set:
+    """Return all booked dates (YYYY-MM-DD) from the Bookings sheet."""
+    sid = _env('SPREADSHEET_ID')
+    booked = set()
+    try:
+        svc = _get_sheets()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=sid, range='Bookings!A:V',
+        ).execute()
+        rows = result.get('values', [])
+        if len(rows) < 2:
+            return booked
+        headers = [h.strip().lower() for h in rows[0]]
+        for row in rows[1:]:
+            obj = {}
+            for i, h in enumerate(headers):
+                obj[h] = row[i] if i < len(row) else ''
+            bp = _parse_date(obj.get('pickupdate', ''))
+            br = _parse_date(obj.get('returndate', ''))
+            if bp and br:
+                current = bp
+                while current <= br:
+                    booked.add(current.isoformat())
+                    current += timedelta(days=1)
+    except Exception as e:
+        logging.error(f'Booked dates read: {e}')
+    return booked
+
+
+def _fetch_calendar_blocked_dates(start_date: str, end_date: str) -> set:
+    """Return all dates blocked by Google Calendar events."""
+    blocked = set()
+    try:
+        svc = _get_calendar()
+        time_min = f'{start_date}T00:00:00-04:00'
+        time_max = f'{end_date}T23:59:59-04:00'
+        events_result = svc.events().list(
+            calendarId=CALENDAR_ID,
+            timeMin=time_min,
+            timeMax=time_max,
+            singleEvents=True,
+            orderBy='startTime',
+            maxResults=100,
+        ).execute()
+        for event in events_result.get('items', []):
+            start = event.get('start', {})
+            end = event.get('end', {})
+            if 'date' in start:
+                ev_start = _parse_date(start['date'])
+                ev_end = _parse_date(end.get('date', ''))
+            else:
+                ev_start = _parse_date(start.get('dateTime', '')[:10])
+                ev_end = _parse_date(end.get('dateTime', '')[:10])
+            if ev_start and ev_end:
+                current = ev_start
+                while current <= ev_end:
+                    blocked.add(current.isoformat())
+                    current += timedelta(days=1)
+    except Exception as e:
+        logging.error(f'Calendar blocked dates: {e}')
+    return blocked
+
+
+def _get_all_booked_dates(start_date: str, end_date: str) -> set:
+    """Merge booked dates from Sheets + Calendar for a date range."""
+    sheet_dates = _fetch_booked_dates_from_sheet()
+    cal_dates = _fetch_calendar_blocked_dates(start_date, end_date)
+    return sheet_dates | cal_dates
+
+
 # ══════════════════════════════════════════
 #  TOOLS
 # ══════════════════════════════════════════
 
 def get_vehicles() -> list:
-    """Return the single available vehicle (Swift).
+    """Return available vehicles with pricing.
 
-    Returns a list with one dict: [{id, name, type, rate, description}].
+    Reads from Google Sheets. Falls back to the Suzuki Swift if unavailable.
+    Returns a list of dicts: [{id, name, rate, description, features}].
     """
+    vehicles = _fetch_vehicles_from_sheet()
+    if vehicles:
+        result = []
+        for v in vehicles:
+            result.append({
+                'id': v.get('id', ''),
+                'name': v.get('name', ''),
+                'rate': v.get('rate', 0),
+                'type': v.get('type', 'standard'),
+                'seats': v.get('seats', ''),
+                'transmission': v.get('transmission', 'automatic'),
+                'description': v.get('description', ''),
+                'features': v.get('features', 'Air Conditioning'),
+                'image_url': v.get('imageurl', v.get('imageUrl', '/vehicle.png')),
+            })
+        return result
     return [
-        {'id': 'v1', 'name': 'Suzuki Swift', 'type': 'standard', 'rate': 120, 'icon': '🚗', 'desc': 'Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum.', 'image_url': '/vehicle.png'},
+        {'id': 'v1', 'name': 'Suzuki Swift', 'rate': 120, 'type': 'standard',
+         'seats': '5', 'transmission': 'automatic',
+         'description': 'Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum.',
+         'features': 'Air Conditioning, 2-Day Minimum, Weekend Specials, Free Drop-off',
+         'image_url': '/vehicle.png'},
     ]
+
+
+def find_available_dates(duration_days: int, start_from: str = '') -> dict:
+    """Find the next available date windows for a given rental duration.
+
+    Checks both Google Sheets bookings AND Google Calendar events to find
+    real availability. Scans forward from start_from (default: today) and
+    returns the first 5 available windows.
+
+    Args:
+        duration_days: Number of days for the rental (e.g. 3 for a 3-day trip).
+        start_from: ISO date to start searching from (YYYY-MM-DD). Defaults to today.
+
+    Returns:
+        Dict with {available_dates: [{pickup, return, total_days, label}], search_from, searched_days}.
+    """
+    if duration_days < 1:
+        duration_days = 2
+
+    today = date.today()
+    search_start = _parse_date(start_from) if start_from else today
+    if not search_start:
+        search_start = today
+
+    # Search the next 90 days for available windows
+    search_end = search_start + timedelta(days=90)
+    all_booked = _get_all_booked_dates(search_start.isoformat(), search_end.isoformat())
+
+    available = []
+    current = search_start
+    while current <= search_end - timedelta(days=duration_days - 1):
+        window_end = current + timedelta(days=duration_days - 1)
+        # Check if any date in this window is booked
+        conflict = False
+        check = current
+        while check <= window_end:
+            if check.isoformat() in all_booked:
+                conflict = True
+                break
+            check += timedelta(days=1)
+        if not conflict:
+            day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            start_day = day_names[current.weekday()]
+            end_day = day_names[window_end.weekday()]
+            label = f'{current.strftime("%b %d")} ({start_day}) to {window_end.strftime("%b %d")} ({end_day})'
+            available.append({
+                'pickup': current.isoformat(),
+                'return': window_end.isoformat(),
+                'total_days': duration_days,
+                'label': label,
+            })
+            if len(available) >= 5:
+                break
+            # Skip ahead to avoid overlapping windows
+            current += timedelta(days=1)
+        else:
+            # Jump past the conflict
+            current += timedelta(days=1)
+
+    return {
+        'available_dates': available,
+        'search_from': search_start.isoformat(),
+        'searched_days': 90,
+        'duration_days': duration_days,
+    }
 
 
 def scan_license(image_base64: str) -> dict:
@@ -224,7 +444,7 @@ def _normalize_expiry(value) -> str:
 def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> dict:
     """Check if a vehicle is available for the given date range.
 
-    Reads existing bookings from the sheet and checks for date overlaps.
+    Checks BOTH Google Sheets bookings AND Google Calendar events.
 
     Args:
         vehicle_id: Vehicle identifier (e.g. v1, v2).
@@ -234,46 +454,78 @@ def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> d
     Returns:
         Dict with {available: bool, conflicts: [...]}.
     """
+    pu = _parse_date(pickup_date)
+    re_d = _parse_date(return_date)
+    if not pu or not re_d:
+        return {'available': False, 'conflicts': [], 'error': 'Invalid date format. Use YYYY-MM-DD.'}
+
+    conflicts = []
+
+    # Check Sheets bookings
     sid = _env('SPREADSHEET_ID')
     try:
         svc = _get_sheets()
-        if not svc or not sid:
-            return {'available': True, 'conflicts': [], 'note': 'Could not check sheet'}
-
-        result = svc.spreadsheets().values().get(
-            spreadsheetId=sid, range='Bookings!A:V',
-        ).execute()
-        rows = result.get('values', [])
-        if len(rows) < 2:
-            return {'available': True, 'conflicts': []}
-
-        headers = [h.strip().lower() for h in rows[0]]
-        conflicts = []
-        pu = pickup_date.replace('-', '')
-        re = return_date.replace('-', '')
-
-        for row in rows[1:]:
-            obj = {}
-            for i, h in enumerate(headers):
-                obj[h] = row[i] if i < len(row) else ''
-            if obj.get('vehicleid') != vehicle_id:
-                continue
-            existing_pu = obj.get('pickupdate', '').replace('-', '')
-            existing_re = obj.get('returndate', '').replace('-', '')
-            if existing_pu and existing_re:
-                if not (re < existing_pu or pu > existing_re):
-                    conflicts.append({
-                        'existing_booking': obj.get('bookingid', ''),
-                        'pickup': obj.get('pickupdate'),
-                        'return': obj.get('returndate'),
-                        'customer': obj.get('custname', ''),
-                        'status': obj.get('bookingstatus', 'Confirmed'),
-                    })
-
-        return {'available': len(conflicts) == 0, 'conflicts': conflicts}
+        if svc and sid:
+            result = svc.spreadsheets().values().get(
+                spreadsheetId=sid, range='Bookings!A:V',
+            ).execute()
+            rows = result.get('values', [])
+            if len(rows) >= 2:
+                headers = [h.strip().lower() for h in rows[0]]
+                for row in rows[1:]:
+                    obj = {}
+                    for i, h in enumerate(headers):
+                        obj[h] = row[i] if i < len(row) else ''
+                    if obj.get('vehicleid') != vehicle_id:
+                        continue
+                    existing_pu = _parse_date(obj.get('pickupdate', ''))
+                    existing_re = _parse_date(obj.get('returndate', ''))
+                    if existing_pu and existing_re:
+                        if _dates_overlap(pu, re_d, existing_pu, existing_re):
+                            conflicts.append({
+                                'type': 'booking',
+                                'existing_booking': obj.get('bookingid', ''),
+                                'pickup': obj.get('pickupdate'),
+                                'return': obj.get('returndate'),
+                                'customer': obj.get('custname', ''),
+                                'status': obj.get('bookingstatus', 'Confirmed'),
+                            })
     except Exception as e:
-        logging.error(f'Availability check: {e}')
-        return {'available': True, 'conflicts': [], 'note': f'Error: {e}'}
+        logging.error(f'Sheet availability check: {e}')
+
+    # Check Google Calendar events
+    try:
+        svc = _get_calendar()
+        time_min = f'{pickup_date}T00:00:00-04:00'
+        time_max = f'{return_date}T23:59:59-04:00'
+        events_result = svc.events().list(
+            calendarId=CALENDAR_ID,
+            timeMin=time_min,
+            timeMax=time_max,
+            singleEvents=True,
+            orderBy='startTime',
+            maxResults=100,
+        ).execute()
+        for event in events_result.get('items', []):
+            start = event.get('start', {})
+            end = event.get('end', {})
+            if 'date' in start:
+                ev_start = _parse_date(start['date'])
+                ev_end = _parse_date(end.get('date', ''))
+            else:
+                ev_start = _parse_date(start.get('dateTime', '')[:10])
+                ev_end = _parse_date(end.get('dateTime', '')[:10])
+            if ev_start and ev_end and _dates_overlap(pu, re_d, ev_start, ev_end):
+                conflicts.append({
+                    'type': 'calendar',
+                    'summary': event.get('summary', 'Blocked'),
+                    'start': start.get('date') or start.get('dateTime', ''),
+                    'end': end.get('date') or end.get('dateTime', ''),
+                })
+    except Exception as e:
+        logging.error(f'Calendar availability check: {e}')
+
+    return {'available': len(conflicts) == 0, 'conflicts': conflicts}
 
 
 def create_booking(
@@ -296,8 +548,8 @@ def create_booking(
     """Create a rental booking in the spreadsheet and send confirmation emails.
 
     Args:
-        vehicle_id: Vehicle identifier (always v1 — Suzuki Swift).
-        vehicle_name: Human-readable vehicle name (always Suzuki Swift).
+        vehicle_id: Vehicle identifier (e.g. v1).
+        vehicle_name: Human-readable vehicle name.
         pickup_date: ISO date string (YYYY-MM-DD).
         pickup_time: Time string (HH:MM). Defaults to 09:00 if empty.
         return_date: ISO date string (YYYY-MM-DD).
@@ -316,16 +568,15 @@ def create_booking(
         Dict with bookingId, success, message.
     """
     b_id = _bid()
-    now  = datetime.utcnow().isoformat() + 'Z'
+    now = datetime.utcnow().isoformat() + 'Z'
 
-    # Default times to 09:00 if not provided
     pickup_time = pickup_time or '09:00'
     return_time = return_time or '09:00'
 
     try:
         start = datetime.strptime(pickup_date, '%Y-%m-%d')
-        end   = datetime.strptime(return_date, '%Y-%m-%d')
-        days  = max(1, (end - start).days + 1)
+        end = datetime.strptime(return_date, '%Y-%m-%d')
+        days = max(1, (end - start).days + 1)
     except Exception:
         days = 1
 
@@ -334,8 +585,12 @@ def create_booking(
         msg = f"Vehicle '{vehicle_name}' is not available for those dates."
         c = avail.get('conflicts', [])
         if c:
-            msg += f" Existing booking: {c[0].get('pickup')} to {c[0].get('return')} (status: {c[0].get('status', 'Confirmed')})."
-        msg += " Suggest alternative dates or vehicles."
+            first = c[0]
+            if first.get('type') == 'calendar':
+                msg += f" Calendar blocked: {first.get('summary', 'Event')} ({first.get('start', '')} to {first.get('end', '')})."
+            else:
+                msg += f" Existing booking: {first.get('pickup')} to {first.get('return')} (status: {first.get('status', 'Confirmed')})."
+        msg += " Suggest alternative dates or use find_available_dates to find open slots."
         return {'booking_id': None, 'success': False, 'message': msg, 'conflicts': c}
 
     rate = 0
@@ -528,6 +783,7 @@ def _build_instruction(ctx=None):
 You are a friendly car rental booking assistant for {_company()}, based in Barbados.
 
 VEHICLE & PRICING:
+- Call get_vehicles() to see current vehicles and rates.
 - Suzuki Swift at Bds$120/day (Barbados dollars).
 - Minimum 2-day rental. Weekend specials and weekly discounts available.
 - All prices are in Barbados dollars (Bds$).
@@ -542,31 +798,39 @@ When the customer says something like:
 - "this month" → use 1st to last day of the current month
 - "next month" → use 1st to last day of next month
 - "tomorrow" → use tomorrow's date
-- "next week" → use next Monday to Friday
 - "for a week" → pickup today/tomorrow, return 7 days later
 - "for a few days" → ask which specific days, or suggest 3-day minimum
 Always resolve dates to YYYY-MM-DD format. Always confirm the exact dates back
 to the customer after resolving them (e.g. "So that's Monday March 3 to Friday March 7").
 
-DEFAULT TIMES:
-- If the customer does NOT specify pickup and dropoff times, default to 09:00 for both.
-- Only use different times if they explicitly say otherwise (e.g. "pickup at 2pm").
+FINDING AVAILABLE DATES — when the user gives a DURATION without specific dates:
+  1. Call find_available_dates(duration_days=N) where N is the number of days they want.
+  2. The tool checks both Google Sheets bookings AND Google Calendar for real availability.
+  3. Present the returned available date windows to the user as options.
+  4. Format the output with [AVAILABLE_DATES] so the frontend can render interactive chips.
+  Example: User says "I need a car for 3 days" → call find_available_dates(duration_days=3)
+  Then present the results like:
+  "Here are the nearest available 3-day windows:
+  [AVAILABLE_DATES]
+  Sep 10 (Thu) to Sep 12 (Sat) | Sep 13 (Sun) to Sep 15 (Tue) | Sep 17 (Wed) to Sep 19 (Fri)
+  [/AVAILABLE_DATES]
+  Which works best for you?"
 
 BOOKING FLOW — guide the customer step by step:
   1. Greet them and ask what dates they need the car.
-  2. Resolve their date language into actual YYYY-MM-DD dates. Confirm dates + price.
-  3. Ask for their name, email, and phone number.
-  4. Ask for their driver's license number and expiry date.
-  5. Ask for pickup/dropoff location (Airport, Downtown, etc.).
+  2. If they give specific dates, call check_availability to verify.
+     If they give a duration, call find_available_dates to show open slots.
+  3. Once dates are confirmed, show the vehicle info and total price.
+  4. Ask for their name, email, and phone number.
+  5. Ask for their driver's license number and expiry date.
   6. Confirm ALL details before booking — summarize everything.
-  7. Call check_availability to verify the vehicle is free.
-  8. If available, call create_booking. If not, suggest alternatives.
-  9. Share the booking reference and confirm an invoice was emailed.
+  7. Call create_booking. If not available, suggest alternatives.
+  8. Share the booking reference and confirm an invoice was emailed.
 
 SUGGESTIONS — end every response with a [SUGGESTIONS] line.
 These MUST help move the conversation forward. Pick the NEXT logical step:
-  - If asking for dates → suggest common options like "This weekend", "Next week", "This month"
-  - If dates confirmed → suggest "My name is...", "I'll book for dates...", "What's included?"
+  - If asking for dates → suggest common options like "This weekend", "Next week", "3 days starting soon"
+  - If dates confirmed → suggest "My name is...", "What's included?", "Book it now"
   - If collecting info → suggest what info to provide next
   - If confirming → suggest "Yes, book it" or "Let me change something"
 Format: [SUGGESTIONS] Option 1 | Option 2 | Option 3
@@ -577,10 +841,11 @@ IMPORTANT RULES:
 - Keep responses short and friendly. Use Bds$ for prices.
 - Never make up details — use your tools to check real data.
 - Never ask for pickup/dropoff times — default to 09:00 and only change if they specify.
+- Always use find_available_dates when the user mentions a duration rather than specific dates.
 """
 agent = LlmAgent(
     name="rental_booking_agent",
     model="gemini-2.5-flash",
     instruction=_build_instruction,
-    tools=[get_vehicles, scan_license, check_availability, create_booking],
+    tools=[get_vehicles, find_available_dates, scan_license, check_availability, create_booking],
 )

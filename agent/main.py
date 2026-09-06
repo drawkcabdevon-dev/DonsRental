@@ -69,17 +69,21 @@ def _get_calendar():
     global _calendar_svc
     if _calendar_svc:
         return _calendar_svc
-    _ensure_init()
-    creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
-    if creds_json:
-        creds = service_account.Credentials.from_service_account_info(
-            json.loads(creds_json),
-            scopes=['https://www.googleapis.com/auth/calendar'],
-        )
-    else:
-        creds, _ = default(scopes=['https://www.googleapis.com/auth/calendar'])
-    _calendar_svc = build('calendar', 'v3', credentials=creds)
-    return _calendar_svc
+    try:
+        _ensure_init()
+        creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
+        if creds_json:
+            creds = service_account.Credentials.from_service_account_info(
+                json.loads(creds_json),
+                scopes=['https://www.googleapis.com/auth/calendar'],
+            )
+        else:
+            creds, _ = default(scopes=['https://www.googleapis.com/auth/calendar'])
+        _calendar_svc = build('calendar', 'v3', credentials=creds)
+        return _calendar_svc
+    except Exception as e:
+        logging.error(f'Calendar service init failed: {e}')
+        return None
 
 _gmail_svc = None
 def _get_gmail():
@@ -162,14 +166,19 @@ def _fetch_vehicles_from_sheet() -> list:
     """Read vehicles from Google Sheets Vehicles tab."""
     sid = _env('SPREADSHEET_ID')
     if not sid:
+        logging.warning('No SPREADSHEET_ID set')
         return []
     try:
         svc = _get_sheets()
+        if not svc:
+            logging.warning('Could not initialize Sheets service')
+            return []
         result = svc.spreadsheets().values().get(
             spreadsheetId=sid, range='Vehicles!A:G',
         ).execute()
         rows = result.get('values', [])
         if len(rows) < 2:
+            logging.warning('Vehicles sheet has no data rows')
             return []
         headers = [h.strip().lower() for h in rows[0]]
         vehicles = []
@@ -185,7 +194,7 @@ def _fetch_vehicles_from_sheet() -> list:
                 vehicles.append(obj)
         return vehicles
     except Exception as e:
-        logging.error(f'Vehicles read: {e}')
+        logging.error(f'Vehicles read failed: {e}')
         return []
 
 
@@ -226,6 +235,8 @@ def _fetch_calendar_blocked_dates(start_date: str, end_date: str) -> set:
     blocked = set()
     try:
         svc = _get_calendar()
+        if not svc:
+            return blocked
         time_min = f'{start_date}T00:00:00-04:00'
         time_max = f'{end_date}T23:59:59-04:00'
         events_result = svc.events().list(
@@ -274,29 +285,39 @@ def get_vehicles() -> list:
     Reads from Google Sheets. Falls back to the Suzuki Swift if unavailable.
     Returns a list of dicts: [{id, name, rate, description, features}].
     """
-    vehicles = _fetch_vehicles_from_sheet()
-    if vehicles:
-        result = []
-        for v in vehicles:
-            result.append({
-                'id': v.get('id', ''),
-                'name': v.get('name', ''),
-                'rate': v.get('rate', 0),
-                'type': v.get('type', 'standard'),
-                'seats': v.get('seats', ''),
-                'transmission': v.get('transmission', 'automatic'),
-                'description': v.get('description', ''),
-                'features': v.get('features', 'Air Conditioning'),
-                'image_url': v.get('imageurl', v.get('imageUrl', '/vehicle.png')),
-            })
-        return result
-    return [
-        {'id': 'v1', 'name': 'Suzuki Swift', 'rate': 120, 'type': 'standard',
-         'seats': '5', 'transmission': 'automatic',
-         'description': 'Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum.',
-         'features': 'Air Conditioning, 2-Day Minimum, Weekend Specials, Free Drop-off',
-         'image_url': '/vehicle.png'},
-    ]
+    try:
+        vehicles = _fetch_vehicles_from_sheet()
+        if vehicles:
+            result = []
+            for v in vehicles:
+                result.append({
+                    'id': v.get('id', ''),
+                    'name': v.get('name', ''),
+                    'rate': v.get('rate', 0),
+                    'type': v.get('type', 'standard'),
+                    'seats': v.get('seats', ''),
+                    'transmission': v.get('transmission', 'automatic'),
+                    'description': v.get('description', ''),
+                    'features': v.get('features', 'Air Conditioning'),
+                    'image_url': v.get('imageurl', v.get('imageUrl', '/vehicle.png')),
+                })
+            return result
+        return [
+            {'id': 'v1', 'name': 'Suzuki Swift', 'rate': 120, 'type': 'standard',
+             'seats': '5', 'transmission': 'automatic',
+             'description': 'Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum.',
+             'features': 'Air Conditioning, 2-Day Minimum, Weekend Specials, Free Drop-off',
+             'image_url': '/vehicle.png'},
+        ]
+    except Exception as e:
+        logging.error(f'get_vehicles tool error: {e}')
+        return [
+            {'id': 'v1', 'name': 'Suzuki Swift', 'rate': 120, 'type': 'standard',
+             'seats': '5', 'transmission': 'automatic',
+             'description': 'Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum.',
+             'features': 'Air Conditioning, 2-Day Minimum, Weekend Specials, Free Drop-off',
+             'image_url': '/vehicle.png'},
+        ]
 
 
 def find_available_dates(vehicle_id: str, duration_days: int, start_from: str = '') -> dict:
@@ -314,55 +335,65 @@ def find_available_dates(vehicle_id: str, duration_days: int, start_from: str = 
     Returns:
         Dict with {available_dates: [{pickup, return, total_days, label}], search_from, searched_days}.
     """
-    if duration_days < 1:
-        duration_days = 2
+    try:
+        if duration_days < 1:
+            duration_days = 2
 
-    today = date.today()
-    search_start = _parse_date(start_from) if start_from else today
-    if not search_start:
-        search_start = today
+        today = date.today()
+        search_start = _parse_date(start_from) if start_from else today
+        if not search_start:
+            search_start = today
 
-    # Search the next 90 days for available windows
-    search_end = search_start + timedelta(days=90)
-    all_booked = _get_all_booked_dates(vehicle_id, search_start.isoformat(), search_end.isoformat())
+        # Search the next 90 days for available windows
+        search_end = search_start + timedelta(days=90)
+        all_booked = _get_all_booked_dates(vehicle_id, search_start.isoformat(), search_end.isoformat())
 
-    available = []
-    current = search_start
-    while current <= search_end - timedelta(days=duration_days - 1):
-        window_end = current + timedelta(days=duration_days - 1)
-        # Check if any date in this window is booked
-        conflict = False
-        check = current
-        while check <= window_end:
-            if check.isoformat() in all_booked:
-                conflict = True
-                break
-            check += timedelta(days=1)
-        if not conflict:
-            day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-            start_day = day_names[current.weekday()]
-            end_day = day_names[window_end.weekday()]
-            label = f'{current.strftime("%b %d")} ({start_day}) to {window_end.strftime("%b %d")} ({end_day})'
-            available.append({
-                'pickup': current.isoformat(),
-                'return': window_end.isoformat(),
-                'total_days': duration_days,
-                'label': label,
-            })
-            if len(available) >= 5:
-                break
-            # Skip ahead to avoid overlapping windows
-            current += timedelta(days=duration_days)
-        else:
-            # Jump past the conflict
-            current += timedelta(days=1)
+        available = []
+        current = search_start
+        while current <= search_end - timedelta(days=duration_days - 1):
+            window_end = current + timedelta(days=duration_days - 1)
+            # Check if any date in this window is booked
+            conflict = False
+            check = current
+            while check <= window_end:
+                if check.isoformat() in all_booked:
+                    conflict = True
+                    break
+                check += timedelta(days=1)
+            if not conflict:
+                day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                start_day = day_names[current.weekday()]
+                end_day = day_names[window_end.weekday()]
+                label = f'{current.strftime("%b %d")} ({start_day}) to {window_end.strftime("%b %d")} ({end_day})'
+                available.append({
+                    'pickup': current.isoformat(),
+                    'return': window_end.isoformat(),
+                    'total_days': duration_days,
+                    'label': label,
+                })
+                if len(available) >= 5:
+                    break
+                # Skip ahead to avoid overlapping windows
+                current += timedelta(days=duration_days)
+            else:
+                # Jump past the conflict
+                current += timedelta(days=1)
 
-    return {
-        'available_dates': available,
-        'search_from': search_start.isoformat(),
-        'searched_days': 90,
-        'duration_days': duration_days,
-    }
+        return {
+            'available_dates': available,
+            'search_from': search_start.isoformat(),
+            'searched_days': 90,
+            'duration_days': duration_days,
+        }
+    except Exception as e:
+        logging.error(f'find_available_dates tool error: {e}')
+        return {
+            'available_dates': [],
+            'search_from': start_from or date.today().isoformat(),
+            'searched_days': 0,
+            'duration_days': duration_days,
+            'error': f'Could not check availability: {e}',
+        }
 
 
 def scan_license(image_base64: str) -> dict:
@@ -401,6 +432,8 @@ If a field is not visible, set it to null."""
             model='gemini-1.5-flash',
             contents=[prompt, {'mime_type': 'image/jpeg', 'data': image_bytes}],
         )
+        if not response or not hasattr(response, 'text') or response.text is None:
+            return {'error': 'Gemini returned an empty response. The image may be unclear.'}
         raw = response.text.strip()
         raw = re.sub(r'^```(?:json)?\s*', '', raw)
         raw = re.sub(r'\s*```$', '', raw)
@@ -509,34 +542,37 @@ def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> d
     # Check Google Calendar events
     try:
         svc = _get_calendar()
-        time_min = f'{pickup_date}T00:00:00-04:00'
-        time_max = f'{return_date}T23:59:59-04:00'
-        events_result = svc.events().list(
-            calendarId=CALENDAR_ID,
-            timeMin=time_min,
-            timeMax=time_max,
-            singleEvents=True,
-            orderBy='startTime',
-            maxResults=100,
-        ).execute()
-        for event in events_result.get('items', []):
-            start = event.get('start', {})
-            end = event.get('end', {})
-            if 'date' in start:
-                ev_start = _parse_date(start['date'])
-                ev_end = _parse_date(end.get('date', ''))
-                if ev_end:
-                    ev_end -= timedelta(days=1)
-            else:
-                ev_start = _parse_date(start.get('dateTime', '')[:10])
-                ev_end = _parse_date(end.get('dateTime', '')[:10])
-            if ev_start and ev_end and _dates_overlap(pu, re_d, ev_start, ev_end):
-                conflicts.append({
-                    'type': 'calendar',
-                    'summary': event.get('summary', 'Blocked'),
-                    'start': start.get('date') or start.get('dateTime', ''),
-                    'end': end.get('date') or end.get('dateTime', ''),
-                })
+        if not svc:
+            lookup_failures.append('calendar')
+        else:
+            time_min = f'{pickup_date}T00:00:00-04:00'
+            time_max = f'{return_date}T23:59:59-04:00'
+            events_result = svc.events().list(
+                calendarId=CALENDAR_ID,
+                timeMin=time_min,
+                timeMax=time_max,
+                singleEvents=True,
+                orderBy='startTime',
+                maxResults=100,
+            ).execute()
+            for event in events_result.get('items', []):
+                start = event.get('start', {})
+                end = event.get('end', {})
+                if 'date' in start:
+                    ev_start = _parse_date(start['date'])
+                    ev_end = _parse_date(end.get('date', ''))
+                    if ev_end:
+                        ev_end -= timedelta(days=1)
+                else:
+                    ev_start = _parse_date(start.get('dateTime', '')[:10])
+                    ev_end = _parse_date(end.get('dateTime', '')[:10])
+                if ev_start and ev_end and _dates_overlap(pu, re_d, ev_start, ev_end):
+                    conflicts.append({
+                        'type': 'calendar',
+                        'summary': event.get('summary', 'Blocked'),
+                        'start': start.get('date') or start.get('dateTime', ''),
+                        'end': end.get('date') or end.get('dateTime', ''),
+                    })
     except Exception as e:
         logging.error(f'Calendar availability check: {e}')
         lookup_failures.append('calendar')
@@ -590,85 +626,93 @@ def create_booking(
     Returns:
         Dict with bookingId, success, message.
     """
-    b_id = _bid()
-    now = datetime.utcnow().isoformat() + 'Z'
-
-    pickup_time = pickup_time or '09:00'
-    return_time = return_time or '09:00'
-
     try:
-        start = datetime.strptime(pickup_date, '%Y-%m-%d')
-        end = datetime.strptime(return_date, '%Y-%m-%d')
-        days = max(1, (end - start).days + 1)
-    except Exception:
-        days = 1
+        b_id = _bid()
+        now = datetime.utcnow().isoformat() + 'Z'
 
-    avail = check_availability(vehicle_id, pickup_date, return_date)
-    if not avail.get('available'):
-        msg = f"Vehicle '{vehicle_name}' is not available for those dates."
-        c = avail.get('conflicts', [])
-        if c:
-            first = c[0]
-            if first.get('type') == 'calendar':
-                msg += f" Calendar blocked: {first.get('summary', 'Event')} ({first.get('start', '')} to {first.get('end', '')})."
-            else:
-                msg += f" Existing booking: {first.get('pickup')} to {first.get('return')} (status: {first.get('status', 'Confirmed')})."
-        msg += " Suggest alternative dates or use find_available_dates to find open slots."
-        return {'booking_id': None, 'success': False, 'message': msg, 'conflicts': c}
+        pickup_time = pickup_time or '09:00'
+        return_time = return_time or '09:00'
 
-    rate = 0
-    for v in get_vehicles():
-        if isinstance(v, dict) and v.get('id') == vehicle_id:
-            rate = int(v.get('rate', 0))
-            break
-    total = days * rate
+        try:
+            start = datetime.strptime(pickup_date, '%Y-%m-%d')
+            end = datetime.strptime(return_date, '%Y-%m-%d')
+            days = max(1, (end - start).days + 1)
+        except Exception:
+            days = 1
 
-    row = [
-        b_id, 'Confirmed', now,
-        vehicle_id, vehicle_name,
-        pickup_date, pickup_time, return_date, return_time,
-        customer_name, customer_email, customer_phone, customer_address,
-        license_number, license_expiry, license_issuer, license_class,
-        payment_method, total, days, '', '',
-        '',
-    ]
+        avail = check_availability(vehicle_id, pickup_date, return_date)
+        if not avail.get('available'):
+            msg = f"Vehicle '{vehicle_name}' is not available for those dates."
+            c = avail.get('conflicts', [])
+            if c:
+                first = c[0]
+                if first.get('type') == 'calendar':
+                    msg += f" Calendar blocked: {first.get('summary', 'Event')} ({first.get('start', '')} to {first.get('end', '')})."
+                else:
+                    msg += f" Existing booking: {first.get('pickup')} to {first.get('return')} (status: {first.get('status', 'Confirmed')})."
+            msg += " Suggest alternative dates or use find_available_dates to find open slots."
+            return {'booking_id': None, 'success': False, 'message': msg, 'conflicts': c}
 
-    sid = _env('SPREADSHEET_ID')
-    sheets_ok = False
-    try:
-        svc = _get_sheets()
-        if svc and sid:
-            _ensure_bookings_sheet(svc)
-            svc.spreadsheets().values().append(
-                spreadsheetId=sid,
-                range='Bookings!A:V',
-                valueInputOption='USER_ENTERED',
-                body={'values': [row]},
-            ).execute()
-            sheets_ok = True
+        rate = 0
+        for v in get_vehicles():
+            if isinstance(v, dict) and v.get('id') == vehicle_id:
+                rate = int(v.get('rate', 0))
+                break
+        total = days * rate
+
+        row = [
+            b_id, 'Confirmed', now,
+            vehicle_id, vehicle_name,
+            pickup_date, pickup_time, return_date, return_time,
+            customer_name, customer_email, customer_phone, customer_address,
+            license_number, license_expiry, license_issuer, license_class,
+            payment_method, total, days, '', '',
+            '',
+        ]
+
+        sid = _env('SPREADSHEET_ID')
+        sheets_ok = False
+        try:
+            svc = _get_sheets()
+            if svc and sid:
+                _ensure_bookings_sheet(svc)
+                svc.spreadsheets().values().append(
+                    spreadsheetId=sid,
+                    range='Bookings!A:V',
+                    valueInputOption='USER_ENTERED',
+                    body={'values': [row]},
+                ).execute()
+                sheets_ok = True
+        except Exception as e:
+            logging.error(f'Sheet write: {e}')
+
+        email_ok = False
+        try:
+            email_ok = _send_emails(
+                b_id, customer_name, customer_email,
+                vehicle_name, pickup_date, pickup_time,
+                return_date, return_time, days, total,
+                license_number, license_expiry, license_issuer,
+                payment_method,
+            )
+        except Exception as e:
+            logging.warning(f'Email skipped (optional feature): {e}')
+
+        return {
+            'booking_id': b_id,
+            'success': sheets_ok,
+            'sheets_stored': sheets_ok,
+            'email_sent': email_ok,
+            'total': total,
+            'days': days,
+        }
     except Exception as e:
-        logging.error(f'Sheet write: {e}')
-
-    email_ok = False
-    try:
-        email_ok = _send_emails(
-            b_id, customer_name, customer_email,
-            vehicle_name, pickup_date, pickup_time,
-            return_date, return_time, days, total,
-            license_number, license_expiry, license_issuer,
-            payment_method,
-        )
-    except Exception as e:
-        logging.warning(f'Email skipped (optional feature): {e}')
-
-    return {
-        'booking_id': b_id,
-        'success': sheets_ok,
-        'sheets_stored': sheets_ok,
-        'email_sent': email_ok,
-        'total': total,
-        'days': days,
-    }
+        logging.error(f'create_booking tool error: {e}')
+        return {
+            'booking_id': None,
+            'success': False,
+            'message': f'Booking creation failed: {e}. Please try again.',
+        }
 
 
 def _send_gmail(to, subject, html_body, text_body=''):

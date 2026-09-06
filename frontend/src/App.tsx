@@ -1,6 +1,7 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, Routes, Route, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { api } from './services/api';
 import {
   Button,

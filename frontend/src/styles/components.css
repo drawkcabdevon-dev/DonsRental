@@ -3816,3 +3816,22 @@ h2:focus-visible {
     font-size: var(--font-size-base);
   }
 }
+
+/* ─── Landing Page Mobile Nav ──────────────────────── */
+.nav-desktop {
+  display: flex;
+}
+
+.nav-mobile-toggle {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .nav-desktop {
+    display: none !important;
+  }
+
+  .nav-mobile-toggle {
+    display: block !important;
+  }
+}

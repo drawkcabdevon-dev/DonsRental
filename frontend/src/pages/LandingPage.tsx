@@ -265,6 +265,7 @@ function HowItWorksTabs() {
 export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPageProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll();
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 25 });
@@ -307,7 +308,38 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
   return (
     <div className="landing-page" style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh' }}>
-      <Marquee />
+      {/* ═══ STICKY NAV HEADER ═══════════════════════════ */}
+      <motion.nav initial={{ y: -80 }} animate={{ y: 0 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,204,0,0.15)' }}>
+        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: '0 var(--space-6)', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 36, width: 'auto' }} />
+          </a>
+          {/* Desktop nav */}
+          <div className="nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
+            <a href="#how-it-works" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', transition: 'color 0.2s' }}>How It Works</a>
+            <a href="#fleet" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', transition: 'color 0.2s' }}>Fleet</a>
+            <motion.button whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(255,204,0,0.4)' }} whileTap={{ scale: 0.95 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-2) var(--space-5)', fontSize: 'var(--font-size-xs)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer' }}>
+              Book Now
+            </motion.button>
+          </div>
+          {/* Mobile hamburger */}
+          <button className="nav-mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 'var(--space-2)' }}>
+            <div style={{ width: 24, height: 2, backgroundColor: 'var(--color-white)', marginBottom: 5, transition: 'all 0.3s', transform: mobileMenuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none' }} />
+            <div style={{ width: 24, height: 2, backgroundColor: 'var(--color-white)', marginBottom: 5, opacity: mobileMenuOpen ? 0 : 1, transition: 'all 0.3s' }} />
+            <div style={{ width: 24, height: 2, backgroundColor: 'var(--color-white)', transition: 'all 0.3s', transform: mobileMenuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none' }} />
+          </button>
+        </div>
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="nav-mobile-menu" style={{ borderTop: '1px solid rgba(255,204,0,0.15)', padding: 'var(--space-4) var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', padding: 'var(--space-2) 0' }}>How It Works</a>
+            <a href="#fleet" onClick={() => setMobileMenuOpen(false)} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', padding: 'var(--space-2) 0' }}>Fleet</a>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setMobileMenuOpen(false); handleBookNowClick(); }} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', textAlign: 'center' }}>
+              Book Now
+            </motion.button>
+          </motion.div>
+        )}
+      </motion.nav>
 
       {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}
       <motion.header ref={heroRef} style={{ y: heroY, scale: heroScale, opacity: heroOpacity }}>
@@ -369,6 +401,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(transparent, var(--color-black))', pointerEvents: 'none' }} />
         </div>
       </motion.header>
+
+      <Marquee />
 
       {/* ═══ STATS ═══════════════════════════════════════ */}
       <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7 }} style={{ backgroundColor: 'var(--color-white)' }}>
@@ -496,7 +530,6 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
             </motion.div>
           </motion.div>
           </div>
-        </div>
         </div>
       </section>
 

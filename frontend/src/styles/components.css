@@ -2642,7 +2642,7 @@ h2:focus-visible {
 }
 
 .site-header-inner {
-  max-width: var(--max-width-container);
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
   padding-left: var(--space-6);
@@ -2744,10 +2744,7 @@ h2:focus-visible {
 
 .site-main {
   flex: 1;
-  max-width: var(--max-width-container);
-  margin: 0 auto;
   width: 100%;
-  padding: var(--space-8) var(--space-6);
 }
 
 @media (max-width: 768px) {

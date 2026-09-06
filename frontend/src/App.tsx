@@ -1,6 +1,7 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { api } from './services/api';
 import {
   Button,
@@ -565,12 +566,9 @@ function App() {
       {/* Header */}
       <header className="site-header">
         <div className="site-header-inner">
-          <div>
             <h1 className="site-header-title">
-              <Car size={24} aria-hidden="true" /> Don's Car Rental
+              <img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 40, width: 'auto' }} />
             </h1>
-            <p className="site-header-subtitle">Barbados car rental — book online, no calls needed</p>
-          </div>
           {user && (
             <div className="site-header-user">
               <span>Hello, {user.name || user.email}</span>
@@ -1006,6 +1004,7 @@ function App() {
       {/* Footer */}
       <footer className="site-footer">
         <div className="site-footer-inner">
+          <motion.img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 84, width: 'auto', marginBottom: 'var(--space-4)' }} animate={{ filter: ['drop-shadow(0 0 8px rgba(255,204,0,0.4))', 'drop-shadow(0 0 20px rgba(255,204,0,0.8))', 'drop-shadow(0 0 8px rgba(255,204,0,0.4))'] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }} />
           <p className="site-footer-links">
             <a href="/terms">Terms &amp; Conditions</a>
             {' | '}

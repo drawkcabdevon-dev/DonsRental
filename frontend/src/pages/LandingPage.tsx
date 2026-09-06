@@ -306,23 +306,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
   }, [showProfileModal]);
 
   return (
-    <div style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh' }}>
-      {/* ═══ STICKY NAV HEADER ═══════════════════════════ */}
-      <motion.nav initial={{ y: -80 }} animate={{ y: 0 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,204,0,0.15)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: '0 var(--space-6)', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 36, width: 'auto' }} />
-          </a>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
-            <a href="#how-it-works" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', transition: 'color 0.2s' }}>How It Works</a>
-            <a href="#fleet" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', transition: 'color 0.2s' }}>Fleet</a>
-            <motion.button whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(255,204,0,0.4)' }} whileTap={{ scale: 0.95 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-2) var(--space-5)', fontSize: 'var(--font-size-xs)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer' }}>
-              Book Now
-            </motion.button>
-          </div>
-        </div>
-      </motion.nav>
-
+    <div className="landing-page" style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh' }}>
       <Marquee />
 
       {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}
@@ -408,21 +392,21 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
       {/* ═══ HOW IT WORKS — Interactive Walkthrough ═════ */}
       <section id="how-it-works" className="landing-section" style={{ padding: 'var(--space-24) var(--space-6)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto' }}>
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)', textAlign: 'center' }}>
-          <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: '0 auto var(--space-4)' }} />
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>How It Works</p>
-          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>Four Steps. Done.</h2>
-        </motion.div>
+        <div className="landing-section-inner">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)', textAlign: 'center' }}>
+            <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: '0 auto var(--space-4)' }} />
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>How It Works</p>
+            <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>Four Steps. Done.</h2>
+          </motion.div>
 
-        {/* Tabbed walkthrough */}
-        <HowItWorksTabs />
+          {/* Tabbed walkthrough */}
+          <HowItWorksTabs />
 
-        {/* Connecting line */}
-        <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.6 }} style={{ height: 3, background: 'var(--color-yellow)', marginTop: 'var(--space-10)', transformOrigin: 'left' }} />
-        <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.9 }} style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-dark-gray)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-          → That's it. No phone calls. No waiting.
-        </motion.p>
+          {/* Connecting line */}
+          <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.6 }} style={{ height: 3, background: 'var(--color-yellow)', marginTop: 'var(--space-10)', transformOrigin: 'left' }} />
+          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.9 }} style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-dark-gray)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            → That's it. No phone calls. No waiting.
+          </motion.p>
         </div>
       </section>
 
@@ -472,8 +456,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
       {/* ═══ HOW IT'S FAST ═════════════════════════════════ */}
       <section className="landing-section" style={{ padding: 'var(--space-24) var(--space-6)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto' }}>
-        <div className="landing-how-fast-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-16)', alignItems: 'center' }}>
+        <div className="landing-section-inner">
+          <div className="landing-how-fast-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-16)', alignItems: 'center' }}>
           <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
             <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', marginBottom: 'var(--space-4)' }} />
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>Built For Speed</p>
@@ -511,6 +495,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
               </div>
             </motion.div>
           </motion.div>
+          </div>
         </div>
         </div>
       </section>

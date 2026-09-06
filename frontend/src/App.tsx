@@ -1,7 +1,6 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { Link, Routes, Route, useNavigate } from 'react-router-dom';
 import { api } from './services/api';
 import {
   Button,
@@ -21,7 +20,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { useStepTransition } from './hooks/useAnimations';
-import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
+import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, Zap, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 
 interface Toast {
   id: number;
@@ -567,7 +566,7 @@ function App() {
       <header className="site-header">
         <div className="site-header-inner">
             <h1 className="site-header-title">
-              <img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 40, width: 'auto' }} />
+              <Zap className="site-header-logo" aria-hidden="true" /> Don's Car Rental
             </h1>
           {user && (
             <div className="site-header-user">
@@ -598,6 +597,10 @@ function App() {
           } />
           <Route path="/book" element={
             <>
+              <Link to="/" className="booking-back-link">
+                <ArrowLeft size={16} aria-hidden="true" /> Back to Don's Rental
+              </Link>
+
               {/* Driving Stepper */}
         <div style={{ marginBottom: 'var(--space-8)' }}>
           <DrivingStepper

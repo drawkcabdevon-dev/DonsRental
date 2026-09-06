@@ -633,10 +633,7 @@ async def _query_agent(message: str, principal_id: str) -> str:
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
-    body = {
-        "input": {"message": message, "user_id": principal_id},
-        "session_id": principal_id,
-    }
+    body = {"input": {"message": message, "user_id": principal_id}}
 
     async with httpx.AsyncClient(timeout=120) as client:
         async with client.stream("POST", url, json=body, headers=headers) as resp:

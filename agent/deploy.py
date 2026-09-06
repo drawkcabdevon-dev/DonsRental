@@ -94,6 +94,8 @@ def deploy(env_vars: dict):
         'COMPANY_EMAIL': env_vars.get('COMPANY_EMAIL', os.environ.get('COMPANY_EMAIL', 'bookings@onlineverywhere.com')),
         'COMPANY_PHONE': env_vars.get('COMPANY_PHONE', os.environ.get('COMPANY_PHONE', '')),
         'OWNER_EMAIL': env_vars.get('OWNER_EMAIL', os.environ.get('OWNER_EMAIL', 'devon@onlineverywhere.com')),
+        'VERTEX_AI_PROJECT': env_vars.get('PROJECT', os.environ.get('VERTEX_AI_PROJECT', PROJECT)),
+        'VERTEX_AI_LOCATION': env_vars.get('LOCATION', os.environ.get('VERTEX_AI_LOCATION', LOCATION)),
     }
     agent_env = {k: v for k, v in agent_env.items() if v}
 

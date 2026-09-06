@@ -307,7 +307,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
   }, [showProfileModal]);
 
   return (
-    <div className="landing-page" style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh' }}>
+    <div className="landing-page" style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh', paddingTop: 64 }}>
       {/* ═══ STICKY NAV HEADER ═══════════════════════════ */}
       <motion.nav initial={{ y: -80 }} animate={{ y: 0 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,204,0,0.15)' }}>
         <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: '0 var(--space-6)', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

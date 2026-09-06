@@ -10,7 +10,7 @@ backend/        ← FastAPI Cloud Run service (Sheets, Calendar, profiles)
 agent/          ← ADK agent deployed to Vertex AI Agent Engine (chat interface)
 Google Sheets   ← Vehicles, Bookings, Profiles tabs (persistent data store)
 Google Calendar ← Availability tracking (backend)
-Apps Script     ← Time-driven trigger sends email notifications
+Gmail API       ← Service account sends confirmation + notification emails
 ```
 
 ## How it works
@@ -20,7 +20,7 @@ Apps Script     ← Time-driven trigger sends email notifications
 3. Selects vehicle → picks dates/times → uploads license → enters info → reviews → confirms
 4. Backend calculates cost server-side, writes booking to **Google Sheets** (`Bookings` tab)
 5. Backend creates calendar event in **Google Calendar** (availability tracking)
-6. **Apps Script** (time-driven, every 5 mins) checks for new bookings → sends confirmation email to customer + notification to owner
+6. Backend sends confirmation email to customer + notification to owner via **Gmail API** (service account)
 7. User profiles saved to `Profiles` sheet → auto-fill on next booking
 
 ## Live Site
@@ -60,7 +60,7 @@ cp .env.example .env
 | `SPREADSHEET_ID` | Yes | Google Sheet ID |
 | `GOOGLE_SHEETS_CREDENTIALS` | Yes | Service account JSON (full, one line) |
 | `GOOGLE_CALENDAR_ID` | Yes | Google Calendar for availability tracking |
-| `OWNER_EMAIL` | No | Booking notification emails |
+| `OWNER_EMAIL` | Yes | Booking notification emails (default: devon@onlineverywhere.com) |
 | `AGENT_ENGINE` | Yes | Vertex AI Agent Engine resource |
 | `GCS_BUCKET` | Yes | GCS bucket for license photos |
 | `GCS_PHOTOS_PREFIX` | Yes | Path prefix for license photos in bucket |
@@ -109,7 +109,6 @@ cp .env.example .env
 | `frontend/src/pages/TermsAndConditions.tsx` | Terms & Conditions page |
 | `frontend/src/pages/PrivacyPolicy.tsx` | Privacy Policy page |
 | `frontend/src/pages/AdminDashboard.tsx` | Owner dashboard |
-| `apps-script/booking-notifications.gs` | Google Apps Script (time-driven email notifications) |
 | `deploy-cloudrun.sh` | Deploy to Cloud Run |
 | `cloudbuild.yaml` | Cloud Build config (auto-deploys on push) |
 | `.env` | Secrets (DO NOT COMMIT) |

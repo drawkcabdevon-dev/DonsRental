@@ -1353,7 +1353,7 @@ async def create_booking(req: BookingRequest):
     sheet_ok = _append_to_sheet(req, ref, total_cost)
     cal_ok = _add_to_calendar(req, ref)
 
-    # Send emails immediately (replaces Apps Script)
+    # Send emails via Gmail API
     try:
         _send_booking_emails(req, ref, total_cost)
     except Exception as e:

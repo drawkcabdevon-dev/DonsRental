@@ -2585,7 +2585,7 @@ h2:focus-visible {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-background);
+  background-color: transparent;
 }
 
 /* ─────────────────────────────────────────────────
@@ -2673,7 +2673,7 @@ h2:focus-visible {
 }
 
 .site-header-inner {
-  max-width: var(--max-width-container);
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
   padding-left: var(--space-6);
@@ -3814,5 +3814,24 @@ h2:focus-visible {
 
   .profile-card-header h2 {
     font-size: var(--font-size-base);
+  }
+}
+
+/* ─── Landing Page Mobile Nav ──────────────────────── */
+.nav-desktop {
+  display: flex;
+}
+
+.nav-mobile-toggle {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .nav-desktop {
+    display: none !important;
+  }
+
+  .nav-mobile-toggle {
+    display: block !important;
   }
 }

@@ -1,6 +1,7 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, Routes, Route, useNavigate } from 'react-router-dom';
+import { Link, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { api } from './services/api';
 import {
   Button,
@@ -46,6 +47,8 @@ let _toastId = 0;
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
   const [step, setStep] = useState<BookingStep>(1);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -562,15 +565,13 @@ function App() {
         ))}
       </div>
 
-      {/* Header */}
+      {/* Header - hidden on landing page */}
+      {!isLandingPage && (
       <header className="site-header">
         <div className="site-header-inner">
-          <div>
             <h1 className="site-header-title">
               <Zap className="site-header-logo" aria-hidden="true" /> Don's Car Rental
             </h1>
-            <p className="site-header-subtitle">Barbados car rental — book online, no calls needed</p>
-          </div>
           {user && (
             <div className="site-header-user">
               <span>Hello, {user.name || user.email}</span>
@@ -584,6 +585,7 @@ function App() {
           )}
         </div>
       </header>
+      )}
 
       {/* Main Content */}
       <main id="main-content" className="site-main" tabIndex={-1}>
@@ -1007,15 +1009,17 @@ function App() {
       {/* Chat Widget */}
       <ChatWidget />
 
-      {/* Footer */}
+      {/* Footer - hidden on landing page */}
+      {!isLandingPage && (
       <footer className="site-footer">
         <div className="site-footer-inner">
+          <motion.img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 84, width: 'auto', marginBottom: 'var(--space-4)' }} animate={{ filter: ['drop-shadow(0 0 8px rgba(255,204,0,0.4))', 'drop-shadow(0 0 20px rgba(255,204,0,0.8))', 'drop-shadow(0 0 8px rgba(255,204,0,0.4))'] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }} />
           <p className="site-footer-links">
             <a href="/terms">Terms &amp; Conditions</a>
             {' | '}
             <a href="/privacy">Privacy Policy</a>
             {' | '}
-            <a href="mailto:bookings@donsrental.com">bookings@donsrental.com</a>
+            <a href="mailto:bookings@onlineverywhere.com">bookings@onlineverywhere.com</a>
             {' | '}
             <a href="tel:+12462682842">+1 (246) 268-2842</a>
           </p>
@@ -1024,6 +1028,7 @@ function App() {
           </p>
         </div>
       </footer>
+      )}
 
     </div>
   );

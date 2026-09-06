@@ -62,9 +62,9 @@ def interactive_setup():
 
     print('\n--- Optional ---')
     env['COMPANY_NAME'] = input(f'Company Name [Don\'s Rental]: ').strip() or "Don's Rental"
-    env['COMPANY_EMAIL'] = input('Invoice FROM email (verified in SendGrid): ').strip()
+    env['COMPANY_EMAIL'] = input('Invoice FROM email [bookings@onlineverywhere.com]: ').strip() or 'bookings@onlineverywhere.com'
     env['COMPANY_PHONE'] = input('Company Phone: ').strip()
-    env['OWNER_EMAIL'] = input('Your email (get notified on bookings) [blank=skip]: ').strip()
+    env['OWNER_EMAIL'] = input('Owner notification email [devon@onlineverywhere.com]: ').strip() or 'devon@onlineverywhere.com'
 
     return env
 
@@ -90,7 +90,9 @@ def deploy(env_vars: dict):
         'SPREADSHEET_ID': env_vars.get('SPREADSHEET_ID', os.environ.get('SPREADSHEET_ID', '')),
         'GOOGLE_SHEETS_CREDENTIALS': env_vars.get('GOOGLE_SHEETS_CREDENTIALS', os.environ.get('GOOGLE_SHEETS_CREDENTIALS', '')),
         'COMPANY_NAME': env_vars.get('COMPANY_NAME', os.environ.get('COMPANY_NAME', "Don's Rental")),
+        'COMPANY_EMAIL': env_vars.get('COMPANY_EMAIL', os.environ.get('COMPANY_EMAIL', 'bookings@onlineverywhere.com')),
         'COMPANY_PHONE': env_vars.get('COMPANY_PHONE', os.environ.get('COMPANY_PHONE', '')),
+        'OWNER_EMAIL': env_vars.get('OWNER_EMAIL', os.environ.get('OWNER_EMAIL', 'devon@onlineverywhere.com')),
     }
     agent_env = {k: v for k, v in agent_env.items() if v}
 
@@ -140,7 +142,7 @@ if __name__ == '__main__':
             'PROJECT': os.environ.get('VERTEX_AI_PROJECT', PROJECT),
             'LOCATION': os.environ.get('VERTEX_AI_LOCATION', LOCATION),
         }
-        missing = [k for k, v in env.items() if not v and k not in ('COMPANY_PHONE', 'GOOGLE_SHEETS_CREDENTIALS')]
+        missing = [k for k, v in env.items() if not v and k not in ('COMPANY_PHONE',)]
         if missing:
             print(f'Missing required env vars: {", ".join(missing)}')
             sys.exit(1)

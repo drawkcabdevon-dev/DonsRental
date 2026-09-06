@@ -92,7 +92,7 @@ function AnimCounter({ target, prefix = '', suffix = '' }: { target: number; pre
 const MARQUEE = ['Airport Pickup', 'No Booking Fees', '24/7 Online', 'Instant Confirmation', 'Full Insurance', 'Barbados Fleet', 'Free Cancellation', 'Fast & Easy'];
 function Marquee() {
   return (
-    <div style={{ overflow: 'hidden', backgroundColor: 'var(--color-yellow)', padding: 'var(--space-3) 0', borderBottom: '4px solid var(--color-black)' }}>
+    <div style={{ overflow: 'hidden', backgroundColor: 'var(--color-yellow)', padding: 'var(--space-3) 0' }}>
       <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ duration: 25, repeat: Infinity, ease: 'linear' }} style={{ display: 'flex', width: 'max-content', gap: 'var(--space-12)' }}>
         {[...MARQUEE, ...MARQUEE].map((item, i) => (
           <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -265,6 +265,7 @@ function HowItWorksTabs() {
 export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPageProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll();
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 25 });
@@ -306,7 +307,40 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
   }, [showProfileModal]);
 
   return (
-    <div className="landing-page" style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh' }}>
+    <div className="landing-page" style={{ backgroundColor: 'var(--color-black)', width: '100%', minHeight: '100vh', paddingTop: 64 }}>
+      {/* ═══ STICKY NAV HEADER ═══════════════════════════ */}
+      <motion.nav initial={{ y: -80 }} animate={{ y: 0 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,204,0,0.15)' }}>
+        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', padding: '0 var(--space-6)', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 36, width: 'auto' }} />
+          </a>
+          {/* Desktop nav */}
+          <div className="nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
+            <a href="#how-it-works" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', transition: 'color 0.2s' }}>How It Works</a>
+            <a href="#fleet" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', transition: 'color 0.2s' }}>Fleet</a>
+            <motion.button whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(255,204,0,0.4)' }} whileTap={{ scale: 0.95 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-2) var(--space-5)', fontSize: 'var(--font-size-xs)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer' }}>
+              Book Now
+            </motion.button>
+          </div>
+          {/* Mobile hamburger */}
+          <button className="nav-mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 'var(--space-2)' }}>
+            <div style={{ width: 24, height: 2, backgroundColor: 'var(--color-white)', marginBottom: 5, transition: 'all 0.3s', transform: mobileMenuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none' }} />
+            <div style={{ width: 24, height: 2, backgroundColor: 'var(--color-white)', marginBottom: 5, opacity: mobileMenuOpen ? 0 : 1, transition: 'all 0.3s' }} />
+            <div style={{ width: 24, height: 2, backgroundColor: 'var(--color-white)', transition: 'all 0.3s', transform: mobileMenuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none' }} />
+          </button>
+        </div>
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="nav-mobile-menu" style={{ borderTop: '1px solid rgba(255,204,0,0.15)', padding: 'var(--space-4) var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', padding: 'var(--space-2) 0' }}>How It Works</a>
+            <a href="#fleet" onClick={() => setMobileMenuOpen(false)} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', padding: 'var(--space-2) 0' }}>Fleet</a>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setMobileMenuOpen(false); handleBookNowClick(); }} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', textAlign: 'center' }}>
+              Book Now
+            </motion.button>
+          </motion.div>
+        )}
+      </motion.nav>
+
       <Marquee />
 
       {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}
@@ -335,24 +369,12 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <div className="landing-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 var(--space-6)', maxWidth: 900 }}>
             {/* Flash flicker on content */}
             <motion.div animate={{ opacity: [1, 1, 1, 0.6, 1, 0.85, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}>
-            {/* Bolt icon - large */}
-            <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className="landing-hero-bolt" style={{ marginBottom: 'var(--space-6)' }}>
-              <motion.div animate={{ filter: ['drop-shadow(0 0 20px rgba(255,204,0,0.6))', 'drop-shadow(0 0 40px rgba(255,204,0,0.9))', 'drop-shadow(0 0 20px rgba(255,204,0,0.6))'] }} transition={{ duration: 2, repeat: Infinity }}>
-                <Icons.bolt style={{ width: 80, height: 80, stroke: 'var(--color-yellow)', strokeWidth: 2, margin: '0 auto' }} />
+            {/* Logo */}
+            <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className="landing-hero-logo" style={{ marginBottom: 'var(--space-6)' }}>
+              <motion.div animate={{ filter: ['drop-shadow(0 0 20px rgba(255,204,0,0.4))', 'drop-shadow(0 0 40px rgba(255,204,0,0.7))', 'drop-shadow(0 0 20px rgba(255,204,0,0.4))'] }} transition={{ duration: 2, repeat: Infinity }}>
+                <img src="/dons-rental-logo.png" alt="Don's Rental" style={{ maxWidth: 'clamp(280px, 50vw, 480px)', height: 'auto', display: 'block', margin: '0 auto' }} />
               </motion.div>
             </motion.div>
-
-            {/* Main title - cinematic reveal */}
-            <div style={{ overflow: 'hidden', marginBottom: 'var(--space-2)' }}>
-              <motion.div initial={{ y: '120%' }} animate={{ y: 0 }} transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }} style={{ fontSize: 'clamp(4rem, 10vw, 8rem)', fontWeight: 900, lineHeight: 0.9, letterSpacing: '-0.04em', textTransform: 'uppercase', fontFamily: "'Inter', 'Arial Black', sans-serif" }}>
-                DON<span style={{ display: 'inline-flex', verticalAlign: 'super', marginTop: '-0.15em' }}><Icons.bolt style={{ width: '0.65em', height: '0.65em', stroke: 'var(--color-yellow)', strokeWidth: 2.5, fill: 'var(--color-yellow)' }} /></span>S
-              </motion.div>
-            </div>
-            <div style={{ overflow: 'hidden', marginBottom: 'var(--space-2)' }}>
-              <motion.div initial={{ y: '120%' }} animate={{ y: 0 }} transition={{ duration: 1, delay: 0.45, ease: [0.16, 1, 0.3, 1] }} style={{ fontSize: 'clamp(4rem, 10vw, 8rem)', fontWeight: 900, lineHeight: 0.9, letterSpacing: '-0.04em', textTransform: 'uppercase', color: 'var(--color-yellow)', fontFamily: "'Inter', 'Arial Black', sans-serif" }}>
-                RENTAL
-              </motion.div>
-            </div>
 
             {/* Animated underline */}
             <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.8, delay: 0.8, ease: [0.16, 1, 0.3, 1] }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: 'var(--space-6) auto', maxWidth: 200, transformOrigin: 'center' }} />
@@ -383,7 +405,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
       </motion.header>
 
       {/* ═══ STATS ═══════════════════════════════════════ */}
-      <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7 }} style={{ backgroundColor: 'var(--color-white)', borderTop: '2px solid var(--color-charcoal)', borderBottom: '2px solid var(--color-charcoal)' }}>
+      <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7 }} style={{ backgroundColor: 'var(--color-white)' }}>
         <div className="landing-stats" style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
           {[
             { icon: Icons.clock, val: 24, pre: '', suf: '/7', label: 'Online' },
@@ -391,7 +413,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
             { icon: Icons.bolt, val: 2, pre: '<', suf: 'min', label: 'Booking' },
             { icon: Icons.shield, val: 0, pre: '$', suf: '', label: 'Fees' },
           ].map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }} whileHover={{ backgroundColor: 'var(--color-light-gray)' }} className="landing-stat-item" style={{ padding: 'var(--space-7) var(--space-5)', textAlign: 'center', borderRight: i < 3 ? '2px solid var(--color-charcoal)' : 'none', cursor: 'default', transition: 'background-color 0.2s' }}>
+            <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }} whileHover={{ backgroundColor: 'var(--color-light-gray)' }} className="landing-stat-item" style={{ padding: 'var(--space-7) var(--space-5)', textAlign: 'center', cursor: 'default', transition: 'background-color 0.2s' }}>
               <s.icon style={{ width: 22, height: 22, stroke: 'var(--color-yellow)', margin: '0 auto var(--space-3)' }} />
               <div style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--color-yellow)', fontFamily: 'var(--font-mono)' }}>
                 <AnimCounter target={s.val} prefix={s.pre} suffix={s.suf} />
@@ -424,7 +446,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
       {/* ═══ VEHICLES ═══════════════════════════════════ */}
       {vehicles.length > 0 && (
-        <section className="landing-section landing-vehicles" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-24) var(--space-6)', borderTop: '4px solid var(--color-yellow)', borderBottom: '4px solid var(--color-yellow)', position: 'relative', overflow: 'hidden' }}>
+        <section id="fleet" className="landing-section landing-vehicles" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-24) var(--space-6)', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,204,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,204,0,0.03) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
           <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', position: 'relative', zIndex: 1 }}>
             <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)' }}>
@@ -556,26 +578,16 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
       </motion.section>
 
       {/* ═══ FOOTER ═════════════════════════════════════ */}
-      <footer className="landing-footer" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-12) var(--space-6)', borderTop: '4px solid var(--color-yellow)' }}>
-        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-6)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <Icons.bolt style={{ width: 24, height: 24, stroke: 'var(--color-yellow)' }} />
-              <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: 'var(--font-size-lg)' }}>Don's Car Rental</span>
-              <span style={{ color: 'rgba(255,255,255,0.65)', marginLeft: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>Barbados</span>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.65)' }}>
-              <a href="/privacy" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Privacy</a>
-              <a href="/terms" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Terms</a>
-              <a href="mailto:bookings@donsrental.com" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Contact</a>
-            </div>
+      <footer className="landing-footer" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-12) var(--space-6)' }}>
+        <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-6)' }}>
+          <motion.img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 96, width: 'auto' }} animate={{ filter: ['drop-shadow(0 0 8px rgba(255,204,0,0.4))', 'drop-shadow(0 0 20px rgba(255,204,0,0.8))', 'drop-shadow(0 0 8px rgba(255,204,0,0.4))'] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }} />
+          <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.65)' }}>
+            <a href="/privacy" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Privacy</a>
+            <a href="/terms" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Terms</a>
+            <a href="mailto:bookings@onlineverywhere.com" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Contact</a>
           </div>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 'var(--space-6)', width: '100%', textAlign: 'center' }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.5)' }}>© {new Date().getFullYear()} Don's Car Rental. All rights reserved.</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.5)' }}>
-              <span>Built by</span>
-              <a href="https://onlineverywhere.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-yellow)', textDecoration: 'none', fontWeight: 600 }}>OnlineVeryWhere</a>
-            </div>
           </div>
         </div>
       </footer>

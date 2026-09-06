@@ -652,9 +652,11 @@ async def _query_agent(message: str, principal_id: str) -> str:
                 if "error_code" in chunk:
                     logger.warning("Agent error: %s - %s", chunk.get("error_code"), chunk.get("error_message"))
                     continue
-                content = chunk.get("content") or {}
+                content = chunk.get("content")
+                if not isinstance(content, dict):
+                    continue
                 for p in content.get("parts", []):
-                    if "text" in p:
+                    if isinstance(p, dict) and "text" in p:
                         parts.append(p["text"])
             return " ".join(parts)
 

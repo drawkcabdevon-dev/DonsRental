@@ -341,6 +341,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
         )}
       </motion.nav>
 
+      <Marquee />
+
       {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}
       <motion.header ref={heroRef} style={{ y: heroY, scale: heroScale, opacity: heroOpacity }}>
         <div className="landing-hero" style={{
@@ -401,8 +403,6 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(transparent, var(--color-black))', pointerEvents: 'none' }} />
         </div>
       </motion.header>
-
-      <Marquee />
 
       {/* ═══ STATS ═══════════════════════════════════════ */}
       <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7 }} style={{ backgroundColor: 'var(--color-white)' }}>

@@ -21,12 +21,6 @@ from google.auth import default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from google import genai as genai_client
-try:
-    import sendgrid
-    from sendgrid.helpers.mail import Mail, Email, To, Content
-    _sendgrid_ok = True
-except ImportError:
-    _sendgrid_ok = False
 
 logging.basicConfig(level=logging.INFO)
 
@@ -68,12 +62,22 @@ def _get_sheets():
     _sheets_svc = build('sheets', 'v4', credentials=creds)
     return _sheets_svc
 
-_sg = None
-def _get_sg():
-    global _sg
-    if not _sg and _env('SENDGRID_API_KEY') and _sendgrid_ok:
-        _sg = sendgrid.SendGridAPIClient(api_key=_env('SENDGRID_API_KEY'))
-    return _sg
+_gmail_svc = None
+def _get_gmail():
+    global _gmail_svc
+    if _gmail_svc:
+        return _gmail_svc
+    _ensure_init()
+    creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
+    if creds_json:
+        creds = service_account.Credentials.from_service_account_info(
+            json.loads(creds_json),
+            scopes=['https://www.googleapis.com/auth/gmail.send'],
+        )
+    else:
+        creds, _ = default(scopes=['https://www.googleapis.com/auth/gmail.send'])
+    _gmail_svc = build('gmail', 'v1', credentials=creds)
+    return _gmail_svc
 
 def _esc(s):
     return str(s or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
@@ -119,7 +123,7 @@ def _company_phone():
     return _env('COMPANY_PHONE', '+1 (555) 000-0000')
 
 def _owner_email():
-    return _env('OWNER_EMAIL', '')
+    return _env('OWNER_EMAIL', 'devon@onlineverywhere.com')
 
 # ══════════════════════════════════════════
 #  TOOLS
@@ -381,7 +385,7 @@ def create_booking(
 
     return {
         'booking_id': b_id,
-        'success': True,
+        'success': sheets_ok,
         'sheets_stored': sheets_ok,
         'email_sent': email_ok,
         'total': total,
@@ -389,12 +393,36 @@ def create_booking(
     }
 
 
-def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
-                 days, total, lic_num, lic_exp, lic_iss, pm):
-    sg = _get_sg()
-    if not sg:
+def _send_gmail(to, subject, html_body, text_body=''):
+    """Send an email via Gmail API using the service account."""
+    if not to:
+        return False
+    try:
+        svc = _get_gmail()
+        if not svc:
+            return False
+        import base64 as b64
+        from email.mime.text import MIMEText
+
+        msg = MIMEText(html_body or text_body, 'html')
+        msg['to'] = to
+        msg['from'] = _company_email()
+        msg['subject'] = subject
+
+        raw = b64.urlsafe_b64encode(msg.as_bytes()).decode('utf-8')
+        svc.users().messages().send(
+            userId='me',
+            body={'raw': raw},
+        ).execute()
+        logging.info(f'Email sent to {to}: {subject}')
+        return True
+    except Exception as e:
+        logging.error(f'Gmail API failed for {to}: {e}')
         return False
 
+
+def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
+                 days, total, lic_num, lic_exp, lic_iss, pm):
     payment_txt = {
         'pay_on_pickup': 'Pay when you pick up the vehicle. We accept cash and card.',
         'bank_transfer': f'Transfer to: Bank: Your Bank | Account: 1234-5678 | Use ref {b_id}',
@@ -434,35 +462,46 @@ def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
   <p style="color:#999;font-size:.85rem;">{_esc(cname)} &bull; {_esc(cphone)}</p>
 </div></body></html>'''
 
-    try:
-        msg = Mail(
-            from_email=Email(cemail, cname),
-            to_emails=To(email),
-            subject=f'Booking Confirmation & Invoice — {cname} (Ref: {b_id})',
-            html_content=Content('text/html', invoice),
-        )
-        sg.client.mail.send.post(request_body=msg.get())
-        logging.info(f'Invoice sent to {email} for {b_id}')
-    except Exception as e:
-        logging.error(f'Invoice send failed: {e}')
-        time.sleep(1)
-        try:
-            sg.client.mail.send.post(request_body=msg.get())
-        except Exception as e2:
-            logging.error(f'Retry also failed: {e2}')
-            return False
+    text_body = f"""{cname} — Booking Confirmation
+
+Reference: {b_id}
+Customer: {name}
+Vehicle: {vehicle}
+Pick-up: {pu_d} at {pu_t}
+Return: {re_d} at {re_t}
+Duration: {days} day(s)
+Total Due: ${total}
+
+Payment: {payment_txt}
+
+License: {lic_num} (exp {lic_exp}) — {lic_iss}
+
+{cname} — {cphone} — {cemail}"""
+
+    email_ok = _send_gmail(email, f'Booking Confirmation — {cname} (Ref: {b_id})', invoice, text_body)
 
     if oemail:
-        try:
-            alert = Mail(
-                from_email=Email(cemail, cname),
-                to_emails=To(oemail),
-                subject=f'New Booking: {name} — {vehicle} ({b_id})',
-                html_content=Content('text/html', f'<p>{name} booked {vehicle} from {pu_d} to {re_d}. Total: ${total}. Check your sheet.</p>'),
-            )
-            sg.client.mail.send.post(request_body=alert.get())
-        except Exception:
-            pass
+        alert_html = f'''<!DOCTYPE html>
+<html><body style="font-family:Arial,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;">
+<div style="background:#0f3460;color:#fff;padding:24px 32px;border-radius:12px 12px 0 0;">
+  <h2 style="margin:0;">{_esc(cname)}</h2>
+  <p style="margin:4px 0 0;opacity:.85;">New Booking Notification</p>
+</div>
+<div style="padding:24px 32px;border:1px solid #e0e0e0;border-top:0;border-radius:0 0 12px 12px;">
+  <p><strong>{_esc(name)}</strong> booked <strong>{_esc(vehicle)}</strong></p>
+  <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Reference</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:700;">{_esc(b_id)}</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Pick-up</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{_esc(pu_d)} at {_esc(pu_t)}</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Return</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{_esc(re_d)} at {_esc(re_t)}</td></tr>
+    <tr><td style="padding:8px 12px;color:#666;">Total</td>
+        <td style="padding:8px 12px;font-weight:700;color:#0f3460;">${total}</td></tr>
+  </table>
+  <p style="color:#999;font-size:.85rem;">Customer: {_esc(email)} | Phone: {_esc(cphone)}</p>
+</div></body></html>'''
+        _send_gmail(oemail, f'New Booking: {name} — {vehicle} ({b_id})', alert_html)
 
     topic = _env('NTFY_TOPIC')
     if topic:
@@ -477,7 +516,7 @@ def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
         except URLError:
             pass
 
-    return True
+    return email_ok
 
 
 # ══════════════════════════════════════════

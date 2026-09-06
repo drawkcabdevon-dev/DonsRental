@@ -104,14 +104,13 @@ curl -X POST https://rentals.onlineverywhere.com/api/bookings \
 
 ---
 
-## Step 7: Install Apps Script for Email Notifications
+## Step 7: Verify Email Notifications
 
-1. Open Google Sheet: https://docs.google.com/spreadsheets/d/1i8rkv11Zmuv_btAiJNji1MAj9GylHOJZEUucAqqb6-0/edit
-2. **Extensions > Apps Script**
-3. Delete any existing code, paste contents of `apps-script/booking-notifications.gs`
-4. Save (Ctrl+S), name: "Don's Rental Notifications"
-5. Run `setupTriggers()` → approve permissions
-6. Test: add a row to `Bookings` tab with `status=Confirmed` and `custEmail=your@email.com`
+Emails are sent automatically by the backend via Gmail API using the service account. No Apps Script needed.
+
+1. Create a test booking via the booking form
+2. Check that the customer receives a confirmation email
+3. Check that the owner (devon@onlineverywhere.com) receives a notification email
 
 ---
 
@@ -121,7 +120,6 @@ curl -X POST https://rentals.onlineverywhere.com/api/bookings \
 |-----------|-------------|
 | Live App | https://rentals.onlineverywhere.com |
 | Google Sheet | https://docs.google.com/spreadsheets/d/1i8rkv11Zmuv_btAiJNji1MAj9GylHOJZEUucAqqb6-0/edit |
-| Apps Script | Extensions > Apps Script (in Sheet) |
 | Cloud Run Console | https://console.cloud.google.com/run/detail/europe-west1/donsrental |
 | Vertex AI Agent Engine | https://console.cloud.google.com/vertex-ai/agents/reasoning-engines |
 | Secret Manager | https://console.cloud.google.com/security/secret-manager?project=renal-car-booking |
@@ -145,7 +143,7 @@ curl -X POST https://rentals.onlineverywhere.com/api/bookings \
 | "Default credentials not found" | Run `gcloud auth application-default login` |
 | "Permission denied on Cloud Run" | Ensure you're using YOUR gcloud auth, not service account |
 | Agent deploy fails | Add `cloudpickle` to agent/requirements.txt |
-| Emails not sending | Check Apps Script trigger installed, Gmail quota not exceeded |
+| Emails not sending | Check service account has Gmail API enabled and owner email is correct |
 | Sheet not updating | Verify service account has Editor access to Sheet |
 | Calendar events not showing | Verify service account has "Make changes to events" on Calendar |
 | `gcloud auth` fails | Run `gcloud auth login` with personal account |

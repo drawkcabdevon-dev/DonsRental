@@ -6,11 +6,11 @@
 agent/          ← ADK agent deployed to Vertex AI Agent Engine
   main.py       ← agent definition + 4 tools: get_vehicles, scan_license, check_availability, create_booking
   deploy.py     ← deploy interactive or via --auto with env vars
-  requirements.txt  ← google-adk, google-cloud-aiplatform, sendgrid, etc.
+  requirements.txt  ← google-adk, google-cloud-aiplatform, google-genai, etc.
 
 backend/        ← FastAPI Cloud Run service
   main.py       ← proxies /api/chat to Agent Engine, serves frontend static files, /api/scan-license OCR
-  requirements.txt  ← fastapi, uvicorn, httpx, google-api-python-client, sendgrid
+  requirements.txt  ← fastapi, uvicorn, httpx, google-api-python-client
 
 frontend/       ← React 19 + Vite + TypeScript SPA
   package.json  ← scripts: dev, build, lint (oxlint), preview
@@ -78,12 +78,12 @@ gcloud builds submit
 - In-memory booking store (`_bookings` list in `backend/main.py`) — resets on restart. Google Sheets is the persistent fallback.
 - **Google Sheets tab names must match exactly.** The Vehicles tab was misspelled as "Vechile " — caused silent fallback to hardcoded data with $0 rates. Always verify tab names with the Sheets API before debugging data issues.
 - License OCR calls Gemini API directly (Gemini API key via env), not through Vertex AI.
-- SendGrid optional; falls back to SMTP env vars, then logs-only.
+- Emails are sent via Gmail API using the service account (same credentials as Google Sheets). No external email service required.
 - `.dockerignore` excludes `agent/` so the Cloud Run container cannot host the ADK agent itself.
 - GCP project for cloudbuild defaults to `renal-car-booking` (from deploy-cloudrun.sh default), but cloudbuild.yaml uses substitutions.
 
 ## Required env vars
 
-Backend/Agent Agent Engine: `GEMINI_API_KEY`, `SPREADSHEET_ID`, `GOOGLE_SHEETS_CREDENTIALS` (full JSON), `GCS_BUCKET`, `GCS_PHOTOS_PREFIX`, `SENDGRID_API_KEY` (optional), `OWNER_EMAIL` (optional)
+Backend/Agent Agent Engine: `GEMINI_API_KEY`, `SPREADSHEET_ID`, `GOOGLE_SHEETS_CREDENTIALS` (full JSON), `GCS_BUCKET`, `GCS_PHOTOS_PREFIX`, `OWNER_EMAIL`
 Backend Cloud Run: `AGENT_ENGINE`, `GEMINI_API_KEY`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `GOOGLE_SHEETS_CREDENTIALS`, `GCS_BUCKET`, `GCS_PHOTOS_PREFIX`
 Frontend: `VITE_API_BASE` (default `http://localhost:8000/api`)

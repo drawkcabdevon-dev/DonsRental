@@ -5,7 +5,6 @@
 - ✅ Frontend lint clean
 - ✅ Python syntax OK
 - ✅ End-to-end test passes (booking → Sheet)
-- ✅ Apps Script created for email notifications
 - ✅ GCS photo upload working (signed URLs)
 - ✅ Secrets managed via Secret Manager
 - ✅ Google Calendar integration (availability + events)
@@ -61,14 +60,13 @@ curl -X POST https://rentals.onlineverywhere.com/api/check-availability \
 
 ---
 
-## Install Apps Script for Emails
+## Verify Email Notifications
 
-See `APPS_SCRIPT_SETUP.md` for full instructions.
+Emails are sent automatically via Gmail API using the service account. No Apps Script needed.
 
-Quick version:
-1. Open Sheet → Extensions → Apps Script
-2. Paste `apps-script/booking-notifications.gs`
-3. Run `setupTriggers()` → approve permissions
+1. Create a test booking via the booking form
+2. Check that the customer receives a confirmation email
+3. Check that the owner (devon@onlineverywhere.com) receives a notification email
 
 ---
 
@@ -141,7 +139,7 @@ gcloud run services logs read donsrental --region=europe-west1 --project=renal-c
 | `403 Forbidden` on Sheet API | Share Sheet with service account (Editor) |
 | Bookings not writing to Sheet | Check Secret Manager secrets exist and Cloud Run SA has access |
 | Vehicles showing hardcoded | Same as above — Sheets not connected |
-| Emails not sending | Check Apps Script trigger installed, Gmail quota not exceeded |
+| Emails not sending | Check service account has Gmail API enabled and owner email is correct |
 | Calendar events not showing | Verify service account has "Make changes to events" on Calendar |
 | `gcloud auth` fails | Run `gcloud auth login` with personal account |
 | Cloud Run deploy permission | Ensure your user has `Cloud Run Admin` role |

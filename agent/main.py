@@ -50,17 +50,21 @@ def _get_sheets():
     global _sheets_svc
     if _sheets_svc:
         return _sheets_svc
-    _ensure_init()
-    creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
-    if creds_json:
-        creds = service_account.Credentials.from_service_account_info(
-            json.loads(creds_json),
-            scopes=['https://www.googleapis.com/auth/spreadsheets'],
-        )
-    else:
-        creds, _ = default(scopes=['https://www.googleapis.com/auth/spreadsheets'])
-    _sheets_svc = build('sheets', 'v4', credentials=creds)
-    return _sheets_svc
+    try:
+        _ensure_init()
+        creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
+        if creds_json:
+            creds = service_account.Credentials.from_service_account_info(
+                json.loads(creds_json),
+                scopes=['https://www.googleapis.com/auth/spreadsheets'],
+            )
+        else:
+            creds, _ = default(scopes=['https://www.googleapis.com/auth/spreadsheets'])
+        _sheets_svc = build('sheets', 'v4', credentials=creds)
+        return _sheets_svc
+    except Exception as e:
+        logging.error(f'Sheets service init failed: {e}')
+        return None
 
 _calendar_svc = None
 CALENDAR_ID = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
@@ -90,17 +94,21 @@ def _get_gmail():
     global _gmail_svc
     if _gmail_svc:
         return _gmail_svc
-    _ensure_init()
-    creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
-    if creds_json:
-        creds = service_account.Credentials.from_service_account_info(
-            json.loads(creds_json),
-            scopes=['https://www.googleapis.com/auth/gmail.send'],
-        )
-    else:
-        creds, _ = default(scopes=['https://www.googleapis.com/auth/gmail.send'])
-    _gmail_svc = build('gmail', 'v1', credentials=creds)
-    return _gmail_svc
+    try:
+        _ensure_init()
+        creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
+        if creds_json:
+            creds = service_account.Credentials.from_service_account_info(
+                json.loads(creds_json),
+                scopes=['https://www.googleapis.com/auth/gmail.send'],
+            )
+        else:
+            creds, _ = default(scopes=['https://www.googleapis.com/auth/gmail.send'])
+        _gmail_svc = build('gmail', 'v1', credentials=creds)
+        return _gmail_svc
+    except Exception as e:
+        logging.error(f'Gmail service init failed: {e}')
+        return None
 
 def _esc(s):
     return str(s or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
@@ -183,6 +191,8 @@ def _fetch_vehicles_from_sheet() -> list:
         headers = [h.strip().lower() for h in rows[0]]
         vehicles = []
         for row in rows[1:]:
+            if not row:
+                continue
             obj = {}
             for i, h in enumerate(headers):
                 obj[h] = row[i] if i < len(row) else ''
@@ -202,8 +212,12 @@ def _fetch_booked_dates_from_sheet(vehicle_id: str) -> set:
     """Return active booked dates for a vehicle from the Bookings sheet."""
     sid = _env('SPREADSHEET_ID')
     booked = set()
+    if not sid:
+        return booked
     try:
         svc = _get_sheets()
+        if not svc:
+            return booked
         result = svc.spreadsheets().values().get(
             spreadsheetId=sid, range='Bookings!A:V',
         ).execute()
@@ -212,10 +226,12 @@ def _fetch_booked_dates_from_sheet(vehicle_id: str) -> set:
             return booked
         headers = [h.strip().lower() for h in rows[0]]
         for row in rows[1:]:
+            if not row:
+                continue
             obj = {}
             for i, h in enumerate(headers):
                 obj[h] = row[i] if i < len(row) else ''
-            status = obj.get('status', obj.get('bookingstatus', 'Confirmed')).strip().lower()
+            status = (obj.get('status') or obj.get('bookingstatus') or 'Confirmed').strip().lower()
             if obj.get('vehicleid') != vehicle_id or status in {'cancelled', 'canceled'}:
                 continue
             bp = _parse_date(obj.get('pickupdate', ''))
@@ -248,16 +264,16 @@ def _fetch_calendar_blocked_dates(start_date: str, end_date: str) -> set:
             maxResults=100,
         ).execute()
         for event in events_result.get('items', []):
-            start = event.get('start', {})
-            end = event.get('end', {})
+            start = event.get('start') or {}
+            end = event.get('end') or {}
             if 'date' in start:
-                ev_start = _parse_date(start['date'])
+                ev_start = _parse_date(start.get('date', ''))
                 ev_end = _parse_date(end.get('date', ''))
                 if ev_end:
                     ev_end -= timedelta(days=1)
             else:
-                ev_start = _parse_date(start.get('dateTime', '')[:10])
-                ev_end = _parse_date(end.get('dateTime', '')[:10])
+                ev_start = _parse_date((start.get('dateTime') or '')[:10])
+                ev_end = _parse_date((end.get('dateTime') or '')[:10])
             if ev_start and ev_end:
                 current = ev_start
                 while current <= ev_end:
@@ -410,6 +426,9 @@ def scan_license(image_base64: str) -> dict:
     if not client:
         return {'error': 'Gemini API key not configured'}
 
+    if not image_base64:
+        return {'error': 'No image data provided'}
+
     if ',' in image_base64:
         image_base64 = image_base64.split(',', 1)[1]
 
@@ -513,12 +532,14 @@ def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> d
             if len(rows) >= 2:
                 headers = [h.strip().lower() for h in rows[0]]
                 for row in rows[1:]:
+                    if not row:
+                        continue
                     obj = {}
                     for i, h in enumerate(headers):
                         obj[h] = row[i] if i < len(row) else ''
                     if obj.get('vehicleid') != vehicle_id:
                         continue
-                    status = obj.get('status', obj.get('bookingstatus', 'Confirmed')).strip().lower()
+                    status = (obj.get('status') or obj.get('bookingstatus') or 'Confirmed').strip().lower()
                     if status in {'cancelled', 'canceled'}:
                         continue
                     existing_pu = _parse_date(obj.get('pickupdate', ''))
@@ -556,22 +577,22 @@ def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> d
                 maxResults=100,
             ).execute()
             for event in events_result.get('items', []):
-                start = event.get('start', {})
-                end = event.get('end', {})
+                start = event.get('start') or {}
+                end = event.get('end') or {}
                 if 'date' in start:
-                    ev_start = _parse_date(start['date'])
+                    ev_start = _parse_date(start.get('date', ''))
                     ev_end = _parse_date(end.get('date', ''))
                     if ev_end:
                         ev_end -= timedelta(days=1)
                 else:
-                    ev_start = _parse_date(start.get('dateTime', '')[:10])
-                    ev_end = _parse_date(end.get('dateTime', '')[:10])
+                    ev_start = _parse_date((start.get('dateTime') or '')[:10])
+                    ev_end = _parse_date((end.get('dateTime') or '')[:10])
                 if ev_start and ev_end and _dates_overlap(pu, re_d, ev_start, ev_end):
                     conflicts.append({
                         'type': 'calendar',
                         'summary': event.get('summary', 'Blocked'),
-                        'start': start.get('date') or start.get('dateTime', ''),
-                        'end': end.get('date') or end.get('dateTime', ''),
+                        'start': start.get('date') or (start.get('dateTime') or ''),
+                        'end': end.get('date') or (end.get('dateTime') or ''),
                     })
     except Exception as e:
         logging.error(f'Calendar availability check: {e}')
@@ -846,6 +867,7 @@ License: {lic_num} (exp {lic_exp}) — {lic_iss}
 # ══════════════════════════════════════════
 
 def _build_instruction(ctx=None):
+    today = date.today().isoformat()
     return f"""
 You are a friendly car rental booking assistant for {_company()}, based in Barbados.
 
@@ -855,7 +877,7 @@ VEHICLE & PRICING:
 - All prices are in Barbados dollars (Bds$).
 
 DATE HANDLING — you MUST resolve natural language into YYYY-MM-DD dates:
-Today is {{{{today}}}}.
+Today is {today}.
 When the customer says something like:
 - "this week" → use this Mon-Fri (Mon to Fri of the current week)
 - "next week" → use next Mon-Fri

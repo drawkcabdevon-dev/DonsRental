@@ -95,7 +95,7 @@ export const api = {
   },
 
   // Chat with the booking agent
-  async chat(message: string, sessionId: string = ''): Promise<{ response: string; bookingRef: string }> {
+  async chat(message: string, sessionId: string = ''): Promise<{ response: string; bookingRef: string; sessionId?: string }> {
     try {
       const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
@@ -103,10 +103,15 @@ export const api = {
         body: JSON.stringify({ message, session_id: sessionId }),
       });
       if (!response.ok) throw new Error('Chat failed');
-      return await response.json();
+      const data = await response.json();
+      return {
+        response: data.response,
+        bookingRef: data.booking_ref || data.bookingRef || '',
+        sessionId: data.session_id || '',
+      };
     } catch (error) {
       console.error('Chat error:', error);
-      return { response: 'Sorry, I\'m having trouble connecting. Please try again.', bookingRef: '' };
+      return { response: 'Sorry, I\'m having trouble connecting. Please try again.', bookingRef: '', sessionId: '' };
     }
   },
 

@@ -47,6 +47,10 @@ MAIL_FROM = os.environ.get("MAIL_FROM", "bookings@onlineverywhere.com")
 OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "devon@onlineverywhere.com")
 COMPANY_NAME = os.environ.get("COMPANY_NAME", "Don's Rental")
 COMPANY_PHONE = os.environ.get("COMPANY_PHONE", "+1 (246) 268-2842")
+_SESSION_SECRET = os.environ.get("SESSION_SECRET")
+if not _SESSION_SECRET:
+    _SESSION_SECRET = os.urandom(32).hex()
+    logger.warning("SESSION_SECRET is not configured; sessions will reset when this instance restarts")
 
 app = FastAPI(title="Don's Rental Backend")
 
@@ -567,6 +571,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     booking_ref: str = ""
+    session_id: str
 
 class PhotoUploadRequest(BaseModel):
     image: str
@@ -588,7 +593,37 @@ def _extract_booking_ref(text: str) -> str:
     m = re.search(r'(BK[-:][A-Z0-9]+)', text, re.I)
     return m.group(1).upper() if m else ""
 
-async def _query_agent(message: str, session_id: str = "") -> str:
+_CHAT_SESSION_SECRET = hmac.new(
+    _SESSION_SECRET.encode(), b"chat-session", hashlib.sha256
+).hexdigest()
+_CHAT_SESSION_MAX_AGE = 30 * 24 * 60 * 60
+
+def _make_chat_session_token(principal_id: str) -> str:
+    payload = f"chat:{principal_id}:{int(time.time())}"
+    signature = hmac.new(
+        _CHAT_SESSION_SECRET.encode(), payload.encode(), hashlib.sha256
+    ).hexdigest()
+    encoded = base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")
+    return f"{encoded}.{signature}"
+
+def _verify_chat_session_token(token: str) -> Optional[str]:
+    try:
+        encoded, signature = token.rsplit(".", 1)
+        payload = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode()
+        expected = hmac.new(
+            _CHAT_SESSION_SECRET.encode(), payload.encode(), hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            return None
+        prefix, principal_id, issued_at = payload.split(":", 2)
+        age = int(time.time()) - int(issued_at)
+        if prefix != "chat" or not principal_id or age < 0 or age > _CHAT_SESSION_MAX_AGE:
+            return None
+        return principal_id
+    except (ValueError, TypeError, UnicodeDecodeError):
+        return None
+
+async def _query_agent(message: str, principal_id: str) -> str:
     if not AGENT_ENGINE:
         raise HTTPException(503, "Agent Engine not configured (set AGENT_ENGINE env var)")
 
@@ -598,9 +633,10 @@ async def _query_agent(message: str, session_id: str = "") -> str:
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
-    body = {"input": {"message": message, "user_id": session_id or "web-user"}}
-    if session_id:
-        body["session_id"] = session_id
+    body = {
+        "input": {"message": message, "user_id": principal_id},
+        "session_id": principal_id,
+    }
 
     async with httpx.AsyncClient(timeout=120) as client:
         async with client.stream("POST", url, json=body, headers=headers) as resp:
@@ -627,12 +663,16 @@ async def _query_agent(message: str, session_id: str = "") -> str:
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    logger.info("Sending to agent (session=%s): %s", req.session_id or "none", req.message[:100])
+    principal_id = _verify_chat_session_token(req.session_id) if req.session_id else None
+    if not principal_id:
+        principal_id = f"chat_{uuid.uuid4().hex}"
+    session_token = _make_chat_session_token(principal_id)
+    logger.info("Sending to agent (principal=%s): %s", principal_id, req.message[:100])
     try:
-        text = await _query_agent(req.message, req.session_id)
+        text = await _query_agent(req.message, principal_id)
         ref = _extract_booking_ref(text)
         logger.info("Agent response (len=%d, ref=%s)", len(text), ref or "none")
-        return ChatResponse(response=text, booking_ref=ref)
+        return ChatResponse(response=text, booking_ref=ref, session_id=session_token)
     except HTTPException:
         raise
     except Exception as e:
@@ -1379,9 +1419,6 @@ async def create_booking(req: BookingRequest):
 ADMIN_KEY = os.getenv("ADMIN_KEY", "")
 
 # ── Admin session helpers ────────────────────────────────
-_SESSION_SECRET = os.environ.get("SESSION_SECRET", hashlib.sha256(
-    (OWNER_EMAIL + "donsrental-session-salt").encode()
-).hexdigest())
 
 def _make_session_token(email: str) -> str:
     """Create an HMAC-signed session token."""

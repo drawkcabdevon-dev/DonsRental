@@ -189,8 +189,8 @@ def _fetch_vehicles_from_sheet() -> list:
         return []
 
 
-def _fetch_booked_dates_from_sheet() -> set:
-    """Return all booked dates (YYYY-MM-DD) from the Bookings sheet."""
+def _fetch_booked_dates_from_sheet(vehicle_id: str) -> set:
+    """Return active booked dates for a vehicle from the Bookings sheet."""
     sid = _env('SPREADSHEET_ID')
     booked = set()
     try:
@@ -206,6 +206,9 @@ def _fetch_booked_dates_from_sheet() -> set:
             obj = {}
             for i, h in enumerate(headers):
                 obj[h] = row[i] if i < len(row) else ''
+            status = obj.get('status', obj.get('bookingstatus', 'Confirmed')).strip().lower()
+            if obj.get('vehicleid') != vehicle_id or status in {'cancelled', 'canceled'}:
+                continue
             bp = _parse_date(obj.get('pickupdate', ''))
             br = _parse_date(obj.get('returndate', ''))
             if bp and br:
@@ -239,6 +242,8 @@ def _fetch_calendar_blocked_dates(start_date: str, end_date: str) -> set:
             if 'date' in start:
                 ev_start = _parse_date(start['date'])
                 ev_end = _parse_date(end.get('date', ''))
+                if ev_end:
+                    ev_end -= timedelta(days=1)
             else:
                 ev_start = _parse_date(start.get('dateTime', '')[:10])
                 ev_end = _parse_date(end.get('dateTime', '')[:10])
@@ -252,9 +257,9 @@ def _fetch_calendar_blocked_dates(start_date: str, end_date: str) -> set:
     return blocked
 
 
-def _get_all_booked_dates(start_date: str, end_date: str) -> set:
+def _get_all_booked_dates(vehicle_id: str, start_date: str, end_date: str) -> set:
     """Merge booked dates from Sheets + Calendar for a date range."""
-    sheet_dates = _fetch_booked_dates_from_sheet()
+    sheet_dates = _fetch_booked_dates_from_sheet(vehicle_id)
     cal_dates = _fetch_calendar_blocked_dates(start_date, end_date)
     return sheet_dates | cal_dates
 
@@ -294,7 +299,7 @@ def get_vehicles() -> list:
     ]
 
 
-def find_available_dates(duration_days: int, start_from: str = '') -> dict:
+def find_available_dates(vehicle_id: str, duration_days: int, start_from: str = '') -> dict:
     """Find the next available date windows for a given rental duration.
 
     Checks both Google Sheets bookings AND Google Calendar events to find
@@ -302,6 +307,7 @@ def find_available_dates(duration_days: int, start_from: str = '') -> dict:
     returns the first 5 available windows.
 
     Args:
+        vehicle_id: Vehicle identifier returned by get_vehicles().
         duration_days: Number of days for the rental (e.g. 3 for a 3-day trip).
         start_from: ISO date to start searching from (YYYY-MM-DD). Defaults to today.
 
@@ -318,7 +324,7 @@ def find_available_dates(duration_days: int, start_from: str = '') -> dict:
 
     # Search the next 90 days for available windows
     search_end = search_start + timedelta(days=90)
-    all_booked = _get_all_booked_dates(search_start.isoformat(), search_end.isoformat())
+    all_booked = _get_all_booked_dates(vehicle_id, search_start.isoformat(), search_end.isoformat())
 
     available = []
     current = search_start
@@ -346,7 +352,7 @@ def find_available_dates(duration_days: int, start_from: str = '') -> dict:
             if len(available) >= 5:
                 break
             # Skip ahead to avoid overlapping windows
-            current += timedelta(days=1)
+            current += timedelta(days=duration_days)
         else:
             # Jump past the conflict
             current += timedelta(days=1)
@@ -460,6 +466,7 @@ def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> d
         return {'available': False, 'conflicts': [], 'error': 'Invalid date format. Use YYYY-MM-DD.'}
 
     conflicts = []
+    lookup_failures = []
 
     # Check Sheets bookings
     sid = _env('SPREADSHEET_ID')
@@ -478,6 +485,9 @@ def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> d
                         obj[h] = row[i] if i < len(row) else ''
                     if obj.get('vehicleid') != vehicle_id:
                         continue
+                    status = obj.get('status', obj.get('bookingstatus', 'Confirmed')).strip().lower()
+                    if status in {'cancelled', 'canceled'}:
+                        continue
                     existing_pu = _parse_date(obj.get('pickupdate', ''))
                     existing_re = _parse_date(obj.get('returndate', ''))
                     if existing_pu and existing_re:
@@ -488,10 +498,13 @@ def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> d
                                 'pickup': obj.get('pickupdate'),
                                 'return': obj.get('returndate'),
                                 'customer': obj.get('custname', ''),
-                                'status': obj.get('bookingstatus', 'Confirmed'),
+                                'status': obj.get('status', obj.get('bookingstatus', 'Confirmed')),
                             })
+        else:
+            lookup_failures.append('sheets')
     except Exception as e:
         logging.error(f'Sheet availability check: {e}')
+        lookup_failures.append('sheets')
 
     # Check Google Calendar events
     try:
@@ -512,6 +525,8 @@ def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> d
             if 'date' in start:
                 ev_start = _parse_date(start['date'])
                 ev_end = _parse_date(end.get('date', ''))
+                if ev_end:
+                    ev_end -= timedelta(days=1)
             else:
                 ev_start = _parse_date(start.get('dateTime', '')[:10])
                 ev_end = _parse_date(end.get('dateTime', '')[:10])
@@ -524,8 +539,16 @@ def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> d
                 })
     except Exception as e:
         logging.error(f'Calendar availability check: {e}')
+        lookup_failures.append('calendar')
 
-    return {'available': len(conflicts) == 0, 'conflicts': conflicts}
+    result = {
+        'available': not lookup_failures and len(conflicts) == 0,
+        'conflicts': conflicts,
+        'lookup_failures': lookup_failures,
+    }
+    if lookup_failures:
+        result['error'] = 'Availability could not be verified. Please try again.'
+    return result
 
 
 def create_booking(
@@ -783,8 +806,7 @@ def _build_instruction(ctx=None):
 You are a friendly car rental booking assistant for {_company()}, based in Barbados.
 
 VEHICLE & PRICING:
-- Call get_vehicles() to see current vehicles and rates.
-- Suzuki Swift at Bds$120/day (Barbados dollars).
+- Call get_vehicles() to see current vehicles and rates, and use the returned vehicle and rate.
 - Minimum 2-day rental. Weekend specials and weekly discounts available.
 - All prices are in Barbados dollars (Bds$).
 
@@ -804,11 +826,11 @@ Always resolve dates to YYYY-MM-DD format. Always confirm the exact dates back
 to the customer after resolving them (e.g. "So that's Monday March 3 to Friday March 7").
 
 FINDING AVAILABLE DATES — when the user gives a DURATION without specific dates:
-  1. Call find_available_dates(duration_days=N) where N is the number of days they want.
+  1. Call find_available_dates(vehicle_id=ID, duration_days=N), using the ID from get_vehicles().
   2. The tool checks both Google Sheets bookings AND Google Calendar for real availability.
   3. Present the returned available date windows to the user as options.
   4. Format the output with [AVAILABLE_DATES] so the frontend can render interactive chips.
-  Example: User says "I need a car for 3 days" → call find_available_dates(duration_days=3)
+  Example: User says "I need a car for 3 days" → call get_vehicles(), then call find_available_dates(vehicle_id=ID, duration_days=3)
   Then present the results like:
   "Here are the nearest available 3-day windows:
   [AVAILABLE_DATES]

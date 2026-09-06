@@ -318,7 +318,7 @@ const INITIAL_SUGGESTIONS = [
 export function ChatWidget() {
   const stored = getStoredSession();
   const [isOpen, setIsOpen] = useState(false);
-  const [sessionId] = useState(() => stored?.sessionId || generateSessionId());
+  const [sessionId, setSessionId] = useState(() => stored?.sessionId || generateSessionId());
   const [messages, setMessages] = useState<ChatMessage[]>(
     stored?.messages?.length
       ? stored.messages
@@ -353,7 +353,10 @@ export function ChatWidget() {
     setIsLoading(true);
 
     try {
-      const { response, bookingRef } = await api.chat(msg, sessionId);
+      const { response, bookingRef, sessionId: verifiedSessionId } = await api.chat(msg, sessionId);
+      if (verifiedSessionId && verifiedSessionId !== sessionId) {
+        setSessionId(verifiedSessionId);
+      }
       const { clean, suggestions, availableDates } = parseAgentResponse(response);
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -437,8 +440,8 @@ export function ChatWidget() {
           {isLoading && (
             <div className="chat-message assistant">
               <div className="message-bubble">
-                <div className="typing-indicator">
-                  <span></span><span></span><span></span>
+                <div className="typing-indicator" role="status" aria-live="polite" aria-label="Assistant is typing">
+                  <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
                 </div>
               </div>
             </div>

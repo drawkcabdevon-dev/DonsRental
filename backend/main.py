@@ -528,6 +528,7 @@ app.add_middleware(
     ],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 # ── Simple in-memory rate limiter ──────────────────────
@@ -1480,7 +1481,7 @@ async def admin_verify(req: AdminVerifyRequest):
     response = JSONResponse({"email": email, "authenticated": True})
     response.set_cookie(
         "donsrental_admin_session", token,
-        httponly=True, secure=True, samesite="lax", max_age=86400
+        httponly=True, secure=True, samesite="none", max_age=86400
     )
     return response
 

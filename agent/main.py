@@ -40,17 +40,21 @@ def _env(key, default_val=''):
 _genai_client = None
 def _get_genai():
     global _genai_client
-    k = _env('GEMINI_API_KEY')
-    if _genai_client is None and k:
-        _genai_client = genai_client.Client(api_key=k)
-    return _genai_client
+    try:
+        k = _env('GEMINI_API_KEY')
+        if _genai_client is None and k:
+            _genai_client = genai_client.Client(api_key=k)
+        return _genai_client
+    except Exception as e:
+        logging.exception('_get_genai failed')
+        return None
 
 _sheets_svc = None
 def _get_sheets():
     global _sheets_svc
-    if _sheets_svc:
-        return _sheets_svc
     try:
+        if _sheets_svc:
+            return _sheets_svc
         _ensure_init()
         creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
         if creds_json:
@@ -63,7 +67,7 @@ def _get_sheets():
         _sheets_svc = build('sheets', 'v4', credentials=creds)
         return _sheets_svc
     except Exception as e:
-        logging.error(f'Sheets service init failed: {e}')
+        logging.exception('_get_sheets failed')
         return None
 
 _calendar_svc = None
@@ -71,9 +75,9 @@ CALENDAR_ID = os.environ.get('GOOGLE_CALENDAR_ID', 'primary')
 
 def _get_calendar():
     global _calendar_svc
-    if _calendar_svc:
-        return _calendar_svc
     try:
+        if _calendar_svc:
+            return _calendar_svc
         _ensure_init()
         creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
         if creds_json:
@@ -86,15 +90,15 @@ def _get_calendar():
         _calendar_svc = build('calendar', 'v3', credentials=creds)
         return _calendar_svc
     except Exception as e:
-        logging.error(f'Calendar service init failed: {e}')
+        logging.exception('_get_calendar failed')
         return None
 
 _gmail_svc = None
 def _get_gmail():
     global _gmail_svc
-    if _gmail_svc:
-        return _gmail_svc
     try:
+        if _gmail_svc:
+            return _gmail_svc
         _ensure_init()
         creds_json = _env('GOOGLE_SHEETS_CREDENTIALS')
         if creds_json:
@@ -107,7 +111,7 @@ def _get_gmail():
         _gmail_svc = build('gmail', 'v1', credentials=creds)
         return _gmail_svc
     except Exception as e:
-        logging.error(f'Gmail service init failed: {e}')
+        logging.exception('_get_gmail failed')
         return None
 
 def _esc(s):
@@ -172,11 +176,11 @@ def _owner_email():
 
 def _fetch_vehicles_from_sheet() -> list:
     """Read vehicles from Google Sheets Vehicles tab."""
-    sid = _env('SPREADSHEET_ID')
-    if not sid:
-        logging.warning('No SPREADSHEET_ID set')
-        return []
     try:
+        sid = _env('SPREADSHEET_ID')
+        if not sid:
+            logging.warning('No SPREADSHEET_ID set')
+            return []
         svc = _get_sheets()
         if not svc:
             logging.warning('Could not initialize Sheets service')
@@ -204,17 +208,17 @@ def _fetch_vehicles_from_sheet() -> list:
                 vehicles.append(obj)
         return vehicles
     except Exception as e:
-        logging.error(f'Vehicles read failed: {e}')
+        logging.exception('_fetch_vehicles_from_sheet failed')
         return []
 
 
 def _fetch_booked_dates_from_sheet(vehicle_id: str) -> set:
     """Return active booked dates for a vehicle from the Bookings sheet."""
-    sid = _env('SPREADSHEET_ID')
-    booked = set()
-    if not sid:
-        return booked
     try:
+        sid = _env('SPREADSHEET_ID')
+        booked = set()
+        if not sid:
+            return booked
         svc = _get_sheets()
         if not svc:
             return booked
@@ -241,15 +245,16 @@ def _fetch_booked_dates_from_sheet(vehicle_id: str) -> set:
                 while current <= br:
                     booked.add(current.isoformat())
                     current += timedelta(days=1)
+        return booked
     except Exception as e:
-        logging.error(f'Booked dates read: {e}')
-    return booked
+        logging.exception('_fetch_booked_dates_from_sheet failed')
+        return set()
 
 
 def _fetch_calendar_blocked_dates(start_date: str, end_date: str) -> set:
     """Return all dates blocked by Google Calendar events."""
-    blocked = set()
     try:
+        blocked = set()
         svc = _get_calendar()
         if not svc:
             return blocked
@@ -279,16 +284,21 @@ def _fetch_calendar_blocked_dates(start_date: str, end_date: str) -> set:
                 while current <= ev_end:
                     blocked.add(current.isoformat())
                     current += timedelta(days=1)
+        return blocked
     except Exception as e:
-        logging.error(f'Calendar blocked dates: {e}')
-    return blocked
+        logging.exception('_fetch_calendar_blocked_dates failed')
+        return set()
 
 
 def _get_all_booked_dates(vehicle_id: str, start_date: str, end_date: str) -> set:
     """Merge booked dates from Sheets + Calendar for a date range."""
-    sheet_dates = _fetch_booked_dates_from_sheet(vehicle_id)
-    cal_dates = _fetch_calendar_blocked_dates(start_date, end_date)
-    return sheet_dates | cal_dates
+    try:
+        sheet_dates = _fetch_booked_dates_from_sheet(vehicle_id)
+        cal_dates = _fetch_calendar_blocked_dates(start_date, end_date)
+        return sheet_dates | cal_dates
+    except Exception as e:
+        logging.exception('_get_all_booked_dates failed')
+        return set()
 
 
 # ══════════════════════════════════════════
@@ -326,7 +336,7 @@ def get_vehicles() -> list:
              'image_url': '/vehicle.png'},
         ]
     except Exception as e:
-        logging.error(f'get_vehicles tool error: {e}')
+        logging.exception('get_vehicles tool error')
         return [
             {'id': 'v1', 'name': 'Suzuki Swift', 'rate': 120, 'type': 'standard',
              'seats': '5', 'transmission': 'automatic',
@@ -402,7 +412,7 @@ def find_available_dates(vehicle_id: str, duration_days: int, start_from: str = 
             'duration_days': duration_days,
         }
     except Exception as e:
-        logging.error(f'find_available_dates tool error: {e}')
+        logging.exception('find_available_dates tool error')
         return {
             'available_dates': [],
             'search_from': start_from or date.today().isoformat(),
@@ -422,22 +432,22 @@ def scan_license(image_base64: str) -> dict:
         Dict with keys: customerName, licenseNumber, licenseExpiry, licenseIssuer,
         customerAddress, licenseClass (null if not visible).
     """
-    client = _get_genai()
-    if not client:
-        return {'error': 'Gemini API key not configured'}
-
-    if not image_base64:
-        return {'error': 'No image data provided'}
-
-    if ',' in image_base64:
-        image_base64 = image_base64.split(',', 1)[1]
-
     try:
-        image_bytes = base64.b64decode(image_base64)
-    except Exception:
-        return {'error': 'Invalid base64 image data'}
+        client = _get_genai()
+        if not client:
+            return {'error': 'Gemini API key not configured'}
 
-    try:
+        if not image_base64:
+            return {'error': 'No image data provided'}
+
+        if ',' in image_base64:
+            image_base64 = image_base64.split(',', 1)[1]
+
+        try:
+            image_bytes = base64.b64decode(image_base64)
+        except Exception:
+            return {'error': 'Invalid base64 image data'}
+
         prompt = """Extract the following fields from this Barbados driver's license image.
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
   "customerName": full name on the license,
@@ -461,8 +471,9 @@ If a field is not visible, set it to null."""
             parsed['licenseExpiry'] = _normalize_expiry(parsed['licenseExpiry'])
         return parsed
     except json.JSONDecodeError:
-        return {'raw_text': raw, 'error': 'Could not parse as structured JSON'}
+        return {'raw_text': raw if 'raw' in locals() else '', 'error': 'Could not parse as structured JSON'}
     except Exception as e:
+        logging.exception('scan_license tool error')
         return {'error': str(e)}
 
 

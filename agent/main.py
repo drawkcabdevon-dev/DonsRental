@@ -106,6 +106,7 @@ def _get_gmail():
                 json.loads(creds_json),
                 scopes=['https://www.googleapis.com/auth/gmail.send'],
             )
+            creds = creds.with_subject(_company_email())
         else:
             creds, _ = default(scopes=['https://www.googleapis.com/auth/gmail.send'])
         _gmail_svc = build('gmail', 'v1', credentials=creds)
@@ -116,6 +117,26 @@ def _get_gmail():
 
 def _esc(s):
     return str(s or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+def _escape_html(text):
+    if not text:
+        return ''
+    return (str(text)
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;')
+            .replace("'", '&#39;'))
+
+def _format_date_display(date_val):
+    if not date_val:
+        return ''
+    try:
+        from datetime import datetime as _dt
+        d = _dt.strptime(str(date_val)[:10], '%Y-%m-%d')
+        return d.strftime('%d %b %Y')
+    except Exception:
+        return str(date_val)
 
 def _bid():
     return 'BK-' + uuid.uuid4().hex[:8].upper()
@@ -164,7 +185,7 @@ def _company_email():
     return _env('COMPANY_EMAIL', 'bookings@onlineverywhere.com')
 
 def _company_phone():
-    return _env('COMPANY_PHONE', '+1 (555) 000-0000')
+    return _env('COMPANY_PHONE', '+1 (246) 268-2842')
 
 def _owner_email():
     return _env('OWNER_EMAIL', 'devon@onlineverywhere.com')
@@ -174,24 +195,36 @@ def _owner_email():
 #  DATA HELPERS
 # ══════════════════════════════════════════
 
+VEHICLES_FALLBACK = [
+    {
+        "id": "v1",
+        "name": "Standard Rental Car",
+        "rate": 120,
+        "seats": 5,
+        "transmission": "automatic",
+        "description": "Clean, reliable car for getting around Barbados.",
+        "features": "Air Conditioning",
+    }
+]
+
 def _fetch_vehicles_from_sheet() -> list:
-    """Read vehicles from Google Sheets Vehicles tab."""
+    """Read vehicles from Google Sheets Vehicles tab. Falls back to VEHICLES_FALLBACK on error."""
     try:
         sid = _env('SPREADSHEET_ID')
         if not sid:
             logging.warning('No SPREADSHEET_ID set')
-            return []
+            return VEHICLES_FALLBACK
         svc = _get_sheets()
         if not svc:
             logging.warning('Could not initialize Sheets service')
-            return []
+            return VEHICLES_FALLBACK
         result = svc.spreadsheets().values().get(
             spreadsheetId=sid, range='Vehicles!A:G',
         ).execute()
         rows = result.get('values', [])
         if len(rows) < 2:
             logging.warning('Vehicles sheet has no data rows')
-            return []
+            return VEHICLES_FALLBACK
         headers = [h.strip().lower() for h in rows[0]]
         vehicles = []
         for row in rows[1:]:
@@ -206,10 +239,10 @@ def _fetch_vehicles_from_sheet() -> list:
                 except ValueError:
                     obj['rate'] = 0
                 vehicles.append(obj)
-        return vehicles
+        return vehicles if vehicles else VEHICLES_FALLBACK
     except Exception as e:
         logging.exception('_fetch_vehicles_from_sheet failed')
-        return []
+        return VEHICLES_FALLBACK
 
 
 def _fetch_booked_dates_from_sheet(vehicle_id: str) -> set:
@@ -308,42 +341,31 @@ def _get_all_booked_dates(vehicle_id: str, start_date: str, end_date: str) -> se
 def get_vehicles() -> list:
     """Return available vehicles with pricing.
 
-    Reads from Google Sheets. Falls back to the Suzuki Swift if unavailable.
+    Reads from Google Sheets. Falls back to VEHICLES_FALLBACK if unavailable.
     Returns a list of dicts: [{id, name, rate, description, features}].
     """
     try:
         vehicles = _fetch_vehicles_from_sheet()
-        if vehicles:
-            result = []
-            for v in vehicles:
-                result.append({
-                    'id': v.get('id', ''),
-                    'name': v.get('name', ''),
-                    'rate': v.get('rate', 0),
-                    'type': v.get('type', 'standard'),
-                    'seats': v.get('seats', ''),
-                    'transmission': v.get('transmission', 'automatic'),
-                    'description': v.get('description', ''),
-                    'features': v.get('features', 'Air Conditioning'),
-                    'image_url': v.get('imageurl', v.get('imageUrl', '/vehicle.png')),
-                })
-            return result
-        return [
-            {'id': 'v1', 'name': 'Suzuki Swift', 'rate': 120, 'type': 'standard',
-             'seats': '5', 'transmission': 'automatic',
-             'description': 'Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum.',
-             'features': 'Air Conditioning, 2-Day Minimum, Weekend Specials, Free Drop-off',
-             'image_url': '/vehicle.png'},
-        ]
+        result = []
+        for v in vehicles:
+            result.append({
+                'id': v.get('id', ''),
+                'name': v.get('name', ''),
+                'rate': v.get('rate', 0),
+                'type': v.get('type', 'standard'),
+                'seats': v.get('seats', ''),
+                'transmission': v.get('transmission', 'automatic'),
+                'description': v.get('description', ''),
+                'features': v.get('features', 'Air Conditioning'),
+                'image_url': v.get('imageurl', v.get('imageUrl', '/vehicle.png')),
+            })
+        return result
     except Exception as e:
         logging.exception('get_vehicles tool error')
-        return [
-            {'id': 'v1', 'name': 'Suzuki Swift', 'rate': 120, 'type': 'standard',
-             'seats': '5', 'transmission': 'automatic',
-             'description': 'Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum.',
-             'features': 'Air Conditioning, 2-Day Minimum, Weekend Specials, Free Drop-off',
-             'image_url': '/vehicle.png'},
-        ]
+        return [{'id': v['id'], 'name': v['name'], 'rate': v['rate'], 'type': 'standard',
+                 'seats': v['seats'], 'transmission': v['transmission'],
+                 'description': v['description'], 'features': v['features'],
+                 'image_url': '/vehicle.png'} for v in VEHICLES_FALLBACK]
 
 
 def find_available_dates(vehicle_id: str, duration_days: int, start_from: str = '') -> dict:
@@ -686,10 +708,14 @@ def create_booking(
             return {'booking_id': None, 'success': False, 'message': msg, 'conflicts': c}
 
         rate = 0
-        for v in get_vehicles():
+        vehicles = get_vehicles()
+        for v in vehicles:
             if isinstance(v, dict) and v.get('id') == vehicle_id:
                 rate = int(v.get('rate', 0))
                 break
+        if rate == 0 and vehicles:
+            rate = int(vehicles[0].get('rate', 120))
+            logging.warning(f'Vehicle {vehicle_id} not found, using fallback rate: {rate}')
         total = days * rate
 
         row = [
@@ -777,94 +803,204 @@ def _send_gmail(to, subject, html_body, text_body=''):
 
 def _send_emails(b_id, name, email, vehicle, pu_d, pu_t, re_d, re_t,
                  days, total, lic_num, lic_exp, lic_iss, pm):
-    payment_txt = {
-        'pay_on_pickup': 'Pay when you pick up the vehicle. We accept cash and card.',
-        'bank_transfer': f'Transfer to: Bank: Your Bank | Account: 1234-5678 | Use ref {b_id}',
-    }.get(pm, 'Details provided at pickup.')
-
     cname = _company()
     cemail = _company_email()
     cphone = _company_phone()
     oemail = _owner_email()
+    subject = f"Booking Confirmation \u2014 {cname} (Ref: {b_id})"
 
-    invoice = f'''<!DOCTYPE html>
-<html><body style="font-family:Arial,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;">
-<div style="background:#0f3460;color:#fff;padding:24px 32px;border-radius:12px 12px 0 0;">
-  <h2 style="margin:0;">{_esc(cname)}</h2>
-  <p style="margin:4px 0 0;opacity:.85;">Booking Confirmation &amp; Invoice</p>
-</div>
-<div style="padding:24px 32px;border:1px solid #e0e0e0;border-top:0;border-radius:0 0 12px 12px;">
-  <p>Hi <strong>{_esc(name)}</strong>,</p><p>Your booking is confirmed!</p>
-  <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Reference</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:700;">{_esc(b_id)}</td></tr>
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Vehicle</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{_esc(vehicle)}</td></tr>
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Pick-up</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{_esc(pu_d)} at {_esc(pu_t)}</td></tr>
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Return</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{_esc(re_d)} at {_esc(re_t)}</td></tr>
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Duration</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{days} day{"s" if days>1 else ""}</td></tr>
-    <tr><td style="padding:8px 12px;color:#666;">Total Due</td>
-        <td style="padding:8px 12px;font-size:1.15rem;font-weight:700;color:#0f3460;">${total}</td></tr>
-  </table>
-  <h3>Payment</h3><p style="color:#555;">{payment_txt}</p>
-  <h3 style="margin-top:24px;">License</h3>
-  <p style="color:#555;">{_esc(lic_num)} (exp {_esc(lic_exp)}) &bull; {_esc(lic_iss)}</p>
-  <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
-  <p style="color:#999;font-size:.85rem;">{_esc(cname)} &bull; {_esc(cphone)}</p>
-</div></body></html>'''
+    html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f0;padding:32px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border:2px solid #2d2d2d;overflow:hidden;">
 
-    text_body = f"""{cname} — Booking Confirmation
+  <!-- Header -->
+  <tr><td style="background:#1a1a1a;padding:28px 40px 24px;border-bottom:4px solid #FFCC00;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td valign="middle">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 48 46" style="vertical-align:middle;margin-right:10px;"><path fill="#FFCC00" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z"/></svg>
+        <span style="font-size:28px;font-weight:800;color:#ffffff;text-transform:uppercase;letter-spacing:-0.5px;vertical-align:middle;">{_escape_html(cname)}</span>
+      </td>
+      <td style="text-align:right;vertical-align:middle;">
+        <span style="font-size:12px;color:#FFCC00;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Car Rental</span>
+      </td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Confirmed Bar -->
+  <tr><td style="background:#FFCC00;padding:14px 40px;">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="font-size:14px;font-weight:700;color:#1a1a1a;text-transform:uppercase;letter-spacing:1px;">&#10003;&nbsp; Booking Confirmed</td>
+    </tr></table>
+  </td></tr>
+
+  <!-- Greeting -->
+  <tr><td style="padding:32px 40px 8px;">
+    <p style="margin:0;font-size:18px;color:#1a1a1a;font-weight:700;">Hi {_escape_html(name)},</p>
+    <p style="margin:8px 0 0;font-size:14px;color:#5c5c5c;line-height:1.6;">Your vehicle is ready. Here are your booking details:</p>
+  </td></tr>
+
+  <!-- Trip Details -->
+  <tr><td style="padding:16px 40px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:2px solid #2d2d2d;">
+      <tr><td style="background:#2d2d2d;padding:10px 20px;">
+        <span style="color:#ffffff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Trip Details</span>
+      </td></tr>
+      <tr><td style="padding:0;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:16px 20px;border-bottom:1px solid #f5f5f0;">
+            <div style="font-size:11px;color:#5c5c5c;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Vehicle</div>
+            <div style="font-size:15px;color:#1a1a1a;font-weight:700;margin-top:4px;">{_escape_html(vehicle)}</div>
+          </td></tr>
+          <tr><td style="padding:16px 20px;border-bottom:1px solid #f5f5f0;">
+            <table width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td width="50%" style="vertical-align:top;">
+                <div style="font-size:11px;color:#5c5c5c;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Pick-up</div>
+                <div style="font-size:15px;color:#1a1a1a;font-weight:700;margin-top:4px;">{_format_date_display(pu_d)}</div>
+                <div style="font-size:13px;color:#5c5c5c;margin-top:2px;">{_escape_html(pu_t)}</div>
+              </td>
+              <td width="50%" style="vertical-align:top;">
+                <div style="font-size:11px;color:#5c5c5c;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Return</div>
+                <div style="font-size:15px;color:#1a1a1a;font-weight:700;margin-top:4px;">{_format_date_display(re_d)}</div>
+                <div style="font-size:13px;color:#5c5c5c;margin-top:2px;">{_escape_html(re_t)}</div>
+              </td>
+            </tr></table>
+          </td></tr>
+          <tr><td style="padding:16px 20px;">
+            <div style="font-size:11px;color:#5c5c5c;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Duration</div>
+            <div style="font-size:15px;color:#1a1a1a;font-weight:700;margin-top:4px;">{days} day(s)</div>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- License Info -->
+  <tr><td style="padding:0 40px 16px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:2px solid #2d2d2d;">
+      <tr><td style="background:#f5f5f0;padding:10px 20px;border-bottom:2px solid #2d2d2d;">
+        <span style="font-size:12px;color:#5c5c5c;font-weight:700;text-transform:uppercase;letter-spacing:1px;">License on File</span>
+      </td></tr>
+      <tr><td style="padding:16px 20px;">
+        <span style="font-size:14px;color:#1a1a1a;font-weight:600;">{_escape_html(lic_num)}</span>
+        <span style="font-size:13px;color:#5c5c5c;margin:0 8px;">&bull;</span>
+        <span style="font-size:13px;color:#5c5c5c;">Exp {_escape_html(lic_exp)}</span>
+        <span style="font-size:13px;color:#5c5c5c;margin:0 8px;">&bull;</span>
+        <span style="font-size:13px;color:#5c5c5c;">{_escape_html(lic_iss)}</span>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Booking Summary -->
+  <tr><td style="padding:0 40px 24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:2px solid #2d2d2d;">
+      <tr><td style="background:#1a1a1a;padding:12px 20px;">
+        <span style="color:#FFCC00;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Booking Summary</span>
+      </td></tr>
+      <tr><td style="padding:20px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:6px 0;font-size:13px;color:#5c5c5c;">Reference</td>
+            <td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:700;text-align:right;">{_escape_html(b_id)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;font-size:13px;color:#5c5c5c;">Vehicle</td>
+            <td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:600;text-align:right;">{_escape_html(vehicle)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;font-size:13px;color:#5c5c5c;">Duration</td>
+            <td style="padding:6px 0;font-size:13px;color:#1a1a1a;font-weight:600;text-align:right;">{days} day(s)</td>
+          </tr>
+          <tr><td colspan="2" style="padding:8px 0;"><div style="border-top:2px solid #2d2d2d;"></div></td></tr>
+          <tr>
+            <td style="padding:6px 0;font-size:14px;color:#1a1a1a;font-weight:700;">Total Due</td>
+            <td style="padding:6px 0;font-size:22px;color:#1a1a1a;font-weight:800;text-align:right;">Bds${total:.2f}</td>
+          </tr>
+        </table>
+        <div style="margin-top:12px;padding:10px 14px;background:#f5f5f0;border:1px solid #e0e0e0;">
+          <span style="font-size:12px;color:#5c5c5c;">Pay at pick-up &mdash; Cash or Card accepted</span>
+        </div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Pay Online -->
+  <tr><td style="padding:0 40px 24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:2px solid #2d2d2d;">
+      <tr><td style="background:#1a1a1a;padding:12px 20px;">
+        <span style="color:#FFCC00;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;">Pay Online</span>
+      </td></tr>
+      <tr><td style="padding:20px;text-align:center;">
+        <p style="margin:0 0 12px;font-size:14px;color:#5c5c5c;line-height:1.5;">Scan the QR code below to pay via <strong>CIBC 1stPay</strong></p>
+        <img src="https://storage.googleapis.com/donsrental-license-photos/cibc-1stpay-qr.png" alt="CIBC 1stPay QR Code" width="220" style="display:block;margin:0 auto;border:2px solid #2d2d2d;" />
+        <p style="margin:12px 0 0;font-size:12px;color:#999;">Include your booking reference in the payment memo</p>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="background:#1a1a1a;padding:24px 40px;border-top:4px solid #FFCC00;">
+    <p style="margin:0;font-size:13px;color:#999;line-height:1.6;">
+      {_escape_html(cname)} &bull; {_escape_html(cphone)}<br>
+      <a href="mailto:{_escape_html(cemail)}" style="color:#FFCC00;text-decoration:none;">{_escape_html(cemail)}</a>
+    </p>
+    <p style="margin:12px 0 0;font-size:11px;color:#666;">
+      <a href="https://onlineverywhere.com/privacy" style="color:#FFCC00;text-decoration:none;">Privacy Policy</a>
+      &nbsp;&bull;&nbsp;
+      <a href="https://onlineverywhere.com/terms" style="color:#FFCC00;text-decoration:none;">Terms &amp; Conditions</a>
+    </p>
+    <p style="margin:12px 0 0;font-size:11px;color:#666;">Thank you for choosing us. Safe travels!</p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body></html>"""
+
+    text_body = f"""{cname} \u2014 Booking Confirmation
 
 Reference: {b_id}
 Customer: {name}
 Vehicle: {vehicle}
-Pick-up: {pu_d} at {pu_t}
-Return: {re_d} at {re_t}
+Pick-up: {_format_date_display(pu_d)} at {pu_t}
+Return: {_format_date_display(re_d)} at {re_t}
 Duration: {days} day(s)
-Total Due: ${total}
+Total Due: Bds${total:.2f}
 
-Payment: {payment_txt}
+Payment: Pay when you pick up the vehicle. We accept cash and card.
 
-License: {lic_num} (exp {lic_exp}) — {lic_iss}
+License: {lic_num} (exp {lic_exp}) \u2022 {lic_iss}
 
-{cname} — {cphone} — {cemail}"""
+{cname} \u2022 {cphone} \u2022 {cemail}"""
 
-    email_ok = _send_gmail(email, f'Booking Confirmation — {cname} (Ref: {b_id})', invoice, text_body)
+    email_ok = _send_gmail(email, subject, html_body, text_body)
 
     if oemail:
-        alert_html = f'''<!DOCTYPE html>
-<html><body style="font-family:Arial,sans-serif;color:#1a1a2e;max-width:600px;margin:0 auto;">
-<div style="background:#0f3460;color:#fff;padding:24px 32px;border-radius:12px 12px 0 0;">
-  <h2 style="margin:0;">{_esc(cname)}</h2>
-  <p style="margin:4px 0 0;opacity:.85;">New Booking Notification</p>
-</div>
-<div style="padding:24px 32px;border:1px solid #e0e0e0;border-top:0;border-radius:0 0 12px 12px;">
-  <p><strong>{_esc(name)}</strong> booked <strong>{_esc(vehicle)}</strong></p>
-  <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Reference</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:700;">{_esc(b_id)}</td></tr>
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Pick-up</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{_esc(pu_d)} at {_esc(pu_t)}</td></tr>
-    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;">Return</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">{_esc(re_d)} at {_esc(re_t)}</td></tr>
-    <tr><td style="padding:8px 12px;color:#666;">Total</td>
-        <td style="padding:8px 12px;font-weight:700;color:#0f3460;">${total}</td></tr>
-  </table>
-  <p style="color:#999;font-size:.85rem;">Customer: {_esc(email)} | Phone: {_esc(cphone)}</p>
-</div></body></html>'''
-        _send_gmail(oemail, f'New Booking: {name} — {vehicle} ({b_id})', alert_html)
+        osubject = f"New Booking: {name} \u2014 {vehicle} ({b_id})"
+        otext = f"""New booking received!
+
+Reference: {b_id}
+Customer: {name}
+Email: {email}
+Vehicle: {vehicle}
+Pick-up: {_format_date_display(pu_d)} at {pu_t}
+Return: {_format_date_display(re_d)} at {re_t}
+Duration: {days} day(s)
+Total: Bds${total:.2f}
+License: {lic_num} (exp {lic_exp})"""
+        _send_gmail(oemail, osubject, otext, otext)
 
     topic = _env('NTFY_TOPIC')
     if topic:
         try:
-            body = f'New Booking: {name} booked {vehicle} from {pu_d} to {re_d}. Total: ${total}. Ref: {b_id}'
+            body = f'New Booking: {name} booked {vehicle} from {pu_d} to {re_d}. Total: Bds${total:.2f}. Ref: {b_id}'
             req = Request(
                 f'https://ntfy.sh/{topic}',
                 data=body.encode(),
-                headers={'Title': f'New Booking – {name}', 'Priority': 'high'},
+                headers={'Title': f'New Booking - {name}', 'Priority': 'high'},
             )
             urlopen(req, timeout=5)
         except URLError:

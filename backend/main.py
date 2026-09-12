@@ -11,8 +11,11 @@ import base64
 import hmac
 import hashlib
 import time
+import threading
 from datetime import datetime, date, timedelta
 from typing import Optional
+
+from googleapiclient.errors import HttpError
 import uuid
 import asyncio
 from collections import defaultdict
@@ -56,6 +59,10 @@ app = FastAPI(title="Don's Rental Backend")
 
 # ── Thread pool for blocking I/O operations ────────────
 _executor = ThreadPoolExecutor(max_workers=4)
+
+# ── Locks for concurrent Google Sheets operations ──────
+_sheet_creation_lock = threading.Lock()
+_reconcile_lock = threading.Lock()
 
 # ── Google Sheets singleton ─────────────────────────────
 _sheets_svc = None
@@ -1120,45 +1127,51 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0) -> bo
         ]]
 
         # Ensure the Bookings sheet exists and has the correct headers
-        spreadsheet = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
-        existing = [s['properties']['title'] for s in spreadsheet.get('sheets', [])]
-        if 'Bookings' not in existing:
-            # Create new sheet with headers
-            svc.spreadsheets().batchUpdate(
-                spreadsheetId=SPREADSHEET_ID,
-                body={'requests': [{'addSheet': {'properties': {'title': 'Bookings'}}}]},
-            ).execute()
-            headers = [[
-                'bookingId','status','createdAt','vehicleId','vehicleName',
-                'pickupDate','pickupTime','returnDate','returnTime',
-                'custName','custEmail','custPhone','custAddress',
-                'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
-                'paymentMethod','totalAmount','totalDays','invoiceSentAt','notes',
-                'licensePhotoUrl',
-            ]]
-            svc.spreadsheets().values().update(
-                spreadsheetId=SPREADSHEET_ID,
-                range='Bookings!A1',
-                valueInputOption='USER_ENTERED',
-                body={'values': headers},
-            ).execute()
-        else:
-            # Sheet exists - check if licensePhotoUrl header is present
-            result = svc.spreadsheets().values().get(
-                spreadsheetId=SPREADSHEET_ID, range='Bookings!A1:1',
-            ).execute()
-            existing_headers = result.get('values', [[]])[0] if result.get('values') else []
-            if 'licensePhotoUrl' not in existing_headers:
-                # Add licensePhotoUrl header at the end
-                next_col_index = len(existing_headers)
-                col_letter = chr(ord('A') + next_col_index) if next_col_index < 26 else f"A{chr(ord('A') + next_col_index - 26)}"
+        with _sheet_creation_lock:
+            spreadsheet = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+            existing = [s['properties']['title'] for s in spreadsheet.get('sheets', [])]
+            if 'Bookings' not in existing:
+                try:
+                    svc.spreadsheets().batchUpdate(
+                        spreadsheetId=SPREADSHEET_ID,
+                        body={'requests': [{'addSheet': {'properties': {'title': 'Bookings'}}}]},
+                    ).execute()
+                except HttpError as e:
+                    if e.resp.status == 403 and 'conditionNotMet' in str(e):
+                        logger.info("Bookings sheet created by concurrent request — continuing")
+                    else:
+                        raise
+                headers = [[
+                    'bookingId','status','createdAt','vehicleId','vehicleName',
+                    'pickupDate','pickupTime','returnDate','returnTime',
+                    'custName','custEmail','custPhone','custAddress',
+                    'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
+                    'paymentMethod','totalAmount','totalDays','invoiceSentAt','notes',
+                    'licensePhotoUrl',
+                ]]
                 svc.spreadsheets().values().update(
                     spreadsheetId=SPREADSHEET_ID,
-                    range=f'Bookings!{col_letter}1',
+                    range='Bookings!A1',
                     valueInputOption='USER_ENTERED',
-                    body={'values': [['licensePhotoUrl']]},
+                    body={'values': headers},
                 ).execute()
-                logger.info("Added licensePhotoUrl header to existing Bookings sheet")
+            else:
+                # Sheet exists - check if licensePhotoUrl header is present
+                result = svc.spreadsheets().values().get(
+                    spreadsheetId=SPREADSHEET_ID, range='Bookings!A1:1',
+                ).execute()
+                existing_headers = result.get('values', [[]])[0] if result.get('values') else []
+                if 'licensePhotoUrl' not in existing_headers:
+                    # Add licensePhotoUrl header at the end
+                    next_col_index = len(existing_headers)
+                    col_letter = chr(ord('A') + next_col_index) if next_col_index < 26 else f"A{chr(ord('A') + next_col_index - 26)}"
+                    svc.spreadsheets().values().update(
+                        spreadsheetId=SPREADSHEET_ID,
+                        range=f'Bookings!{col_letter}1',
+                        valueInputOption='USER_ENTERED',
+                        body={'values': [['licensePhotoUrl']]},
+                    ).execute()
+                    logger.info("Added licensePhotoUrl header to existing Bookings sheet")
 
         svc.spreadsheets().values().append(
             spreadsheetId=SPREADSHEET_ID,
@@ -1168,6 +1181,12 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0) -> bo
         ).execute()
         logger.info("Booking %s written to Google Sheet", ref)
         return True
+    except HttpError as e:
+        logger.error(
+            "Failed to write booking %s to Google Sheet (spreadsheet=%s, range=Bookings!A:V): %s %s",
+            ref, SPREADSHEET_ID, e.resp.status, e.reason,
+        )
+        return False
     except Exception as e:
         logger.error("Failed to write booking %s to Google Sheet: %s", ref, e)
         return False
@@ -1526,18 +1545,28 @@ async def cancel_booking(booking_id: str, key: str = ""):
     if SPREADSHEET_ID:
         try:
             svc = _get_sheets()
-            result = svc.spreadsheets().values().get(
-                spreadsheetId=SPREADSHEET_ID, range='Bookings!A:V',
-            ).execute()
-            rows = result.get('values', [])
-            if len(rows) >= 2:
-                for i, row in enumerate(rows[1:], start=2):
-                    if row and row[0] == booking_id:
-                        svc.spreadsheets().batchUpdate(
-                            spreadsheetId=SPREADSHEET_ID,
-                            body={'requests': [{'deleteDimension': {'range': {'sheetId': 613814778, 'dimension': 'ROWS', 'startIndex': i - 1, 'endIndex': i}}}]}
-                        ).execute()
-                        break
+            # Look up the actual sheetId for Bookings tab
+            meta = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+            bookings_sheet_id = None
+            for s in meta.get('sheets', []):
+                if s['properties']['title'] == 'Bookings':
+                    bookings_sheet_id = s['properties']['sheetId']
+                    break
+            if bookings_sheet_id is None:
+                logger.warning("Bookings sheet not found — cannot cancel %s", booking_id)
+            else:
+                result = svc.spreadsheets().values().get(
+                    spreadsheetId=SPREADSHEET_ID, range='Bookings!A:V',
+                ).execute()
+                rows = result.get('values', [])
+                if len(rows) >= 2:
+                    for i, row in enumerate(rows[1:], start=2):
+                        if row and row[0] == booking_id:
+                            svc.spreadsheets().batchUpdate(
+                                spreadsheetId=SPREADSHEET_ID,
+                                body={'requests': [{'deleteDimension': {'range': {'sheetId': bookings_sheet_id, 'dimension': 'ROWS', 'startIndex': i - 1, 'endIndex': i}}}]}
+                            ).execute()
+                            break
         except Exception as e:
             logger.warning("Failed to delete from sheet: %s", e)
 
@@ -1924,11 +1953,14 @@ async def reconcile_sheet(key: str = ""):
     """
     if not ADMIN_KEY or key != ADMIN_KEY:
         raise HTTPException(403, "Forbidden")
+    if _reconcile_lock.locked():
+        return {"error": "Reconciliation already in progress"}
     
-    stats = await asyncio.get_event_loop().run_in_executor(
-        _executor, _reconcile_calendar_to_sheet
-    )
-    return stats
+    with _reconcile_lock:
+        stats = await asyncio.get_event_loop().run_in_executor(
+            _executor, _reconcile_calendar_to_sheet
+        )
+        return stats
 
 
 @app.get("/api/admin/reconcile/status")

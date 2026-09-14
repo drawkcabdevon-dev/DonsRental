@@ -92,13 +92,19 @@ export function LicenseVerificationForm({
                 if (!file || !onPhotoCapture) return;
                 const MAX_DIM = 1200;
                 const img = new Image();
+                const imageUrl = URL.createObjectURL(file);
                 img.onload = () => {
                   const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
                   const canvas = document.createElement('canvas');
                   canvas.width = Math.round(img.width * scale);
                   canvas.height = Math.round(img.height * scale);
                   const ctx = canvas.getContext('2d');
-                  if (!ctx) { onPhotoCapture(file); onChange('photoUrl', URL.createObjectURL(file)); return; }
+                  if (!ctx) {
+                    URL.revokeObjectURL(imageUrl);
+                    onPhotoCapture(file);
+                    onChange('photoUrl', URL.createObjectURL(file));
+                    return;
+                  }
                   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                   canvas.toBlob((blob) => {
                     if (blob) {
@@ -110,9 +116,13 @@ export function LicenseVerificationForm({
                       onChange('photoUrl', URL.createObjectURL(file));
                     }
                   }, 'image/jpeg', 0.7);
-                  URL.revokeObjectURL(img.src);
+                  URL.revokeObjectURL(imageUrl);
                 };
-                img.src = URL.createObjectURL(file);
+                img.onerror = () => {
+                  URL.revokeObjectURL(imageUrl);
+                  onPhotoCapture(file);
+                };
+                img.src = imageUrl;
               };
               input.click();
             }}

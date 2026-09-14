@@ -1685,13 +1685,17 @@ async def scan_license(req: ScanLicenseRequest):
     if "," in image_data:
         image_data = image_data.split(",", 1)[1]
 
+    MAX_SCAN_IMAGE = 5 * 1024 * 1024
+    max_base64_length = 4 * ((MAX_SCAN_IMAGE + 2) // 3)
+    if len(image_data) > max_base64_length:
+        raise HTTPException(400, f"Image too large. Max {MAX_SCAN_IMAGE} bytes.")
+
     # Validate base64
     try:
         image_bytes = base64.b64decode(image_data, validate=True)
     except Exception:
         raise HTTPException(400, "Invalid base64 image data")
 
-    MAX_SCAN_IMAGE = 5 * 1024 * 1024
     if len(image_bytes) > MAX_SCAN_IMAGE:
         raise HTTPException(400, f"Image too large ({len(image_bytes)} bytes). Max {MAX_SCAN_IMAGE} bytes.")
 

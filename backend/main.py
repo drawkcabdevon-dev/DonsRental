@@ -1687,9 +1687,13 @@ async def scan_license(req: ScanLicenseRequest):
 
     # Validate base64
     try:
-        base64.b64decode(image_data, validate=True)
+        image_bytes = base64.b64decode(image_data, validate=True)
     except Exception:
         raise HTTPException(400, "Invalid base64 image data")
+
+    MAX_SCAN_IMAGE = 5 * 1024 * 1024
+    if len(image_bytes) > MAX_SCAN_IMAGE:
+        raise HTTPException(400, f"Image too large ({len(image_bytes)} bytes). Max {MAX_SCAN_IMAGE} bytes.")
 
     prompt = """Extract the following fields from this Barbados driver's license image.
 Return ONLY valid JSON (no markdown, no backticks) with these exact keys:
@@ -1712,7 +1716,7 @@ If a field is not visible, set it to null."""
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(url, json=body)
             if resp.status_code != 200:
                 logger.error("Gemini API error: %s - %s", resp.status_code, resp.text[:300])

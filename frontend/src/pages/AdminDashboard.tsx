@@ -44,6 +44,7 @@ export function AdminDashboard() {
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const googleInitRef = useRef(false);
 
   const handleGoogleCredential = useCallback(async (response: { credential?: string }) => {
     if (!response.credential) {
@@ -76,7 +77,7 @@ export function AdminDashboard() {
 
   // Initialize Google Sign-In for admin — poll until the GIS script loads
   useEffect(() => {
-    if (authenticated) return;
+    if (authenticated || googleInitRef.current) return;
     let attempts = 0;
     const MAX_ATTEMPTS = 15;
     const interval = setInterval(() => {
@@ -86,6 +87,7 @@ export function AdminDashboard() {
         return;
       }
       clearInterval(interval);
+      googleInitRef.current = true;
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCredential,
@@ -138,8 +140,9 @@ export function AdminDashboard() {
           setBookings(data.bookings || []);
           setAuthenticated(true);
         }
+        // 401/403 = no valid session — silently show login screen
       } catch {
-        // No valid session — will show login screen
+        // Network error — show login screen
       } finally {
         setCheckingSession(false);
       }

@@ -89,10 +89,40 @@ export function LicenseVerificationForm({
               input.setAttribute('aria-label', 'Upload a photo of your driver\'s license');
               input.onchange = (e) => {
                 const file = (e.target as HTMLInputElement).files?.[0];
-                if (file && onPhotoCapture) {
+                if (!file || !onPhotoCapture) return;
+                const MAX_DIM = 1200;
+                const img = new Image();
+                const imageUrl = URL.createObjectURL(file);
+                img.onload = () => {
+                  const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+                  const canvas = document.createElement('canvas');
+                  canvas.width = Math.round(img.width * scale);
+                  canvas.height = Math.round(img.height * scale);
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) {
+                    URL.revokeObjectURL(imageUrl);
+                    onPhotoCapture(file);
+                    onChange('photoUrl', URL.createObjectURL(file));
+                    return;
+                  }
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  canvas.toBlob((blob) => {
+                    if (blob) {
+                      const compressed = new File([blob], file.name || 'license.jpg', { type: 'image/jpeg' });
+                      onPhotoCapture(compressed);
+                      onChange('photoUrl', URL.createObjectURL(compressed));
+                    } else {
+                      onPhotoCapture(file);
+                      onChange('photoUrl', URL.createObjectURL(file));
+                    }
+                  }, 'image/jpeg', 0.7);
+                  URL.revokeObjectURL(imageUrl);
+                };
+                img.onerror = () => {
+                  URL.revokeObjectURL(imageUrl);
                   onPhotoCapture(file);
-                  onChange('photoUrl', URL.createObjectURL(file));
-                }
+                };
+                img.src = imageUrl;
               };
               input.click();
             }}
@@ -161,12 +191,16 @@ export function LicenseVerificationForm({
                 document.addEventListener('keydown', handleEscape);
 
                 captureBtn.onclick = () => {
+                  const MAX_DIM = 1200;
+                  const srcW = video.videoWidth;
+                  const srcH = video.videoHeight;
+                  const scale = Math.min(1, MAX_DIM / Math.max(srcW, srcH));
                   const canvas = document.createElement('canvas');
-                  canvas.width = video.videoWidth;
-                  canvas.height = video.videoHeight;
+                  canvas.width = Math.round(srcW * scale);
+                  canvas.height = Math.round(srcH * scale);
                   const ctx = canvas.getContext('2d');
                   if (!ctx) { cleanup(); document.removeEventListener('keydown', handleEscape); return; }
-                  ctx.drawImage(video, 0, 0);
+                  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                   canvas.toBlob((blob) => {
                     if (blob) {
                       const file = new File([blob], 'license.jpg', { type: 'image/jpeg' });
@@ -180,7 +214,7 @@ export function LicenseVerificationForm({
                     }
                     cleanup();
                     document.removeEventListener('keydown', handleEscape);
-                  }, 'image/jpeg');
+                  }, 'image/jpeg', 0.7);
                 };
 
                 cancelBtn.onclick = () => {

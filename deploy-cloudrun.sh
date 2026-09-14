@@ -38,8 +38,8 @@ gcloud run deploy "${SERVICE_NAME}" \
   --memory 512Mi \
   --timeout 300 \
   --concurrency 80 \
-  --set-env-vars "AGENT_ENGINE=${AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=us-central1,SPREADSHEET_ID=${SPREADSHEET_ID},OWNER_EMAIL=${OWNER_EMAIL},GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID},MAIL_FROM=${MAIL_FROM},COMPANY_NAME=${COMPANY_NAME},COMPANY_PHONE=${COMPANY_PHONE}" \
-  --set-secrets "GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:latest,GOOGLE_CALENDAR_ID=google-calendar-id:latest,ADMIN_KEY=admin-api-key:latest" \
+  --set-env-vars "AGENT_ENGINE=${AGENT_ENGINE},GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=us-central1,SPREADSHEET_ID=${SPREADSHEET_ID},OWNER_EMAIL=${OWNER_EMAIL},GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID},MAIL_FROM=${MAIL_FROM},COMPANY_NAME=${COMPANY_NAME},COMPANY_PHONE=${COMPANY_PHONE},GCS_BUCKET=${GCS_BUCKET:-donsrental-license-photos},GCS_PHOTOS_PREFIX=${GCS_PHOTOS_PREFIX:-license-photos}" \
+  --set-secrets "GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_SHEETS_CREDENTIALS=google-sheets-credentials:latest,GOOGLE_CALENDAR_ID=google-calendar-id:latest,ADMIN_KEY=admin-api-key:latest" \
   --quiet
 
 URL=$(gcloud run services describe "${SERVICE_NAME}" \

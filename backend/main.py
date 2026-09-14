@@ -1664,9 +1664,10 @@ async def list_my_bookings(email: str = ""):
     return {"bookings": my_bookings}
 
 @app.delete("/api/bookings/{booking_id}")
-async def cancel_booking(booking_id: str, key: str = ""):
+async def cancel_booking(booking_id: str, request: Request, key: str = ""):
     """Cancel a booking — removes from Sheet and Calendar."""
-    if not ADMIN_KEY or key != ADMIN_KEY:
+    session_email = _get_admin_email_from_cookie(request)
+    if key != ADMIN_KEY and not session_email:
         raise HTTPException(403, "Forbidden")
     # Find and delete from Sheet
     if SPREADSHEET_ID:

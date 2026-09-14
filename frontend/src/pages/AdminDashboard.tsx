@@ -36,6 +36,7 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('pickupDate');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -73,10 +74,18 @@ export function AdminDashboard() {
     }
   }, []);
 
-  // Initialize Google Sign-In for admin
+  // Initialize Google Sign-In for admin — poll until the GIS script loads
   useEffect(() => {
-    const initGoogle = () => {
-      if (typeof window.google === 'undefined') return;
+    if (authenticated) return;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 15;
+    const interval = setInterval(() => {
+      attempts++;
+      if (typeof window.google === 'undefined') {
+        if (attempts >= MAX_ATTEMPTS) clearInterval(interval);
+        return;
+      }
+      clearInterval(interval);
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCredential,
@@ -93,9 +102,8 @@ export function AdminDashboard() {
           width: 300,
         });
       }
-    };
-    const timer = setTimeout(initGoogle, 500);
-    return () => clearTimeout(timer);
+    }, 200);
+    return () => clearInterval(interval);
   }, [handleGoogleCredential, authenticated]);
 
   const fetchBookings = async () => {
@@ -105,7 +113,7 @@ export function AdminDashboard() {
       const response = await fetch(`${API_BASE}/bookings`, {
         credentials: 'include',
       });
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
         setError('Session expired — please sign in again');
         setAuthenticated(false);
         return;
@@ -113,7 +121,6 @@ export function AdminDashboard() {
       if (!response.ok) throw new Error('Failed to fetch bookings');
       const data = await response.json();
       setBookings(data.bookings || []);
-      setAuthenticated(true);
     } catch {
       setError('Failed to connect to backend');
     } finally {
@@ -121,10 +128,23 @@ export function AdminDashboard() {
     }
   };
 
-  // Try loading bookings on mount (cookie may still be valid)
+  // Check for existing session on mount, then load bookings if valid
   useEffect(() => {
-    fetchBookings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const checkSession = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/bookings`, { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setBookings(data.bookings || []);
+          setAuthenticated(true);
+        }
+      } catch {
+        // No valid session — will show login screen
+      } finally {
+        setCheckingSession(false);
+      }
+    };
+    checkSession();
   }, []);
 
   const handleCancel = async (bookingId: string) => {
@@ -197,6 +217,17 @@ export function AdminDashboard() {
     return rd && rd >= today;
   }).length;
   const past = bookings.length - upcoming;
+
+  // Session check in progress
+  if (checkingSession) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-background)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Spinner message="Checking session..." />
+        </div>
+      </div>
+    );
+  }
 
   // Login screen
   if (!authenticated) {

@@ -31,6 +31,7 @@ _sheet_creation_lock = threading.Lock()
 _initialized = False
 
 def _ensure_init():
+    """Initialize Vertex AI once for this agent process."""
     global _initialized
     if not _initialized:
         p = os.environ.get('VERTEX_AI_PROJECT', 'onlineeverywhere')
@@ -118,6 +119,7 @@ def _dates_overlap(a1, a2, b1, b2):
     return a1 <= b2 and b1 <= a2
 
 def _ensure_bookings_sheet(svc):
+    """Ensure the configured spreadsheet has an initialized Bookings sheet."""
     sid = _env('SPREADSHEET_ID')
     if not sid:
         return

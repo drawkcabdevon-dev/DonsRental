@@ -43,7 +43,6 @@ export function AdminDashboard() {
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const googleBtnRef = useRef<HTMLDivElement>(null);
-  const googleInitRef = useRef(false);
 
   const handleGoogleCredential = useCallback(async (response: { credential?: string }) => {
     if (!response.credential) {
@@ -74,19 +73,16 @@ export function AdminDashboard() {
     }
   }, []);
 
-  // Initialize Google Sign-In for admin — poll until the GIS script loads
+  // Initialize Google Sign-In — runs once on mount, polls until script loads
   useEffect(() => {
-    if (authenticated || googleInitRef.current) return;
     let attempts = 0;
-    const MAX_ATTEMPTS = 15;
     const interval = setInterval(() => {
       attempts++;
       if (typeof window.google === 'undefined') {
-        if (attempts >= MAX_ATTEMPTS) clearInterval(interval);
+        if (attempts >= 15) clearInterval(interval);
         return;
       }
       clearInterval(interval);
-      googleInitRef.current = true;
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleCredential,
@@ -105,7 +101,8 @@ export function AdminDashboard() {
       }
     }, 200);
     return () => clearInterval(interval);
-  }, [handleGoogleCredential, authenticated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchBookings = async () => {
     setLoading(true);

@@ -36,7 +36,6 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('pickupDate');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -140,11 +139,9 @@ export function AdminDashboard() {
           setBookings(data.bookings || []);
           setAuthenticated(true);
         }
-        // 401/403 = no valid session — silently show login screen
+        // 401/403 = no valid session — login screen stays visible
       } catch {
-        // Network error — show login screen
-      } finally {
-        setCheckingSession(false);
+        // Network error — login screen stays visible
       }
     };
     checkSession();
@@ -220,17 +217,6 @@ export function AdminDashboard() {
     return rd && rd >= today;
   }).length;
   const past = bookings.length - upcoming;
-
-  // Session check in progress
-  if (checkingSession) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-background)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <Spinner message="Checking session..." />
-        </div>
-      </div>
-    );
-  }
 
   // Login screen
   if (!authenticated) {

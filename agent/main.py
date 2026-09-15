@@ -11,6 +11,7 @@ import uuid
 import base64
 import logging
 import time
+import threading
 from datetime import datetime, date, timedelta
 from urllib.request import Request, urlopen
 from urllib.error import URLError
@@ -20,13 +21,17 @@ from google.adk.agents import LlmAgent
 from google.auth import default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from google import genai as genai_client
 
 logging.basicConfig(level=logging.INFO)
 
+_sheet_creation_lock = threading.Lock()
+
 _initialized = False
 
 def _ensure_init():
+    """Initialize Vertex AI once for this agent process."""
     global _initialized
     if not _initialized:
         p = os.environ.get('VERTEX_AI_PROJECT', 'onlineeverywhere')
@@ -114,30 +119,38 @@ def _dates_overlap(a1, a2, b1, b2):
     return a1 <= b2 and b1 <= a2
 
 def _ensure_bookings_sheet(svc):
+    """Ensure the configured spreadsheet has an initialized Bookings sheet."""
     sid = _env('SPREADSHEET_ID')
     if not sid:
         return
     try:
-        spreadsheet = svc.spreadsheets().get(spreadsheetId=sid).execute()
-        existing = [s['properties']['title'] for s in spreadsheet.get('sheets', [])]
-        if 'Bookings' not in existing:
-            svc.spreadsheets().batchUpdate(
-                spreadsheetId=sid,
-                body={'requests': [{'addSheet': {'properties': {'title': 'Bookings'}}}]},
-            ).execute()
-            svc.spreadsheets().values().update(
-                spreadsheetId=sid,
-                range='Bookings!A1',
-                valueInputOption='USER_ENTERED',
-                body={'values': [[
-                    'bookingId','status','createdAt','vehicleId','vehicleName',
-                    'pickupDate','pickupTime','returnDate','returnTime',
-                    'custName','custEmail','custPhone','custAddress',
-                    'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
-                    'paymentMethod','totalAmount','totalDays','invoiceSentAt','notes',
-                    'licensePhotoUrl',
-                ]]},
-            ).execute()
+        with _sheet_creation_lock:
+            spreadsheet = svc.spreadsheets().get(spreadsheetId=sid).execute()
+            existing = [s['properties']['title'] for s in spreadsheet.get('sheets', [])]
+            if 'Bookings' not in existing:
+                try:
+                    svc.spreadsheets().batchUpdate(
+                        spreadsheetId=sid,
+                        body={'requests': [{'addSheet': {'properties': {'title': 'Bookings'}}}]},
+                    ).execute()
+                except HttpError as e:
+                    if e.resp.status == 403 and 'conditionNotMet' in str(e):
+                        logging.info('Bookings sheet created by concurrent request — continuing')
+                    else:
+                        raise
+                svc.spreadsheets().values().update(
+                    spreadsheetId=sid,
+                    range='Bookings!A1',
+                    valueInputOption='USER_ENTERED',
+                    body={'values': [[
+                        'bookingId','status','createdAt','vehicleId','vehicleName',
+                        'pickupDate','pickupTime','returnDate','returnTime',
+                        'custName','custEmail','custPhone','custAddress',
+                        'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
+                        'paymentMethod','totalAmount','totalDays','invoiceSentAt','notes',
+                        'licensePhotoUrl',
+                    ]]},
+                ).execute()
     except Exception as e:
         logging.error(f'Sheet setup: {e}')
 

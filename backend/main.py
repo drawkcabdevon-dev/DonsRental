@@ -11,8 +11,13 @@ import base64
 import hmac
 import hashlib
 import time
+import threading
+from contextlib import contextmanager
 from datetime import datetime, date, timedelta
 from typing import Optional
+
+from google.api_core.exceptions import NotFound, PreconditionFailed
+from googleapiclient.errors import HttpError
 import uuid
 import asyncio
 from collections import defaultdict
@@ -57,13 +62,18 @@ app = FastAPI(title="Don's Rental Backend")
 # ── Thread pool for blocking I/O operations ────────────
 _executor = ThreadPoolExecutor(max_workers=4)
 
-# ── Google Sheets singleton ─────────────────────────────
-_sheets_svc = None
+# ── Locks for concurrent Google Sheets operations ──────
+_sheet_creation_lock = threading.Lock()
+_reconcile_lock = threading.Lock()
+
+# ── Thread-local Google Sheets clients ─────────────────────
+# The discovery client uses httplib2, whose transport is not thread-safe.
+_sheets_local = threading.local()
 
 def _get_sheets():
-    global _sheets_svc
-    if _sheets_svc:
-        return _sheets_svc
+    svc = getattr(_sheets_local, 'service', None)
+    if svc:
+        return svc
     if GOOGLE_SHEETS_CREDENTIALS:
         creds = service_account.Credentials.from_service_account_info(
             json.loads(GOOGLE_SHEETS_CREDENTIALS),
@@ -71,8 +81,9 @@ def _get_sheets():
         )
     else:
         creds, _ = google_default(scopes=['https://www.googleapis.com/auth/spreadsheets'])
-    _sheets_svc = build('sheets', 'v4', credentials=creds)
-    return _sheets_svc
+    svc = build('sheets', 'v4', credentials=creds)
+    _sheets_local.service = svc
+    return svc
 
 # ── Google Cloud Storage singleton ─────────────────────
 _gcs_client = None
@@ -90,6 +101,116 @@ def _get_gcs():
     else:
         _gcs_client = gcs_storage.Client()
     return _gcs_client
+
+
+class _DistributedLockUnavailable(RuntimeError):
+    """Raised when another instance holds a requested distributed lock."""
+
+
+class _GCSLease:
+    """Cross-instance lease implemented with a conditionally-created GCS object."""
+
+    def __init__(self, name: str, lease_seconds: int = 60):
+        spreadsheet_key = hashlib.sha256(SPREADSHEET_ID.encode()).hexdigest()[:16]
+        self._blob = _get_gcs().bucket(GCS_BUCKET).blob(
+            f".donsrental-locks/{spreadsheet_key}/{name}.lock"
+        )
+        self._owner = uuid.uuid4().hex
+        self._lease_seconds = lease_seconds
+        self._generation = None
+        self._stop = threading.Event()
+        self._heartbeat_thread = None
+
+    def _metadata(self) -> dict[str, str]:
+        return {
+            'owner': self._owner,
+            'expires_at': str(time.time() + self._lease_seconds),
+        }
+
+    def acquire(self, timeout: float) -> bool:
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                self._blob.metadata = self._metadata()
+                self._blob.upload_from_string(
+                    b'', content_type='application/octet-stream',
+                    if_generation_match=0, timeout=10,
+                )
+                self._generation = self._blob.generation
+                self._heartbeat_thread = threading.Thread(
+                    target=self._heartbeat, daemon=True,
+                    name='gcs-distributed-lock-heartbeat',
+                )
+                self._heartbeat_thread.start()
+                return True
+            except PreconditionFailed:
+                if self._remove_expired_lock():
+                    continue
+                if time.monotonic() >= deadline:
+                    return False
+                time.sleep(min(0.2, max(0, deadline - time.monotonic())))
+
+    def _remove_expired_lock(self) -> bool:
+        try:
+            self._blob.reload(timeout=10)
+            expires_at = float((self._blob.metadata or {}).get('expires_at', 'inf'))
+            if expires_at > time.time():
+                return False
+            self._blob.delete(
+                if_generation_match=self._blob.generation, timeout=10,
+            )
+            return True
+        except (NotFound, PreconditionFailed, ValueError):
+            # The holder renewed/released the object, or the metadata was not
+            # created by this lock implementation. Never delete it blindly.
+            return False
+
+    def _heartbeat(self):
+        interval = max(1, self._lease_seconds // 3)
+        while not self._stop.wait(interval):
+            try:
+                self._blob.metadata = self._metadata()
+                self._blob.patch(
+                    if_generation_match=self._generation, timeout=10,
+                )
+            except (NotFound, PreconditionFailed):
+                logger.error("Lost distributed lock lease for %s", self._blob.name)
+                return
+            except Exception as e:
+                # A later heartbeat can recover from a transient provider error
+                # before the current lease expires.
+                logger.warning("Could not renew distributed lock lease: %s", e)
+
+    def release(self):
+        self._stop.set()
+        if self._heartbeat_thread:
+            self._heartbeat_thread.join(timeout=12)
+        if self._generation is None:
+            return
+        try:
+            self._blob.delete(
+                if_generation_match=self._generation, timeout=10,
+            )
+        except NotFound:
+            pass
+        except PreconditionFailed:
+            logger.warning("Distributed lock lease changed before release")
+        except Exception as e:
+            # Do not mask the protected operation. The renewable lease expires
+            # automatically if a transient provider failure prevents cleanup.
+            logger.warning("Could not release distributed lock lease: %s", e)
+
+
+@contextmanager
+def _distributed_lock(name: str, timeout: float = 10):
+    """Acquire a renewable cross-instance lock and always release it."""
+    lease = _GCSLease(name)
+    if not lease.acquire(timeout):
+        raise _DistributedLockUnavailable(name)
+    try:
+        yield
+    finally:
+        lease.release()
 
 # ── Google Calendar singleton ─────────────────────────
 _calendar_svc = None
@@ -939,7 +1060,7 @@ def _parse_calendar_event(event: dict) -> dict | None:
     }
 
 
-def _reconcile_calendar_to_sheet() -> dict:
+def _reconcile_calendar_to_sheet_under_lock() -> dict:
     """Reconcile calendar events with sheet bookings. Backfills missing entries to sheet.
     
     Returns dict with stats: {total_calendar, total_sheet, backfilled, skipped, errors}.
@@ -1049,6 +1170,19 @@ def _reconcile_calendar_to_sheet() -> dict:
     
     return stats
 
+
+def _reconcile_calendar_to_sheet() -> dict:
+    """Serialize reconciliation across Cloud Run instances."""
+    if not SPREADSHEET_ID:
+        return _reconcile_calendar_to_sheet_under_lock()
+    try:
+        # The lock covers the Bookings read and every append performed by the
+        # helper, making the missing-ID check duplicate-safe across instances.
+        with _distributed_lock('bookings-mutations', timeout=0):
+            return _reconcile_calendar_to_sheet_under_lock()
+    except _DistributedLockUnavailable:
+        return {"error": "Reconciliation already in progress"}
+
 def _log_booking_notification(req: BookingRequest, ref: str):
     """Log booking details so the owner can see who booked what."""
     logger.info("=" * 50)
@@ -1120,45 +1254,51 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0) -> bo
         ]]
 
         # Ensure the Bookings sheet exists and has the correct headers
-        spreadsheet = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
-        existing = [s['properties']['title'] for s in spreadsheet.get('sheets', [])]
-        if 'Bookings' not in existing:
-            # Create new sheet with headers
-            svc.spreadsheets().batchUpdate(
-                spreadsheetId=SPREADSHEET_ID,
-                body={'requests': [{'addSheet': {'properties': {'title': 'Bookings'}}}]},
-            ).execute()
-            headers = [[
-                'bookingId','status','createdAt','vehicleId','vehicleName',
-                'pickupDate','pickupTime','returnDate','returnTime',
-                'custName','custEmail','custPhone','custAddress',
-                'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
-                'paymentMethod','totalAmount','totalDays','invoiceSentAt','notes',
-                'licensePhotoUrl',
-            ]]
-            svc.spreadsheets().values().update(
-                spreadsheetId=SPREADSHEET_ID,
-                range='Bookings!A1',
-                valueInputOption='USER_ENTERED',
-                body={'values': headers},
-            ).execute()
-        else:
-            # Sheet exists - check if licensePhotoUrl header is present
-            result = svc.spreadsheets().values().get(
-                spreadsheetId=SPREADSHEET_ID, range='Bookings!A1:1',
-            ).execute()
-            existing_headers = result.get('values', [[]])[0] if result.get('values') else []
-            if 'licensePhotoUrl' not in existing_headers:
-                # Add licensePhotoUrl header at the end
-                next_col_index = len(existing_headers)
-                col_letter = chr(ord('A') + next_col_index) if next_col_index < 26 else f"A{chr(ord('A') + next_col_index - 26)}"
+        with _sheet_creation_lock:
+            spreadsheet = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+            existing = [s['properties']['title'] for s in spreadsheet.get('sheets', [])]
+            if 'Bookings' not in existing:
+                try:
+                    svc.spreadsheets().batchUpdate(
+                        spreadsheetId=SPREADSHEET_ID,
+                        body={'requests': [{'addSheet': {'properties': {'title': 'Bookings'}}}]},
+                    ).execute()
+                except HttpError as e:
+                    if e.resp.status == 403 and 'conditionNotMet' in str(e):
+                        logger.info("Bookings sheet created by concurrent request — continuing")
+                    else:
+                        raise
+                headers = [[
+                    'bookingId','status','createdAt','vehicleId','vehicleName',
+                    'pickupDate','pickupTime','returnDate','returnTime',
+                    'custName','custEmail','custPhone','custAddress',
+                    'licenseNum','licenseExpiry','licenseIssuer','licenseClass',
+                    'paymentMethod','totalAmount','totalDays','invoiceSentAt','notes',
+                    'licensePhotoUrl',
+                ]]
                 svc.spreadsheets().values().update(
                     spreadsheetId=SPREADSHEET_ID,
-                    range=f'Bookings!{col_letter}1',
+                    range='Bookings!A1',
                     valueInputOption='USER_ENTERED',
-                    body={'values': [['licensePhotoUrl']]},
+                    body={'values': headers},
                 ).execute()
-                logger.info("Added licensePhotoUrl header to existing Bookings sheet")
+            else:
+                # Sheet exists - check if licensePhotoUrl header is present
+                result = svc.spreadsheets().values().get(
+                    spreadsheetId=SPREADSHEET_ID, range='Bookings!A1:1',
+                ).execute()
+                existing_headers = result.get('values', [[]])[0] if result.get('values') else []
+                if 'licensePhotoUrl' not in existing_headers:
+                    # Add licensePhotoUrl header at the end
+                    next_col_index = len(existing_headers)
+                    col_letter = chr(ord('A') + next_col_index) if next_col_index < 26 else f"A{chr(ord('A') + next_col_index - 26)}"
+                    svc.spreadsheets().values().update(
+                        spreadsheetId=SPREADSHEET_ID,
+                        range=f'Bookings!{col_letter}1',
+                        valueInputOption='USER_ENTERED',
+                        body={'values': [['licensePhotoUrl']]},
+                    ).execute()
+                    logger.info("Added licensePhotoUrl header to existing Bookings sheet")
 
         svc.spreadsheets().values().append(
             spreadsheetId=SPREADSHEET_ID,
@@ -1168,6 +1308,12 @@ def _append_to_sheet(req: BookingRequest, ref: str, total_cost: float = 0) -> bo
         ).execute()
         logger.info("Booking %s written to Google Sheet", ref)
         return True
+    except HttpError as e:
+        logger.error(
+            "Failed to write booking %s to Google Sheet (spreadsheet=%s, range=Bookings!A:V): %s %s",
+            ref, SPREADSHEET_ID, e.resp.status, e.reason,
+        )
+        return False
     except Exception as e:
         logger.error("Failed to write booking %s to Google Sheet: %s", ref, e)
         return False
@@ -1526,19 +1672,34 @@ async def cancel_booking(booking_id: str, request: Request, key: str = ""):
     # Find and delete from Sheet
     if SPREADSHEET_ID:
         try:
-            svc = _get_sheets()
-            result = svc.spreadsheets().values().get(
-                spreadsheetId=SPREADSHEET_ID, range='Bookings!A:V',
-            ).execute()
-            rows = result.get('values', [])
-            if len(rows) >= 2:
-                for i, row in enumerate(rows[1:], start=2):
-                    if row and row[0] == booking_id:
-                        svc.spreadsheets().batchUpdate(
-                            spreadsheetId=SPREADSHEET_ID,
-                            body={'requests': [{'deleteDimension': {'range': {'sheetId': 613814778, 'dimension': 'ROWS', 'startIndex': i - 1, 'endIndex': i}}}]}
-                        ).execute()
+            # Hold the shared lease from before the row read through the
+            # positional delete so another instance cannot shift the row.
+            with _distributed_lock('bookings-mutations'):
+                svc = _get_sheets()
+                # Look up the actual sheetId for Bookings tab
+                meta = svc.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+                bookings_sheet_id = None
+                for s in meta.get('sheets', []):
+                    if s['properties']['title'] == 'Bookings':
+                        bookings_sheet_id = s['properties']['sheetId']
                         break
+                if bookings_sheet_id is None:
+                    logger.warning("Bookings sheet not found — cannot cancel %s", booking_id)
+                else:
+                    result = svc.spreadsheets().values().get(
+                        spreadsheetId=SPREADSHEET_ID, range='Bookings!A:V',
+                    ).execute()
+                    rows = result.get('values', [])
+                    if len(rows) >= 2:
+                        for i, row in enumerate(rows[1:], start=2):
+                            if row and row[0] == booking_id:
+                                svc.spreadsheets().batchUpdate(
+                                    spreadsheetId=SPREADSHEET_ID,
+                                    body={'requests': [{'deleteDimension': {'range': {'sheetId': bookings_sheet_id, 'dimension': 'ROWS', 'startIndex': i - 1, 'endIndex': i}}}]}
+                                ).execute()
+                                break
+        except _DistributedLockUnavailable:
+            logger.warning("Timed out waiting to delete booking %s from sheet", booking_id)
         except Exception as e:
             logger.warning("Failed to delete from sheet: %s", e)
 
@@ -1686,13 +1847,17 @@ async def scan_license(req: ScanLicenseRequest):
     if "," in image_data:
         image_data = image_data.split(",", 1)[1]
 
+    MAX_SCAN_IMAGE = 5 * 1024 * 1024
+    max_base64_length = 4 * ((MAX_SCAN_IMAGE + 2) // 3)
+    if len(image_data) > max_base64_length:
+        raise HTTPException(400, f"Image too large. Max {MAX_SCAN_IMAGE} bytes.")
+
     # Validate base64
     try:
         image_bytes = base64.b64decode(image_data, validate=True)
     except Exception:
         raise HTTPException(400, "Invalid base64 image data")
 
-    MAX_SCAN_IMAGE = 5 * 1024 * 1024
     if len(image_bytes) > MAX_SCAN_IMAGE:
         raise HTTPException(400, f"Image too large ({len(image_bytes)} bytes). Max {MAX_SCAN_IMAGE} bytes.")
 
@@ -1929,11 +2094,14 @@ async def reconcile_sheet(key: str = ""):
     """
     if not ADMIN_KEY or key != ADMIN_KEY:
         raise HTTPException(403, "Forbidden")
+    if _reconcile_lock.locked():
+        return {"error": "Reconciliation already in progress"}
     
-    stats = await asyncio.get_event_loop().run_in_executor(
-        _executor, _reconcile_calendar_to_sheet
-    )
-    return stats
+    with _reconcile_lock:
+        stats = await asyncio.get_event_loop().run_in_executor(
+            _executor, _reconcile_calendar_to_sheet
+        )
+        return stats
 
 
 @app.get("/api/admin/reconcile/status")

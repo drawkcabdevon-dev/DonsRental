@@ -26,7 +26,7 @@ export function PersonalInfoForm({ data, onChange, errors = {} }: PersonalInfoFo
       <Input
         label="Email Address *"
         variant="email"
-        placeholder="you@example.com"
+        placeholder="bookings@onlineverywhere.com"
         value={data.email}
         onChange={(e) => onChange('email', e.target.value)}
         error={errors.email}
@@ -35,7 +35,7 @@ export function PersonalInfoForm({ data, onChange, errors = {} }: PersonalInfoFo
       <Input
         label="Phone Number *"
         variant="tel"
-        placeholder="+1 (246) 123-4567"
+        placeholder="+1 (246) 268-2842"
         value={data.phone}
         onChange={(e) => onChange('phone', e.target.value)}
         error={errors.phone}

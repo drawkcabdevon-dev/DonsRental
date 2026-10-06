@@ -128,11 +128,11 @@ const STEPS = [
     content: (
       <div style={{ background: '#f5f5f0', borderRadius: 14, padding: 18, border: '2px solid #2d2d2d' }}>
         <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-          {['Picanto', 'Swift', 'Corolla'].map((name, i) => (
-            <div key={name} style={{ flex: 1, padding: 10, borderRadius: 8, border: i === 1 ? '2px solid var(--color-yellow)' : '2px solid #e5e5e5', backgroundColor: i === 1 ? '#fffef0' : '#fff', textAlign: 'center' }}>
-              <div style={{ marginBottom: 6 }}><Icons.car style={{ width: 28, height: 28, stroke: i === 1 ? 'var(--color-yellow)' : '#666' }} /></div>
+          {['Swift'].map((name) => (
+            <div key={name} style={{ flex: 1, padding: 10, borderRadius: 8, border: '2px solid var(--color-yellow)', backgroundColor: '#fffef0', textAlign: 'center' }}>
+              <div style={{ marginBottom: 6 }}><Icons.car style={{ width: 28, height: 28, stroke: 'var(--color-yellow)' }} /></div>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>{name}</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-yellow)', marginTop: 4 }}>${[120, 135, 160][i]}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-yellow)', marginTop: 4 }}>$120</div>
             </div>
           ))}
         </div>
@@ -158,7 +158,7 @@ const STEPS = [
           </div>
         ))}
         <div style={{ padding: 12, backgroundColor: 'var(--color-yellow)', borderRadius: 10, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--color-black)' }}>
-          2 Days × $135 = <strong>Bds$270</strong>
+          2 Days × $120 = <strong>Bds$240</strong>
         </div>
       </div>
     ),
@@ -177,6 +177,24 @@ const STEPS = [
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', backgroundColor: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
           <Icons.bolt style={{ width: 16, height: 16, stroke: '#16a34a' }} />
           <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>License recognized instantly</span>
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: 'Details',
+    title: 'Your Details',
+    icon: Icons.phone,
+    content: (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {['Full Name *', 'Email Address *', 'Phone Number *'].map((label) => (
+          <div key={label} style={{ padding: '12px 14px', border: '2px solid #e5e5e5', borderRadius: 10, backgroundColor: '#fafafa' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#999', marginBottom: 6, letterSpacing: '0.05em' }}>{label}</div>
+            <div style={{ height: 2, width: '70%', backgroundColor: '#e0e0e0', borderRadius: 2 }} />
+          </div>
+        ))}
+        <div style={{ padding: 12, backgroundColor: 'var(--color-yellow)', borderRadius: 10, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--color-black)' }}>
+          <Icons.bolt style={{ width: 14, height: 14, stroke: 'var(--color-black)', strokeWidth: 2.5, display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Auto-filled From Profile
         </div>
       </div>
     ),
@@ -215,7 +233,7 @@ function HowItWorksTabs() {
   const [active, setActive] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => setActive((p) => (p + 1) % 4), 4000);
+    const timer = setInterval(() => setActive((p) => (p + 1) % STEPS.length), 4000);
     return () => clearInterval(timer);
   }, []);
 
@@ -430,7 +448,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)', textAlign: 'center' }}>
             <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: '0 auto var(--space-4)' }} />
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>How It Works</p>
-            <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>Four Steps. Done.</h2>
+            <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>Five Steps. Done.</h2>
           </motion.div>
 
           {/* Tabbed walkthrough */}

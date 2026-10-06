@@ -31,6 +31,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, field_validator
 from google.auth import default as google_default
 from google.oauth2 import service_account
@@ -651,6 +652,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Compress text responses (HTML/CSS/JS/JSON) — the landing page ships ~676 KB
+# of uncompressed assets without this.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # ── Simple in-memory rate limiter ──────────────────────
 class RateLimiter:
     """Token-bucket rate limiter. Allows `max_requests` per `window_seconds` per IP."""
@@ -684,6 +689,20 @@ async def rate_limit_middleware(request: Request, call_next):
         if not _rate_limiter.is_allowed(request):
             raise HTTPException(429, "Too many requests. Please try again shortly.")
     return await call_next(request)
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Baseline response hardening for every route (HSTS, nosniff, frame, referrer)."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'self'")
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    if proto == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 class ChatRequest(BaseModel):
     message: str
@@ -807,12 +826,12 @@ async def health():
 VEHICLES_FALLBACK = [
     {
         "id": "v1",
-        "name": "Standard Rental Car",
+        "name": "Suzuki Swift",
         "rate": 120,
         "seats": 5,
         "transmission": "automatic",
         "fuelType": "petrol",
-        "description": "Clean, reliable car for getting around Barbados. 2-day minimum. Weekend & weekly specials available.",
+        "description": "Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum. Weekend & weekly specials available.",
         "imageUrl": "/vehicle.png",
         "features": ["Air Conditioning", "2-Day Minimum", "Weekend Specials", "Free Drop-off"],
     }
@@ -2154,25 +2173,65 @@ async def reconcile_status(key: str = ""):
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
 
+# Real React Router routes (frontend/src/App.tsx). Anything else is a 404 —
+# the old behaviour served index.html with a 200 for every unknown path,
+# which is a soft-404 and hides dead URLs from crawlers.
+SPA_ROUTES = {"", "book", "admin", "terms", "privacy"}
+
+# Short-lived because these change on deploy/crawl, not per build.
+_REVALIDATE_DAILY = {"robots.txt", "sitemap.xml", "manifest.json"}
+
 import mimetypes
 mimetypes.init()
 
+
+def _static_cache_control(rel_path: str) -> str:
+    """Cache-Control for a file served out of frontend/dist."""
+    if rel_path == "index.html":
+        # Always revalidate so a new deploy shows up immediately.
+        return "no-cache"
+    if rel_path.startswith("assets/"):
+        # Vite content-hashes these; they are immutable for the build.
+        return "public, max-age=31536000, immutable"
+    if rel_path in _REVALIDATE_DAILY:
+        return "public, max-age=3600"
+    return "public, max-age=86400"
+
+
 if os.path.isdir(FRONTEND_DIR):
-    from fastapi.responses import FileResponse, HTMLResponse
+    from fastapi.responses import FileResponse, HTMLResponse, Response
 
     _SPA_CATCH_ALL_DEFINED = True
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        """Serve static files or fall back to index.html for SPA routing."""
+        """Serve static files, a real SPA route, or a genuine 404."""
+        root = os.path.abspath(FRONTEND_DIR)
+
         # Try to serve the exact file first
         if full_path:
-            file_path = os.path.join(FRONTEND_DIR, full_path)
-            if os.path.isfile(file_path):
+            file_path = os.path.abspath(os.path.join(FRONTEND_DIR, full_path))
+            if file_path.startswith(root + os.sep) and os.path.isfile(file_path):
+                rel_path = os.path.relpath(file_path, root).replace(os.sep, "/")
                 content_type, _ = mimetypes.guess_type(file_path)
-                return FileResponse(file_path, media_type=content_type or "application/octet-stream")
+                return FileResponse(
+                    file_path,
+                    media_type=content_type or "application/octet-stream",
+                    headers={"Cache-Control": _static_cache_control(rel_path)},
+                )
 
-        # Fall back to index.html for SPA client-side routing
-        if os.path.isfile(INDEX_HTML):
-            return FileResponse(INDEX_HTML, media_type="text/html")
-        raise HTTPException(404, "Not Found")
+        # Real SPA route → index.html (client-side router resolves it)
+        if full_path.strip("/") in SPA_ROUTES and os.path.isfile(INDEX_HTML):
+            return FileResponse(
+                INDEX_HTML,
+                media_type="text/html",
+                headers={"Cache-Control": _static_cache_control("index.html")},
+            )
+
+        # Everything else is a genuine 404, explicitly non-indexable.
+        return Response(
+            content="404 Not Found",
+            status_code=404,
+            media_type="text/plain",
+            headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"},
+        )

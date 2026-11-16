@@ -1,4 +1,4 @@
-import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence } from 'motion/react';
+import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useRef, useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Vehicle } from '../types';
@@ -91,15 +91,24 @@ function AnimCounter({ target, prefix = '', suffix = '' }: { target: number; pre
 /* ─── Marquee ──────────────────────────────────────── */
 const MARQUEE = ['Airport Pickup', 'No Booking Fees', '24/7 Online', 'Instant Confirmation', 'Full Insurance', 'Barbados Fleet', 'Free Cancellation', 'Fast & Easy'];
 function Marquee() {
+  const reduced = useReducedMotion();
   return (
     <div style={{ overflow: 'hidden', backgroundColor: 'var(--color-yellow)', padding: 'var(--space-3) 0' }}>
-      <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ duration: 25, repeat: Infinity, ease: 'linear' }} style={{ display: 'flex', width: 'max-content', gap: 'var(--space-12)' }}>
-        {[...MARQUEE, ...MARQUEE].map((item, i) => (
-          <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <Icons.bolt style={{ width: 12, height: 12, stroke: 'var(--color-black)', strokeWidth: 2.5 }} /> {item}
-          </span>
-        ))}
-      </motion.div>
+      {reduced ? (
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }} aria-hidden="true">
+          {[...MARQUEE, ...MARQUEE].map((item, _i) => (
+            <span key={i} style={{ marginRight: 'var(--space-2)' }} aria-hidden="true">{item}</span>
+          ))}
+        </span>
+      ) : (
+        <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ duration: 15, repeat: Infinity, ease: 'linear' }} style={{ display: 'flex', width: 'max-content', gap: 'var(--space-12)' }} aria-hidden="true">
+          {[...MARQUEE, ...MARQUEE].map((item, _i) => (
+            <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }} aria-hidden="true">
+              {item}
+            </span>
+          ))}
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -126,7 +135,7 @@ const STEPS = [
     title: 'Pick Your Ride',
     icon: Icons.car,
     content: (
-      <div style={{ background: '#f5f5f0', borderRadius: 14, padding: 18, border: '2px solid #2d2d2d' }}>
+      <div style={{ background: 'var(--color-light-gray)', borderRadius: 14, padding: 18, border: '2px solid var(--color-charcoal)' }}>
         <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
           {['Swift'].map((name) => (
             <div key={name} style={{ flex: 1, padding: 10, borderRadius: 8, border: '2px solid var(--color-yellow)', backgroundColor: '#fffef0', textAlign: 'center' }}>
@@ -147,7 +156,7 @@ const STEPS = [
     title: 'Set Your Dates',
     icon: Icons.calendar,
     content: (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
         {[
           { label: 'Pick-up', value: 'Aug 26, 2026 — 9:00 AM', icon: Icons.bolt },
           { label: 'Return', value: 'Aug 28, 2026 — 5:00 PM', icon: Icons.bolt },
@@ -170,7 +179,7 @@ const STEPS = [
     content: (
       <div>
         <div style={{ padding: 32, border: '3px dashed #d4d4d4', borderRadius: 14, textAlign: 'center', marginBottom: 12 }}>
-          <Icons.camera style={{ width: 44, height: 44, stroke: '#bbb', margin: '0 auto 10px' }} />
+          <Icons.camera style={{ width: 44, height: 44, stroke: '#bbb', margin: '0 auto 10x' }} />
           <div style={{ fontSize: 14, fontWeight: 700, color: '#666' }}>Tap to upload or take photo</div>
           <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>JPEG, PNG, or HEIC</div>
         </div>
@@ -204,7 +213,7 @@ const STEPS = [
     title: 'Book & Go',
     icon: Icons.check,
     content: (
-      <div style={{ backgroundColor: '#f5f5f0', borderRadius: 14, padding: 18, border: '2px solid #2d2d2d' }}>
+      <div style={{ backgroundColor: 'var(--color-light-gray)', borderRadius: 14, padding: 18, border: '2px solid var(--color-charcoal)' }}>
         <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Booking Summary</div>
         {[
           ['Vehicle', 'Suzuki Swift'],
@@ -245,7 +254,7 @@ function HowItWorksTabs() {
           const Icon = s.icon;
           const isActive = i === active;
           return (
-            <motion.button key={i} onClick={() => setActive(i)} whileHover={{ x: 6 }} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-4) var(--space-5)', backgroundColor: isActive ? 'var(--color-yellow)' : 'transparent', color: isActive ? 'var(--color-black)' : 'var(--color-dark-gray)', border: isActive ? '2px solid var(--color-yellow)' : '2px solid transparent', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left', transition: 'all 0.3s ease' }}>
+            <button key={i} onClick={() => setActive(i)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-4) var(--space-5)', backgroundColor: isActive ? 'var(--color-yellow)' : 'transparent', color: isActive ? 'var(--color-black)' : 'var(--color-dark-gray)', border: isActive ? '2px solid var(--color-yellow)' : '2px solid transparent', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left' }}>
               <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: isActive ? 'var(--color-black)' : 'var(--color-charcoal)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon style={{ width: 20, height: 20, stroke: isActive ? 'var(--color-yellow)' : 'var(--color-medium-gray)' }} />
               </div>
@@ -253,13 +262,13 @@ function HowItWorksTabs() {
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6, marginBottom: 2 }}>Step {i + 1}</div>
                 <div style={{ fontWeight: 800, fontSize: 16, textTransform: 'uppercase' }}>{s.label}</div>
               </div>
-            </motion.button>
+            </button>
           );
         })}
       </div>
 
       {/* Device frame */}
-      <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.3 }} style={{ display: 'flex', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: '100%', maxWidth: 420, backgroundColor: 'var(--color-charcoal)', borderRadius: 28, padding: '14px 14px 0', boxShadow: '0 30px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05)' }}>
           {/* Notch */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
@@ -267,14 +276,14 @@ function HowItWorksTabs() {
           </div>
           {/* Screen */}
           <AnimatePresence mode="wait">
-            <motion.div key={active} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.35 }} style={{ backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', minHeight: 340 }}>
+            <div key={active} style={{ opacity: 0, y: 20, transition: { duration: 0.35 }, backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', minHeight: 340 }}>
               <StepScreen step={active + 1} title={STEPS[active].title}>
                 {STEPS[active].content}
               </StepScreen>
-            </motion.div>
+            </div>
           </AnimatePresence>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -284,13 +293,15 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll();
+  const reducedMotion = useReducedMotion();
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 25 });
-  const heroY = useTransform(smoothProgress, [0, 0.35], [0, -150]);
-  const heroScale = useTransform(smoothProgress, [0, 0.35], [1, 0.93]);
-  const heroOpacity = useTransform(smoothProgress, [0, 0.25], [1, 0]);
-
+  const heroYBase = useTransform(smoothProgress, [0, 0.35], [0, -150]);
+  const heroScaleBase = useTransform(smoothProgress, [0, 0.35], [1, 0.93]);
+  const heroOpacityBase = useTransform(smoothProgress, [0, 0.25], [1, 0]);
+  const _heroY = reducedMotion ? 0 : heroYBase;
+  const _heroScale = reducedMotion ? 1 : heroScaleBase;
+  const _heroOpacity = reducedMotion ? 1 : heroOpacityBase;
   useEffect(() => { api.getVehicles().then(setVehicles).catch(() => {}); }, []);
 
   // Render Google button in modal when it opens
@@ -361,89 +372,69 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
       <Marquee />
 
-      {/* ═══ HERO — MOTION GRAPHIC ═════════════════════ */}
-      <motion.header ref={heroRef} style={{ y: heroY, scale: heroScale, opacity: heroOpacity }}>
-        <div className="landing-hero" style={{
-          minHeight: '100vh',
-          backgroundColor: 'var(--color-black)',
-          color: 'var(--color-white)',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          {/* Animated grid */}
-          <motion.div animate={{ backgroundPosition: ['0% 0%', '100% 100%'] }} transition={{ duration: 40, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,204,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,204,0,0.06) 1px, transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
+      {/* ═══ HERO — STATIC GRAPHIC ═════════════════════ */}
+      <header className="landing-hero" style={{
+        minHeight: '100vh',
+        backgroundColor: 'var(--color-black)',
+        color: 'var(--color-white)',
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        {/* One ambient background gradient */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,204,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,204,0,0.03) 1px, transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none' }} />
 
-          {/* Rotating bolt behind content */}
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', width: 500, height: 500, pointerEvents: 'none', opacity: 0.08 }}>
-            <Icons.bolt style={{ width: '100%', height: '100%', stroke: 'var(--color-yellow)', strokeWidth: 0.5 }} />
-          </motion.div>
+        {/* Center content */}
+        <div className="landing-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 var(--space-6)', maxWidth: 900 }}>
+          {/* Logo */}
+          <img src="/dons-rental-logo.png" alt="Don's Rental" style={{ maxWidth: 'clamp(280px, 50vw, 480px)', height: 'auto', display: 'block', margin: '0 auto' }} />
 
-          {/* Lightning flash overlay */}
-          <motion.div animate={{ opacity: [0, 0, 0, 0.15, 0, 0.08, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', inset: 0, backgroundColor: 'var(--color-yellow)', pointerEvents: 'none' }} />
+          {/* Underline */}
+          <div style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: 'var(--space-6) auto', maxWidth: 200, transformOrigin: 'center' }} />
 
-          {/* Center content */}
-          <div className="landing-hero-content" style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '0 var(--space-6)', maxWidth: 900 }}>
-            {/* Flash flicker on content */}
-            <motion.div animate={{ opacity: [1, 1, 1, 0.6, 1, 0.85, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}>
-            {/* Logo */}
-            <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }} className="landing-hero-logo" style={{ marginBottom: 'var(--space-6)' }}>
-              <motion.div animate={{ filter: ['drop-shadow(0 0 20px rgba(255,204,0,0.4))', 'drop-shadow(0 0 40px rgba(255,204,0,0.7))', 'drop-shadow(0 0 20px rgba(255,204,0,0.4))'] }} transition={{ duration: 2, repeat: Infinity }}>
-                <img src="/dons-rental-logo.png" alt="Don's Rental" style={{ maxWidth: 'clamp(280px, 50vw, 480px)', height: 'auto', display: 'block', margin: '0 auto' }} />
-              </motion.div>
-            </motion.div>
+          {/* Tagline */}
+          <p style={{ fontSize: 'clamp(1rem, 2.5vw, 1.5rem)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.7)', marginBottom: 'var(--space-2)' }}>
+            Barbados Car Rental
+          </p>
+          <p style={{ fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', color: 'rgba(255,255,255,0.8)', marginBottom: 'var(--space-10)', fontFamily: 'var(--font-mono)' }}>
+            Online Booking · Zero Phone Calls · Fast & Easy
+          </p>
 
-            {/* Animated underline */}
-            <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.8, delay: 0.8, ease: [0.16, 1, 0.3, 1] }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: 'var(--space-6) auto', maxWidth: 200, transformOrigin: 'center' }} />
-
-            {/* Tagline */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1 }} style={{ fontSize: 'clamp(1rem, 2.5vw, 1.5rem)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.7)', marginBottom: 'var(--space-2)' }}>
-              Barbados Car Rental
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1.15 }} className="landing-hero-subtitle" style={{ fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', color: 'rgba(255,255,255,0.45)', marginBottom: 'var(--space-10)', fontFamily: 'var(--font-mono)' }}>
-              Online Booking · Zero Phone Calls · Fast & Easy
-            </motion.div>
-
-            {/* CTA buttons */}
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 1.3 }} className="landing-hero-cta" style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <motion.button whileHover={{ scale: 1.06, boxShadow: '0 0 60px rgba(255,204,0,0.5)' }} whileTap={{ scale: 0.95 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                <Icons.bolt style={{ width: 20, height: 20 }} /> Book Now
-              </motion.button>
-              <motion.a whileHover={{ scale: 1.06, borderColor: 'var(--color-yellow)', color: 'var(--color-yellow)' }} whileTap={{ scale: 0.95 }} href="#how-it-works" style={{ color: 'var(--color-white)', border: '2px solid rgba(255,255,255,0.3)', padding: 'var(--space-5) var(--space-10)', fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                How It Works ↓
-              </motion.a>
-            </motion.div>
-            </motion.div>
+          {/* CTA buttons */}
+          <div style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <span style={{ width: 20, height: 20, stroke: 'var(--color-black)', strokeWidth: 2.5, display: 'inline', verticalAlign: 'middle' }} /> Book Now
+            </button>
+            <a href="#how-it-works" style={{ color: 'var(--color-white)', border: '2px solid rgba(255,255,255,0.3)', padding: 'var(--space-5) var(--space-10)', fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              How It Works ↓
+            </a>
           </div>
-
-          {/* Bottom fade */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(transparent, var(--color-black))', pointerEvents: 'none' }} />
         </div>
-      </motion.header>
+      </header>
 
-      {/* ═══ STATS ═══════════════════════════════════════ */}
-      <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7 }} style={{ backgroundColor: 'var(--color-white)' }}>
-        <div className="landing-stats" style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      {/* ═══ STATS ══════════════════════════════════════ */}
+      <section className="landing-stats" style={{ backgroundColor: 'var(--color-white)', maxWidth: 'var(--max-width-container)', margin: '0 auto' }}>
+        <div className="landing-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-4)' }}>
           {[
             { icon: Icons.clock, val: 24, pre: '', suf: '/7', label: 'Online' },
             { icon: Icons.globe, val: 100, pre: '', suf: '%', label: 'Digital' },
             { icon: Icons.bolt, val: 2, pre: '<', suf: 'min', label: 'Booking' },
             { icon: Icons.shield, val: 0, pre: '$', suf: '', label: 'Fees' },
-          ].map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: i * 0.1 }} whileHover={{ backgroundColor: 'var(--color-light-gray)' }} className="landing-stat-item" style={{ padding: 'var(--space-7) var(--space-5)', textAlign: 'center', cursor: 'default', transition: 'background-color 0.2s' }}>
+          ].map((s, _i) => (
+            <div key={s.label} style={{ padding: 'var(--space-7) var(--space-5)', textAlign: 'center', cursor: 'default' }}>
               <s.icon style={{ width: 22, height: 22, stroke: 'var(--color-yellow)', margin: '0 auto var(--space-3)' }} />
               <div style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--color-yellow)', fontFamily: 'var(--font-mono)' }}>
                 <AnimCounter target={s.val} prefix={s.pre} suffix={s.suf} />
               </div>
               <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-dark-gray)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 'var(--space-2)' }}>{s.label}</div>
-            </motion.div>
+            </div>
           ))}
         </div>
-      </motion.div>
+      </section>
 
       {/* ═══ HOW IT WORKS — Interactive Walkthrough ═════ */}
-      <section id="how-it-works" className="landing-section" style={{ padding: 'var(--space-24) var(--space-6)' }}>
+      <section id="how-it-works" className="landing-section padding-24-6">
         <div className="landing-section-inner">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)', textAlign: 'center' }}>
             <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: '0 auto var(--space-4)' }} />
@@ -464,20 +455,19 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
       {/* ═══ VEHICLES ═══════════════════════════════════ */}
       {vehicles.length > 0 && (
-        <section id="fleet" className="landing-section landing-vehicles" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-24) var(--space-6)', position: 'relative', overflow: 'hidden' }}>
+        <section id="fleet" className="landing-section landing-vehicles padding-24-6" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,204,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,204,0,0.03) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
           <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)' }}>
-              <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', marginBottom: 'var(--space-4)' }} />
+            <div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)' }}>
+              <div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', marginBottom: 'var(--space-4)' }} />
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>Our Fleet</p>
               <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>What You'll Drive</h2>
-            </motion.div>
+            </div>
             <div className="landing-vehicle-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 'var(--space-8)' }}>
-              {vehicles.map((v, i) => (
-                <motion.div key={v.id} initial={{ opacity: 0, y: 60, rotateY: -6 }} whileInView={{ opacity: 1, y: 0, rotateY: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: i * 0.15, ease: [0.16, 1, 0.3, 1] }} whileHover={{ y: -10, scale: 1.02 }} style={{ backgroundColor: 'var(--color-charcoal)', border: '2px solid var(--color-dark-gray)', overflow: 'hidden', position: 'relative' }}>
-                  <div className="landing-vehicle-img" style={{ height: 280, background: 'linear-gradient(135deg, #2d2d2d, #1a1a1a)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--color-yellow)' }}>
-                    <motion.img animate={{ y: [0, -6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} src="/vehicle.png" alt={v.name} width={400} height={280} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
-                    <motion.div initial={{ x: '-100%', opacity: 0.4 }} whileInView={{ x: '200%', opacity: 0 }} viewport={{ once: true }} transition={{ duration: 1.5, delay: 0.5 + i * 0.2 }} style={{ position: 'absolute', width: 80, height: '200%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)', transform: 'skewX(-20deg)' }} />
+              {vehicles.map((v, _i) => (
+                <div key={v.id} style={{ backgroundColor: 'var(--color-charcoal)', border: '2px solid var(--color-dark-gray)', overflow: 'hidden', position: 'relative' }}>
+                  <div className="landing-vehicle-img" style={{ height: 280, background: 'linear-gradient(135deg, var(--color-charcoal), var(--color-black))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--color-yellow)' }}>
+                    <img src={v.imageUrl || '/vehicle.png'} alt={v.name} width={400} height={280} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
                   </div>
                   <div style={{ padding: 'var(--space-6)' }}>
                     <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 'var(--space-3)' }}>{v.name}</h3>
@@ -494,12 +484,12 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
                         <span style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--color-yellow)', fontFamily: 'var(--font-mono)' }}>${v.rate}</span>
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.65)', marginLeft: 'var(--space-2)' }}>/ day</span>
                       </div>
-                      <motion.button whileHover={{ scale: 1.08, boxShadow: '0 0 25px rgba(255,204,0,0.35)' }} whileTap={{ scale: 0.94 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                         Book Now <Icons.arrowRight style={{ width: 14, height: 14 }} />
-                      </motion.button>
+                      </button>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
@@ -507,11 +497,11 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
       )}
 
       {/* ═══ HOW IT'S FAST ═════════════════════════════════ */}
-      <section className="landing-section" style={{ padding: 'var(--space-24) var(--space-6)' }}>
+      <section className="landing-section padding-24-6">
         <div className="landing-section-inner">
           <div className="landing-how-fast-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-16)', alignItems: 'center' }}>
-          <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-            <motion.div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', marginBottom: 'var(--space-4)' }} />
+          <div style={{ opacity: 0, transition: 'opacity 0.7s ease' }}>
+            <div style={{ width: 0, transition: 'width 0.6s ease 0.2s', backgroundColor: 'var(--color-yellow)', height: 4, marginBottom: 'var(--space-4)' }} />
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>Built For Speed</p>
             <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.5rem)', fontWeight: 800, textTransform: 'uppercase', marginBottom: 'var(--space-6)', lineHeight: 1.15 }}>
               Snap Your License.<br /><span style={{ color: 'var(--color-yellow)' }}>We'll Do The Rest.</span>
@@ -525,80 +515,65 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
                 { icon: Icons.check, text: 'Auto-filled personal info' },
                 { icon: Icons.shield, text: 'Secure photo storage' },
                 { icon: Icons.phone, text: 'Works with any device camera' },
-              ].map((item, i) => (
-                <motion.div key={item.text} initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }} whileHover={{ x: 8, backgroundColor: 'var(--color-light-gray)' }} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', borderLeft: '3px solid var(--color-yellow)', transition: 'all 0.2s' }}>
+              ].map((item, _i) => (
+                <div key={_i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', borderLeft: '3px solid var(--color-yellow)' }}>
                   <item.icon style={{ width: 20, height: 20, stroke: 'var(--color-yellow)', flexShrink: 0 }} />
                   <span style={{ fontSize: 'var(--font-size-base)', fontWeight: 500, color: 'var(--color-white)' }}>{item.text}</span>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div initial={{ opacity: 0, x: 50, rotateY: 8 }} whileInView={{ opacity: 1, x: 0, rotateY: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 }}>
-            <motion.div whileHover={{ rotateY: 4, rotateX: -2, scale: 1.02 }} transition={{ duration: 0.3 }} style={{ backgroundColor: 'var(--color-white)', border: '4px solid var(--color-charcoal)', padding: 'var(--space-12)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 380, position: 'relative', overflow: 'hidden', perspective: 1000 }}>
-              {/* Corner accents */}
-              <div style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderTop: '4px solid var(--color-yellow)', borderLeft: '4px solid var(--color-yellow)' }} />
-              <div style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderBottom: '4px solid var(--color-yellow)', borderRight: '4px solid var(--color-yellow)' }} />
-              <motion.img animate={{ y: [0, -10, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }} src="/dons-car.png" alt="Don's Rental car" width={180} height={240} loading="lazy" style={{ width: 180, height: 240, objectFit: 'cover', borderRadius: 12, filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.15))' }} />
+          <div style={{ opacity: 0, transition: 'opacity 0.7s ease 0.2s' }}>
+            <div style={{ backgroundColor: 'var(--color-white)', border: '4px solid var(--color-charcoal)', padding: 'var(--space-12)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 380, position: 'relative', overflow: 'hidden' }}>
               <div style={{ marginTop: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)' }}>
                 {['JPEG', 'PNG', 'HEIC'].map((fmt) => (
                   <span key={fmt} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)', padding: '3px 10px', border: '1px solid var(--color-charcoal)' }}>{fmt}</span>
                 ))}
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
           </div>
         </div>
       </section>
 
       {/* ═══ TESTIMONIAL ════════════════════════════════ */}
-      <section className="landing-section-compact" style={{ backgroundColor: 'var(--color-charcoal)', color: 'var(--color-white)', padding: 'var(--space-20) var(--space-6)', textAlign: 'center' }}>
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ maxWidth: 700, margin: '0 auto' }}>
+      <section className="landing-section-compact padding-20-6 text-center">
+        <div style={{ opacity: 0, transition: 'opacity 0.6s ease' }}>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 'var(--space-6)' }}>
-            {[1, 2, 3, 4, 5].map((s) => (
-              <motion.div key={s} initial={{ opacity: 0, scale: 0 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: s * 0.1, type: 'spring', stiffness: 300 }}>
-                <Icons.star style={{ width: 24, height: 24, color: 'var(--color-yellow)' }} />
-              </motion.div>
+            {[1, 2, 3, 4, 5].map((_s) => (
+              <Icons.star key={_s} style={{ width: 24, height: 24, color: 'var(--color-yellow)' }} />
             ))}
           </div>
           <p style={{ fontSize: 'var(--font-size-xl)', fontStyle: 'italic', lineHeight: 1.7, marginBottom: 'var(--space-6)', opacity: 0.9 }}>
             "Booked my car in 90 seconds. Snapped my license, picked dates, done. No phone calls, no waiting on hold. This is how it should be."
           </p>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase' }}>— Happy Customer, Barbados</p>
-        </motion.div>
+        </div>
       </section>
 
-      {/* ═══ CTA ════════════════════════════════════════ */}
-      <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="landing-cta-section" style={{ backgroundColor: 'var(--color-yellow)', padding: 'var(--space-24) var(--space-6)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 35, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', top: -220, right: -220, width: 520, height: 520, border: '4px solid rgba(0,0,0,0.06)', borderRadius: '50%' }} />
-        <motion.div animate={{ rotate: -360 }} transition={{ duration: 28, repeat: Infinity, ease: 'linear' }} style={{ position: 'absolute', bottom: -170, left: -170, width: 420, height: 420, border: '3px solid rgba(0,0,0,0.04)', borderRadius: '50%' }} />
-        {/* Bolt decorations */}
-        <motion.div animate={{ opacity: [0.06, 0.12, 0.06] }} transition={{ duration: 3, repeat: Infinity }} style={{ position: 'absolute', top: 40, left: 60, pointerEvents: 'none' }}>
-          <Icons.bolt style={{ width: 100, height: 100, stroke: 'var(--color-black)', strokeWidth: 1.5 }} />
-        </motion.div>
-        <motion.div animate={{ opacity: [0.04, 0.1, 0.04] }} transition={{ duration: 4, repeat: Infinity, delay: 1 }} style={{ position: 'absolute', bottom: 40, right: 80, pointerEvents: 'none' }}>
-          <Icons.bolt style={{ width: 70, height: 70, stroke: 'var(--color-black)', strokeWidth: 1.5 }} />
-        </motion.div>
+      {/* ═══ CTA ══════════════════════════════════ */}
+      <section className="landing-cta-section padding-24-6 text-center" style={{ backgroundColor: 'var(--color-yellow)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 650, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <motion.div initial={{ opacity: 0, scale: 0.5 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, type: 'spring', stiffness: 200 }} style={{ marginBottom: 'var(--space-4)' }}>
+          <div style={{ opacity: 0, transition: 'opacity 0.5s ease 0.2s', marginBottom: 'var(--space-4)' }}>
             <Icons.bolt style={{ width: 48, height: 48, stroke: 'var(--color-black)', strokeWidth: 2.5, margin: '0 auto' }} />
-          </motion.div>
-          <motion.h2 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-black)', marginBottom: 'var(--space-4)', letterSpacing: '-0.02em' }}>
+          </div>
+          <h2 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-black)', marginBottom: 'var(--space-4)', letterSpacing: '-0.02em' }}>
             Ready to Drive?
-          </motion.h2>
-          <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.15 }} style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-charcoal)', marginBottom: 'var(--space-10)', lineHeight: 1.6 }}>
+          </h2>
+          <p style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-charcoal)', marginBottom: 'var(--space-10)', lineHeight: 1.6 }}>
             No phone calls. No waiting. No middlemen.<br />Book your Barbados car rental <strong>in under 2 minutes</strong>.
-          </motion.p>
-          <motion.button initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.3 }} whileHover={{ scale: 1.06, boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }} whileTap={{ scale: 0.95 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-yellow)', border: 'none', padding: 'var(--space-6) var(--space-14)', fontSize: 'var(--font-size-xl)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          </p>
+          <button style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-yellow)', border: 'none', padding: 'var(--space-6) var(--space-14)', fontSize: 'var(--font-size-xl)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <Icons.bolt style={{ width: 22, height: 22 }} /> Book Now
-          </motion.button>
+          </button>
         </div>
-      </motion.section>
+      </section>
 
       {/* ═══ FOOTER ═════════════════════════════════════ */}
-      <footer className="landing-footer" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', padding: 'var(--space-12) var(--space-6)' }}>
+      <footer className="landing-footer">
         <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-6)' }}>
-          <motion.img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 96, width: 'auto' }} animate={{ filter: ['drop-shadow(0 0 8px rgba(255,204,0,0.4))', 'drop-shadow(0 0 20px rgba(255,204,0,0.8))', 'drop-shadow(0 0 8px rgba(255,204,0,0.4))'] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }} />
+          <img src="/dons-rental-logo.png" alt="Don's Rental" aria-hidden="true" style={{ height: 96, width: 'auto' }} />
           <div style={{ display: 'flex', gap: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.65)' }}>
             <a href="/privacy" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Privacy</a>
             <a href="/terms" style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Terms</a>
@@ -630,7 +605,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
             >
               <button className="profile-modal-close" onClick={() => setShowProfileModal(false)} aria-label="Close">✕</button>
               <div className="profile-modal-icon">
-                <Icons.bolt style={{ width: 32, height: 32, stroke: 'var(--color-yellow)', strokeWidth: 2.5 }} />
+                <Icons.bolt aria-hidden="true" style={{ width: 32, height: 32, stroke: 'var(--color-yellow)', strokeWidth: 2.5 }} />
               </div>
               <h2 className="profile-modal-title">Save time on every booking</h2>
               <p className="profile-modal-subtitle">Create a free account and your info auto-fills next time.</p>

@@ -1,4 +1,4 @@
-import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence, useReducedMotion } from 'motion/react';
+import { motion, useInView, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useRef, useState, useEffect } from 'react';
 import { api } from '../services/api';
 import type { Vehicle } from '../types';
@@ -96,13 +96,13 @@ function Marquee() {
     <div style={{ overflow: 'hidden', backgroundColor: 'var(--color-yellow)', padding: 'var(--space-3) 0' }}>
       {reduced ? (
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }} aria-hidden="true">
-          {[...MARQUEE, ...MARQUEE].map((item, _i) => (
+          {[...MARQUEE, ...MARQUEE].map((item, i) => (
             <span key={i} style={{ marginRight: 'var(--space-2)' }} aria-hidden="true">{item}</span>
           ))}
         </span>
       ) : (
         <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ duration: 15, repeat: Infinity, ease: 'linear' }} style={{ display: 'flex', width: 'max-content', gap: 'var(--space-12)' }} aria-hidden="true">
-          {[...MARQUEE, ...MARQUEE].map((item, _i) => (
+          {[...MARQUEE, ...MARQUEE].map((item, i) => (
             <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }} aria-hidden="true">
               {item}
             </span>
@@ -156,7 +156,7 @@ const STEPS = [
     title: 'Set Your Dates',
     icon: Icons.calendar,
     content: (
-      <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {[
           { label: 'Pick-up', value: 'Aug 26, 2026 — 9:00 AM', icon: Icons.bolt },
           { label: 'Return', value: 'Aug 28, 2026 — 5:00 PM', icon: Icons.bolt },
@@ -179,7 +179,7 @@ const STEPS = [
     content: (
       <div>
         <div style={{ padding: 32, border: '3px dashed #d4d4d4', borderRadius: 14, textAlign: 'center', marginBottom: 12 }}>
-          <Icons.camera style={{ width: 44, height: 44, stroke: '#bbb', margin: '0 auto 10x' }} />
+          <Icons.camera style={{ width: 44, height: 44, stroke: '#bbb', margin: '0 auto 10px' }} />
           <div style={{ fontSize: 14, fontWeight: 700, color: '#666' }}>Tap to upload or take photo</div>
           <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>JPEG, PNG, or HEIC</div>
         </div>
@@ -276,7 +276,7 @@ function HowItWorksTabs() {
           </div>
           {/* Screen */}
           <AnimatePresence mode="wait">
-            <div key={active} style={{ opacity: 0, y: 20, transition: { duration: 0.35 }, backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', minHeight: 340 }}>
+            <div key={active} style={{ backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', minHeight: 340 }}>
               <StepScreen step={active + 1} title={STEPS[active].title}>
                 {STEPS[active].content}
               </StepScreen>
@@ -293,15 +293,6 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { scrollYProgress } = useScroll();
-  const reducedMotion = useReducedMotion();
-  const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 25 });
-  const heroYBase = useTransform(smoothProgress, [0, 0.35], [0, -150]);
-  const heroScaleBase = useTransform(smoothProgress, [0, 0.35], [1, 0.93]);
-  const heroOpacityBase = useTransform(smoothProgress, [0, 0.25], [1, 0]);
-  const _heroY = reducedMotion ? 0 : heroYBase;
-  const _heroScale = reducedMotion ? 1 : heroScaleBase;
-  const _heroOpacity = reducedMotion ? 1 : heroOpacityBase;
   useEffect(() => { api.getVehicles().then(setVehicles).catch(() => {}); }, []);
 
   // Render Google button in modal when it opens
@@ -374,7 +365,6 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
       {/* ═══ HERO — STATIC GRAPHIC ═════════════════════ */}
       <header className="landing-hero" style={{
-        minHeight: '100vh',
         backgroundColor: 'var(--color-black)',
         color: 'var(--color-white)',
         position: 'relative',
@@ -403,8 +393,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
           {/* CTA buttons */}
           <div style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-              <span style={{ width: 20, height: 20, stroke: 'var(--color-black)', strokeWidth: 2.5, display: 'inline', verticalAlign: 'middle' }} /> Book Now
+            <button onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <Icons.bolt style={{ width: 20, height: 20 }} /> Book Now
             </button>
             <a href="#how-it-works" style={{ color: 'var(--color-white)', border: '2px solid rgba(255,255,255,0.3)', padding: 'var(--space-5) var(--space-10)', fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               How It Works ↓
@@ -421,8 +411,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
             { icon: Icons.globe, val: 100, pre: '', suf: '%', label: 'Digital' },
             { icon: Icons.bolt, val: 2, pre: '<', suf: 'min', label: 'Booking' },
             { icon: Icons.shield, val: 0, pre: '$', suf: '', label: 'Fees' },
-          ].map((s, _i) => (
-            <div key={s.label} style={{ padding: 'var(--space-7) var(--space-5)', textAlign: 'center', cursor: 'default' }}>
+          ].map((s) => (
+            <div key={s.label} className="landing-stat-item" style={{ padding: 'var(--space-7) var(--space-5)', textAlign: 'center', cursor: 'default' }}>
               <s.icon style={{ width: 22, height: 22, stroke: 'var(--color-yellow)', margin: '0 auto var(--space-3)' }} />
               <div style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--color-yellow)', fontFamily: 'var(--font-mono)' }}>
                 <AnimCounter target={s.val} prefix={s.pre} suffix={s.suf} />
@@ -446,8 +436,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <HowItWorksTabs />
 
           {/* Connecting line */}
-          <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.6 }} style={{ height: 3, background: 'var(--color-yellow)', marginTop: 'var(--space-10)', transformOrigin: 'left' }} />
-          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.9 }} style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-dark-gray)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.15 }} style={{ height: 3, background: 'var(--color-yellow)', marginTop: 'var(--space-10)', transformOrigin: 'left' }} />
+          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.3 }} style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-dark-gray)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             → That's it. No phone calls. No waiting.
           </motion.p>
         </div>
@@ -458,13 +448,13 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
         <section id="fleet" className="landing-section landing-vehicles padding-24-6" style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-white)', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,204,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,204,0,0.03) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
           <div style={{ maxWidth: 'var(--max-width-container)', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-            <div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ marginBottom: 'var(--space-12)' }}>
-              <div initial={{ width: 0 }} whileInView={{ width: 60 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: 4, backgroundColor: 'var(--color-yellow)', marginBottom: 'var(--space-4)' }} />
+            <div style={{ marginBottom: 'var(--space-12)' }}>
+              <div style={{ width: 60, height: 4, backgroundColor: 'var(--color-yellow)', marginBottom: 'var(--space-4)' }} />
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>Our Fleet</p>
               <h2 style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>What You'll Drive</h2>
             </div>
             <div className="landing-vehicle-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 'var(--space-8)' }}>
-              {vehicles.map((v, _i) => (
+              {vehicles.map((v) => (
                 <div key={v.id} style={{ backgroundColor: 'var(--color-charcoal)', border: '2px solid var(--color-dark-gray)', overflow: 'hidden', position: 'relative' }}>
                   <div className="landing-vehicle-img" style={{ height: 280, background: 'linear-gradient(135deg, var(--color-charcoal), var(--color-black))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--color-yellow)' }}>
                     <img src={v.imageUrl || '/vehicle.png'} alt={v.name} width={400} height={280} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
@@ -500,8 +490,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
       <section className="landing-section padding-24-6">
         <div className="landing-section-inner">
           <div className="landing-how-fast-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-16)', alignItems: 'center' }}>
-          <div style={{ opacity: 0, transition: 'opacity 0.7s ease' }}>
-            <div style={{ width: 0, transition: 'width 0.6s ease 0.2s', backgroundColor: 'var(--color-yellow)', height: 4, marginBottom: 'var(--space-4)' }} />
+          <div className="landing-reveal">
+            <div style={{ width: 60, backgroundColor: 'var(--color-yellow)', height: 4, marginBottom: 'var(--space-4)' }} />
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'var(--color-yellow)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>Built For Speed</p>
             <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.5rem)', fontWeight: 800, textTransform: 'uppercase', marginBottom: 'var(--space-6)', lineHeight: 1.15 }}>
               Snap Your License.<br /><span style={{ color: 'var(--color-yellow)' }}>We'll Do The Rest.</span>
@@ -515,8 +505,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
                 { icon: Icons.check, text: 'Auto-filled personal info' },
                 { icon: Icons.shield, text: 'Secure photo storage' },
                 { icon: Icons.phone, text: 'Works with any device camera' },
-              ].map((item, _i) => (
-                <div key={_i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', borderLeft: '3px solid var(--color-yellow)' }}>
+              ].map((item) => (
+                <div key={item.text} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', borderLeft: '3px solid var(--color-yellow)' }}>
                   <item.icon style={{ width: 20, height: 20, stroke: 'var(--color-yellow)', flexShrink: 0 }} />
                   <span style={{ fontSize: 'var(--font-size-base)', fontWeight: 500, color: 'var(--color-white)' }}>{item.text}</span>
                 </div>
@@ -524,8 +514,11 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
             </div>
           </div>
 
-          <div style={{ opacity: 0, transition: 'opacity 0.7s ease 0.2s' }}>
+          <div className="landing-reveal" style={{ animationDelay: '0.15s' }}>
             <div style={{ backgroundColor: 'var(--color-white)', border: '4px solid var(--color-charcoal)', padding: 'var(--space-12)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 380, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderTop: '4px solid var(--color-yellow)', borderLeft: '4px solid var(--color-yellow)' }} />
+              <div style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderBottom: '4px solid var(--color-yellow)', borderRight: '4px solid var(--color-yellow)' }} />
+              <img src="/dons-car.png" alt="Don's Rental car" width={180} height={240} loading="lazy" style={{ width: 180, height: 240, objectFit: 'cover', borderRadius: 12, filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.15))' }} />
               <div style={{ marginTop: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)' }}>
                 {['JPEG', 'PNG', 'HEIC'].map((fmt) => (
                   <span key={fmt} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)', padding: '3px 10px', border: '1px solid var(--color-charcoal)' }}>{fmt}</span>
@@ -539,7 +532,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
       {/* ═══ TESTIMONIAL ════════════════════════════════ */}
       <section className="landing-section-compact padding-20-6 text-center">
-        <div style={{ opacity: 0, transition: 'opacity 0.6s ease' }}>
+        <div className="landing-reveal">
           <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 'var(--space-6)' }}>
             {[1, 2, 3, 4, 5].map((_s) => (
               <Icons.star key={_s} style={{ width: 24, height: 24, color: 'var(--color-yellow)' }} />
@@ -554,8 +547,16 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
 
       {/* ═══ CTA ══════════════════════════════════ */}
       <section className="landing-cta-section padding-24-6 text-center" style={{ backgroundColor: 'var(--color-yellow)', position: 'relative', overflow: 'hidden' }}>
+        <div aria-hidden="true" style={{ position: 'absolute', top: -220, right: -220, width: 520, height: 520, border: '4px solid rgba(0,0,0,0.06)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div aria-hidden="true" style={{ position: 'absolute', bottom: -170, left: -170, width: 420, height: 420, border: '3px solid rgba(0,0,0,0.04)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div aria-hidden="true" style={{ position: 'absolute', top: 40, left: 60, opacity: 0.08, pointerEvents: 'none' }}>
+          <Icons.bolt style={{ width: 100, height: 100, stroke: 'var(--color-black)', strokeWidth: 1.5 }} />
+        </div>
+        <div aria-hidden="true" style={{ position: 'absolute', bottom: 40, right: 80, opacity: 0.07, pointerEvents: 'none' }}>
+          <Icons.bolt style={{ width: 70, height: 70, stroke: 'var(--color-black)', strokeWidth: 1.5 }} />
+        </div>
         <div style={{ maxWidth: 650, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div style={{ opacity: 0, transition: 'opacity 0.5s ease 0.2s', marginBottom: 'var(--space-4)' }}>
+          <div className="landing-reveal" style={{ marginBottom: 'var(--space-4)' }}>
             <Icons.bolt style={{ width: 48, height: 48, stroke: 'var(--color-black)', strokeWidth: 2.5, margin: '0 auto' }} />
           </div>
           <h2 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-black)', marginBottom: 'var(--space-4)', letterSpacing: '-0.02em' }}>
@@ -564,7 +565,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <p style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-charcoal)', marginBottom: 'var(--space-10)', lineHeight: 1.6 }}>
             No phone calls. No waiting. No middlemen.<br />Book your Barbados car rental <strong>in under 2 minutes</strong>.
           </p>
-          <button style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-yellow)', border: 'none', padding: 'var(--space-6) var(--space-14)', fontSize: 'var(--font-size-xl)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <button onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-yellow)', border: 'none', padding: 'var(--space-6) var(--space-14)', fontSize: 'var(--font-size-xl)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <Icons.bolt style={{ width: 22, height: 22 }} /> Book Now
           </button>
         </div>

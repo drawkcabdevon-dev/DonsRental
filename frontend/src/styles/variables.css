@@ -13,6 +13,8 @@
   --color-white: #ffffff;
   --color-yellow: #FFCC00;
   --color-yellow-dark: #e6b800;
+  --color-primary: var(--color-yellow);
+  --color-primary-dark: var(--color-yellow-dark);
   --color-yellow-accessible: #997a00; /* WCAG AA on white/light backgrounds */
   
   /* Semantic colors */
@@ -94,7 +96,7 @@
   
   /* Layout */
   --max-width-container: 1200px;
-  --header-height: 80px;
+  --header-height: 64px;
   --footer-height: 60px;
 }
 

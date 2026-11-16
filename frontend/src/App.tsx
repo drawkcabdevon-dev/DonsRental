@@ -626,10 +626,11 @@ function App() {
         {/* Chat Banner - Alternative booking method */}
         {!bookingRef && step === 1 && (
           <div className="chat-banner" style={{ 
-            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)', 
+            background: 'linear-gradient(135deg, var(--color-yellow) 0%, var(--color-yellow-dark) 100%)', 
+            backgroundColor: 'var(--color-yellow)', 
             color: 'white', 
             padding: 'var(--space-6)', 
-            borderRadius: 'var(--radius-lg)', 
+            borderRadius: 'var(--radius-3)', 
             marginBottom: 'var(--space-8)',
             display: 'flex', 
             alignItems: 'center', 

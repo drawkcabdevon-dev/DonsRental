@@ -17,6 +17,7 @@ body {
   line-height: 1.6;
   margin: 0;
   padding: 0;
+  scroll-padding-top: var(--header-height);
 }
 
 * {
@@ -69,7 +70,7 @@ p {
 }
 
 a {
-  color: var(--color-yellow);
+  color: var(--color-yellow-accessible);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
@@ -682,6 +683,10 @@ h2:focus-visible {
 /* Spacing: margin */
 .mx-auto { margin-left: auto; margin-right: auto; }
 .mb-sm { margin-bottom: var(--space-3); }
+.mb-xs { margin-bottom: var(--space-1); }
+.p-lg { padding: var(--space-8); }
+.mt-sm { margin-top: var(--space-2); }
+.pt-md { padding-top: var(--space-4); }
 .mb-md { margin-bottom: var(--space-4); }
 .mb-lg { margin-bottom: var(--space-6); }
 .mt-lg { margin-top: var(--space-6); }
@@ -3077,11 +3082,11 @@ h2:focus-visible {
 }
 
 /* Pricing package hover */
-.pricing-package {
+.pricing-package-card {
   transition: all 0.2s ease;
 }
 
-.pricing-package:hover {
+.pricing-package-card:hover {
   transform: translateY(-2px);
 }
 
@@ -3886,5 +3891,21 @@ h2:focus-visible {
 
   .nav-mobile-toggle {
     display: block !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .spinner-circle {
+    animation: none !important;
+  }
+  .calendar-day.today:not(.selected):not(.in-range)::after {
+    animation: none !important;
+  }
+  .chat-badge {
+    animation: none !important;
   }
 }

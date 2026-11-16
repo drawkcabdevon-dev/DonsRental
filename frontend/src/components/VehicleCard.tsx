@@ -87,7 +87,7 @@ export function VehicleCard({ vehicle, isSelected, onSelect }: VehicleCardProps)
       
       {isSelected && (
         <div className="mt-lg pt-lg border-t-2 border-bau-black">
-          <p className="text-sm font-bold text-bau-yellow text-uppercase"><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Selected</p>
+          <p className="text-sm font-bold text-bau-yellow-accessible text-uppercase"><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Selected</p>
         </div>
       )}
     </Card>
@@ -146,7 +146,7 @@ export function PricingPackages({ packages, selectedId, onSelect }: PricingPacka
               style={{ padding: 'var(--space-4)', textAlign: 'center' }}
             >
               <p className="text-sm font-bold text-uppercase mb-sm" style={{ letterSpacing: '0.05em' }}>{pkg.label}</p>
-              <p className="text-3xl font-extrabold text-bau-yellow mb-sm">Bds${pkg.totalCost}</p>
+              <p className="text-3xl font-extrabold text-bau-yellow-accessible mb-sm">Bds${pkg.totalCost}</p>
               <p className="text-xs text-bau-gray mb-md">Bds${pkg.dailyRate}/day &middot; {pkg.days} days</p>
               <p className="text-xs text-bau-gray">{pkg.description}</p>
               {isSelected && (
@@ -156,7 +156,7 @@ export function PricingPackages({ packages, selectedId, onSelect }: PricingPacka
                   animate={{ opacity: 1, height: 'auto' }}
                   transition={{ duration: 0.2 }}
                 >
-                  <p className="text-sm font-bold text-bau-yellow text-uppercase"><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Selected</p>
+<p className="text-sm font-bold text-bau-yellow-accessible text-uppercase"><Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Selected</p>
                 </motion.div>
               )}
             </Card>

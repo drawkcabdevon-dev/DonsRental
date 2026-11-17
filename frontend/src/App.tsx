@@ -1,7 +1,6 @@
 import type { BookingData, Vehicle, BookingStep, PricingPackage } from './types';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { api } from './services/api';
 import {
   Button,
@@ -1014,7 +1013,7 @@ function App() {
       {!isLandingPage && (
       <footer className="site-footer">
         <div className="site-footer-inner">
-          <motion.img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 84, width: 'auto', marginBottom: 'var(--space-4)' }} animate={{ filter: ['drop-shadow(0 0 8px rgba(255,204,0,0.4))', 'drop-shadow(0 0 20px rgba(255,204,0,0.8))', 'drop-shadow(0 0 8px rgba(255,204,0,0.4))'] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }} />
+          <img src="/dons-rental-logo.png" alt="Don's Rental" style={{ height: 84, width: 'auto', marginBottom: 'var(--space-4)' }} />
           <p className="site-footer-links">
             <a href="/terms">Terms &amp; Conditions</a>
             {' | '}

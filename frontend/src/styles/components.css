@@ -1539,6 +1539,9 @@ h2:focus-visible {
   .landing-stats {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+  .landing-stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
   .landing-stat-item {
     border-right: none !important;
     border-bottom: 2px solid var(--color-charcoal) !important;
@@ -1751,6 +1754,39 @@ h2:focus-visible {
     padding: var(--space-8) var(--space-4) !important;
   }
 }
+
+/* ─────────────────────────────────────────────────
+   Landing Page Section Styles
+   ───────────────────────────────────────────────── */
+
+.padding-24-6 {
+  padding: var(--space-24) var(--space-6);
+}
+
+.padding-20-6 {
+  padding: var(--space-20) var(--space-6);
+}
+
+.padding-12-6 {
+  padding: var(--space-12) var(--space-6);
+}
+
+.landing-hero {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.landing-footer {
+  background-color: var(--color-black);
+  color: var(--color-white);
+  padding: var(--space-12) var(--space-6);
+}
+
+.landing-reveal {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+/* End Landing Page Section Styles */
 
 /* ─────────────────────────────────────────────────
    Chat Widget Component

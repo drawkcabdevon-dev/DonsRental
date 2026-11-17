@@ -95,15 +95,15 @@ function Marquee() {
   return (
     <div style={{ overflow: 'hidden', backgroundColor: 'var(--color-yellow)', padding: 'var(--space-3) 0' }}>
       {reduced ? (
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }} aria-hidden="true">
-          {[...MARQUEE, ...MARQUEE].map((item, i) => (
-            <span key={i} style={{ marginRight: 'var(--space-2)' }} aria-hidden="true">{item}</span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', flexWrap: 'wrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          {MARQUEE.map((item, i) => (
+            <span key={i} style={{ marginRight: 'var(--space-2)' }} aria-hidden={i >= MARQUEE.length}>{item}</span>
           ))}
         </span>
       ) : (
-        <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ duration: 15, repeat: Infinity, ease: 'linear' }} style={{ display: 'flex', width: 'max-content', gap: 'var(--space-12)' }} aria-hidden="true">
+        <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ duration: 15, repeat: Infinity, ease: 'linear' }} style={{ display: 'flex', width: 'max-content', gap: 'var(--space-12)' }}>
           {[...MARQUEE, ...MARQUEE].map((item, i) => (
-            <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }} aria-hidden="true">
+            <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', fontWeight: 700, color: 'var(--color-black)', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }} aria-hidden={i >= MARQUEE.length}>
               {item}
             </span>
           ))}

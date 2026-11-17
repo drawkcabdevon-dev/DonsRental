@@ -456,8 +456,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
             <div className="landing-vehicle-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 'var(--space-8)' }}>
               {vehicles.map((v) => (
                 <div key={v.id} style={{ backgroundColor: 'var(--color-charcoal)', border: '2px solid var(--color-dark-gray)', overflow: 'hidden', position: 'relative' }}>
-                  <div className="landing-vehicle-img" style={{ height: 280, background: 'linear-gradient(135deg, var(--color-charcoal), var(--color-black))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--color-yellow)' }}>
-                    <img src={v.imageUrl || '/vehicle.png'} alt={v.name} width={400} height={280} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 'var(--space-4)', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
+                  <div className="landing-vehicle-img" style={{ aspectRatio: '3 / 4', background: 'linear-gradient(135deg, var(--color-charcoal), var(--color-black))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--color-yellow)' }}>
+                    <img src={v.imageUrl || '/vehicle.png'} alt={v.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
                   </div>
                   <div style={{ padding: 'var(--space-6)' }}>
                     <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 'var(--space-3)' }}>{v.name}</h3>

@@ -1569,9 +1569,6 @@ h2:focus-visible {
     grid-template-columns: 1fr !important;
     gap: var(--space-5) !important;
   }
-  .landing-vehicle-img {
-    height: 200px !important;
-  }
   .landing-vehicle-grid > div > div:last-child {
     padding: var(--space-4) !important;
   }
@@ -1724,11 +1721,6 @@ h2:focus-visible {
   }
   .landing-cta-section {
     padding: var(--space-8) var(--space-4) !important;
-  }
-
-  /* Vehicle card: reduce image height more */
-  .landing-vehicle-img {
-    height: 160px !important;
   }
 
   /* How It Works tabs: horizontal scroll */

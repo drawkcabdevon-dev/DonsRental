@@ -667,10 +667,15 @@ function App() {
                         <Calendar size={20} /> Pick a date to start
                       </h3>
                       <p className="step-column-desc">
-                        Tap any available date to jump straight to booking.
+                        Select a vehicle, then tap any available date to jump straight to booking.
                       </p>
                       <AvailabilityCalendar
                         onDateSelect={(date) => {
+                          if (!booking.vehicleId) {
+                            setError('Please select a vehicle');
+                            return;
+                          }
+                          setError('');
                           handleBookingChange('pickupDate', date);
                           const ret = new Date(date);
                           ret.setDate(ret.getDate() + 1);

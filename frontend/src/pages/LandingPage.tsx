@@ -404,7 +404,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
       </header>
 
       {/* ═══ STATS ══════════════════════════════════════ */}
-      <section className="landing-stats" style={{ backgroundColor: 'var(--color-white)', maxWidth: 'var(--max-width-container)', margin: '0 auto' }}>
+      <section className="landing-stats" style={{ backgroundColor: 'var(--color-white)', maxWidth: 'var(--max-width-container)', margin: '0 auto', border: '2px solid var(--color-yellow)', padding: 'var(--space-6)' }}>
         <div className="landing-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-4)' }}>
           {[
             { icon: Icons.clock, val: 24, pre: '', suf: '/7', label: 'Online' },

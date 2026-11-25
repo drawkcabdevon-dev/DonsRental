@@ -616,6 +616,16 @@ def create_booking(
     except Exception:
         days = 1
 
+    # Validate vehicle before availability or pricing: a missing or
+    # unknown vehicle_id must never produce a Confirmed $0 booking.
+    # This path writes straight to the Sheet and bypasses the API,
+    # which enforces the same rule (backend/main.py create_booking).
+    vehicles = get_vehicles()
+    vehicle = next((v for v in vehicles if isinstance(v, dict) and v.get('id') == vehicle_id), None)
+    if vehicle is None:
+        return {'booking_id': None, 'success': False,
+                'message': 'A valid vehicle is required to create a booking. Please choose a vehicle first.'}
+
     avail = check_availability(vehicle_id, pickup_date, return_date)
     if not avail.get('available'):
         msg = f"Vehicle '{vehicle_name}' is not available for those dates."
@@ -629,11 +639,10 @@ def create_booking(
         msg += " Suggest alternative dates or use find_available_dates to find open slots."
         return {'booking_id': None, 'success': False, 'message': msg, 'conflicts': c}
 
-    rate = 0
-    for v in get_vehicles():
-        if isinstance(v, dict) and v.get('id') == vehicle_id:
-            rate = int(v.get('rate', 0))
-            break
+    rate = int(vehicle.get('rate', 0))
+    if rate <= 0:
+        return {'booking_id': None, 'success': False,
+                'message': f"Vehicle '{vehicle_name}' has no valid rate configured."}
     total = days * rate
 
     row = [

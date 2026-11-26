@@ -1512,6 +1512,15 @@ async def create_booking(req: BookingRequest):
         raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD.")
     if return_d < pickup:
         raise HTTPException(400, "Return date must be after pickup date.")
+
+    # Validate vehicle before availability or pricing: a missing or
+    # unknown vehicleId must never produce a Confirmed $0 booking. The
+    # Nov 21 frontend fix only gated the web form; the API accepted
+    # anything, and the chat agent bypasses the API entirely.
+    vehicles = _fetch_vehicles_from_sheet()
+    vehicle = next((v for v in vehicles if v.get("id") == req.vehicleId), None)
+    if vehicle is None:
+        raise HTTPException(400, "A valid vehicle is required to create a booking.")
     if pickup and return_d:
         sheet_bookings = _fetch_bookings_from_sheet()
         for b in sheet_bookings:
@@ -1528,11 +1537,9 @@ async def create_booking(req: BookingRequest):
     days = (_dt.datetime.combine(return_d, _dt.time()) - _dt.datetime.combine(pickup, _dt.time())).days + 1
     if days < 1:
         days = 1
-    rate = 0
-    for v in _fetch_vehicles_from_sheet():
-        if v.get("id") == req.vehicleId:
-            rate = int(v.get("rate", 0))
-            break
+    rate = int(vehicle.get("rate", 0))
+    if rate <= 0:
+        raise HTTPException(400, "Vehicle has no valid rate configured.")
     total_cost = days * rate
 
     # Overwrite client-sent values with server-calculated values

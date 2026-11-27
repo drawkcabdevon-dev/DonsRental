@@ -460,6 +460,19 @@ def _normalize_expiry(value) -> str:
     return ''
 
 
+def _license_valid_for_booking(license_number: str, license_expiry: str) -> bool:
+    """True only for a licence number with a parseable, unexpired expiry."""
+    if not (license_number or '').strip():
+        return False
+    expiry = _normalize_expiry(license_expiry)
+    if not expiry:
+        return False
+    try:
+        return datetime.strptime(expiry, '%Y-%m-%d').date() >= date.today()
+    except (ValueError, TypeError):
+        return False
+
+
 def check_availability(vehicle_id: str, pickup_date: str, return_date: str) -> dict:
     """Check if a vehicle is available for the given date range.
 
@@ -603,6 +616,20 @@ def create_booking(
     Returns:
         Dict with bookingId, success, message.
     """
+    # The agent writes straight to the Sheet and bypasses the booking API,
+    # so the licence rule must be enforced here too — the instruction prompt
+    # alone cannot guarantee the licence was actually collected. Refuse
+    # before any Sheet row, calendar event or email is created.
+    if not _license_valid_for_booking(license_number, license_expiry):
+        return {
+            'booking_id': None,
+            'success': False,
+            'message': "A valid driver's licence is required to create a booking. Please provide a licence number and a valid, unexpired expiry date.",
+        }
+
+    license_number = (license_number or '').strip()
+    license_expiry = _normalize_expiry(license_expiry)
+
     b_id = _bid()
     now = datetime.utcnow().isoformat() + 'Z'
 
@@ -866,7 +893,8 @@ BOOKING FLOW — guide the customer step by step:
      If they give a duration, call find_available_dates to show open slots.
   3. Once dates are confirmed, show the vehicle info and total price.
   4. Ask for their name, email, and phone number.
-  5. Ask for their driver's license number and expiry date.
+  5. Ask for their driver's license number and expiry date. Both are mandatory;
+     create_booking refuses a missing or expired licence.
   6. Confirm ALL details before booking — summarize everything.
   7. Call create_booking. If not available, suggest alternatives.
   8. Share the booking reference and confirm an invoice was emailed.
@@ -884,6 +912,7 @@ IMPORTANT RULES:
 - If they ask something unrelated (weather, directions, etc.), briefly answer then redirect.
 - Keep responses short and friendly. Use Bds$ for prices.
 - Never make up details — use your tools to check real data.
+- Never call create_booking without a real licence number and unexpired expiry date.
 - Never ask for pickup/dropoff times — default to 09:00 and only change if they specify.
 - Always use find_available_dates when the user mentions a duration rather than specific dates.
 """

@@ -457,6 +457,24 @@ function App() {
     // Step 5 → submit booking
     setLoading(true);
     try {
+      // Final licence gate before any booking is created. Step 3 checks the
+      // same fields; this also covers a customer who navigated back and
+      // cleared them before confirming.
+      const licenseNumber = (booking.licenseNumber || '').trim();
+      const licenseExpiry = (booking.licenseExpiry || '').trim();
+      const expiryDate = licenseExpiry ? new Date(licenseExpiry) : null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (!licenseNumber || !expiryDate || Number.isNaN(expiryDate.getTime())) {
+        setError('A valid driver\'s license is required to confirm your booking');
+        return;
+      }
+      expiryDate.setHours(23, 59, 59, 999);
+      if (expiryDate < today) {
+        setError('Your license appears to be expired');
+        return;
+      }
+
       // Check availability before submitting
       const availability = await api.checkAvailability(
         booking.pickupDate!,
@@ -472,24 +490,36 @@ function App() {
         return;
       }
 
+      // Upload BEFORE creating the booking. A failed upload blocks
+      // confirmation — no "email the photo later" bypass. A licence photo
+      // already saved on the profile needs no re-upload.
+      let licensePhotoUrl = (booking.licensePhotoUrl || '').trim();
+      if (capturedImageData) {
+        try {
+          licensePhotoUrl = await api.uploadPhoto(capturedImageData);
+          setBooking((prev) => ({ ...prev, licensePhotoUrl }));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Photo upload failed';
+          setError(`Your license photo could not be uploaded (${msg}). Your booking was not confirmed — please try again.`);
+          return;
+        }
+      }
+      if (!licensePhotoUrl) {
+        setError('A photo of your driver\'s license is required to confirm your booking');
+        return;
+      }
+
       const bookingData = {
         ...booking,
+        licenseNumber,
+        licenseExpiry,
+        licensePhotoUrl,
         totalDays: calculateTotalDays(),
         totalCost: calculateTotalCost(),
       };
 
       const response = await api.createBooking(bookingData);
       if (response.success && response.bookingRef) {
-        let photoUrl = booking.licensePhotoUrl || '';
-        if (capturedImageData) {
-          try {
-            photoUrl = await api.uploadPhoto(capturedImageData, response.bookingRef);
-            setBooking((prev) => ({ ...prev, licensePhotoUrl: photoUrl }));
-          } catch {
-            // Non-fatal: booking is already created
-            addToast('warning', 'Booking confirmed but license photo upload failed. You can email a photo later.');
-          }
-        }
         setBookingRef(response.bookingRef);
         addToast('success', `Booking confirmed! Reference: ${response.bookingRef}`);
 
@@ -501,11 +531,11 @@ function App() {
               name: booking.customerName || user.name,
               phone: booking.customerPhone,
               address: booking.customerAddress,
-              licenseNumber: booking.licenseNumber,
-              licenseExpiry: booking.licenseExpiry,
+              licenseNumber,
+              licenseExpiry,
               licenseIssuer: booking.licenseIssuer,
               licenseClass: booking.licenseClass,
-              licensePhotoUrl: photoUrl,
+              licensePhotoUrl,
               googleId: user.googleId,
             });
             setProfileSaved(true);

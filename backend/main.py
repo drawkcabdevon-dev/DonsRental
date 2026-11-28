@@ -3,6 +3,7 @@ Don's Rental — Cloud Run Backend
 Proxies requests to Vertex AI Agent Engine + license OCR via Gemini.
 """
 
+import calendar
 import json
 import logging
 import os
@@ -945,6 +946,42 @@ def _parse_date(d: str) -> Optional[date]:
     except (ValueError, TypeError):
         return None
 
+def _parse_license_expiry(value: str) -> Optional[date]:
+    """Parse a licence expiry in the formats collected by the site/agent."""
+    if not value:
+        return None
+    v = str(value).strip()
+    if not v:
+        return None
+
+    parsed = _parse_date(v)
+    if parsed:
+        return parsed
+
+    # Year-only or month-year values are treated as valid through the end
+    # of that period, matching the agent's licence scanner normalisation.
+    m = re.fullmatch(r"(\d{4})", v)
+    if m:
+        try:
+            return date(int(m.group(1)), 12, 31)
+        except ValueError:
+            return None
+    m = re.fullmatch(r"([A-Za-z]+)\s+(\d{4})", v)
+    if m:
+        try:
+            month = datetime.strptime(m.group(1)[:3], "%b").month
+            year = int(m.group(2))
+            return date(year, month, calendar.monthrange(year, month)[1])
+        except (ValueError, TypeError):
+            return None
+
+    for fmt in ("%m/%d/%Y", "%d/%m/%Y", "%m-%d-%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(v, fmt).date()
+        except ValueError:
+            continue
+    return None
+
 def _dates_overlap(a1: date, a2: date, b1: date, b2: date) -> bool:
     """Check if date range [a1, a2] overlaps with [b1, b2]."""
     return a1 <= b2 and b1 <= a2
@@ -1513,6 +1550,24 @@ async def create_booking(req: BookingRequest):
     if return_d < pickup:
         raise HTTPException(400, "Return date must be after pickup date.")
 
+    # A licence is mandatory on every path into a booking. A licence already
+    # saved on the customer's profile counts as collected, so repeat
+    # customers are not asked to re-upload it. The API is called directly by
+    # clients that never see the website, so this check must live here.
+    license_fields = ("licenseNumber", "licenseExpiry", "licenseIssuer", "licenseClass", "licensePhotoUrl")
+    if any(not (getattr(req, field) or "").strip() for field in license_fields):
+        saved_license = _saved_license_for_email(req.customerEmail)
+        for field in license_fields:
+            if not (getattr(req, field) or "").strip():
+                setattr(req, field, saved_license.get(field, ""))
+    expiry = _parse_license_expiry(req.licenseExpiry)
+    if (not (req.licenseNumber or "").strip()
+            or not (req.licenseExpiry or "").strip()
+            or expiry is None
+            or expiry < date.today()
+            or not (req.licensePhotoUrl or "").strip()):
+        raise HTTPException(400, "A valid driver's licence is required to create a booking.")
+
     # Validate vehicle before availability or pricing: a missing or
     # unknown vehicleId must never produce a Confirmed $0 booking. The
     # Nov 21 frontend fix only gated the web form; the API accepted
@@ -1558,6 +1613,8 @@ async def create_booking(req: BookingRequest):
         "returnDate": req.returnDate,
         "returnTime": req.returnTime,
         "licenseNumber": req.licenseNumber,
+        "licenseExpiry": req.licenseExpiry,
+        "licensePhotoUrl": req.licensePhotoUrl,
         "totalDays": days,
         "totalCost": total_cost,
         "created": datetime.utcnow().isoformat(),
@@ -1982,6 +2039,31 @@ def _fetch_profiles_from_sheet() -> list[dict]:
     except Exception as e:
         logger.warning("Could not read profiles from sheet: %s", e)
         return []
+
+
+def _saved_license_for_email(email: str) -> dict:
+    """Return licence fields saved on a customer's profile (if any).
+
+    A saved profile licence is a collected licence: repeat customers must
+    not have to re-upload a photo or retype their number on every booking.
+    """
+    target = (email or '').strip().lower()
+    if not target:
+        return {}
+    for profile in _fetch_profiles_from_sheet():
+        if (profile.get('email', '') or '').strip().lower() != target:
+            continue
+        return {
+            field: str(profile.get(key, '') or '').strip()
+            for field, key in (
+                ('licenseNumber', 'licensenumber'),
+                ('licenseExpiry', 'licenseexpiry'),
+                ('licenseIssuer', 'licenseissuer'),
+                ('licenseClass', 'licenseclass'),
+                ('licensePhotoUrl', 'licensephotourl'),
+            )
+        }
+    return {}
 
 
 def _parse_cost(raw) -> float:

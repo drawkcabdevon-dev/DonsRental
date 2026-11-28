@@ -133,6 +133,7 @@ export const api = {
         licenseExpiry: raw.licenseexpiry || raw.licenseExpiry || '',
         licenseIssuer: raw.licenseissuer || raw.licenseIssuer || '',
         licenseClass: raw.licenseclass || raw.licenseClass || '',
+        licensePhotoUrl: raw.licensephotourl || raw.licensePhotoUrl || '',
       };
       return { profile };
     } catch {

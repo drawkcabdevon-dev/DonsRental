@@ -1,5 +1,5 @@
 import { motion, useInView, AnimatePresence, useReducedMotion } from 'motion/react';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, type MouseEvent } from 'react';
 import { api } from '../services/api';
 import type { Vehicle } from '../types';
 
@@ -303,7 +303,8 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
     }
   }, [showProfileModal, user, onRenderGoogleButton]);
 
-  const handleBookNowClick = () => {
+  const handleBookNowClick = (event?: MouseEvent<HTMLAnchorElement>) => {
+    event?.preventDefault();
     if (user) {
       onBookNow();
     } else {
@@ -338,9 +339,9 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <div className="nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
             <a href="#how-it-works" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', transition: 'color 0.2s' }}>How It Works</a>
             <a href="#fleet" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', transition: 'color 0.2s' }}>Fleet</a>
-            <motion.button whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(255,204,0,0.4)' }} whileTap={{ scale: 0.95 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-2) var(--space-5)', fontSize: 'var(--font-size-xs)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer' }}>
+            <motion.a href="/book" whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(255,204,0,0.4)' }} whileTap={{ scale: 0.95 }} onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-2) var(--space-5)', fontSize: 'var(--font-size-xs)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
               Book Now
-            </motion.button>
+            </motion.a>
           </div>
           {/* Mobile hamburger */}
           <button className="nav-mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 'var(--space-2)' }}>
@@ -354,9 +355,9 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="nav-mobile-menu" style={{ borderTop: '1px solid rgba(255,204,0,0.15)', padding: 'var(--space-4) var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', padding: 'var(--space-2) 0' }}>How It Works</a>
             <a href="#fleet" onClick={() => setMobileMenuOpen(false)} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: '0.1em', textDecoration: 'none', padding: 'var(--space-2) 0' }}>Fleet</a>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setMobileMenuOpen(false); handleBookNowClick(); }} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', textAlign: 'center' }}>
+            <motion.a href="/book" whileTap={{ scale: 0.95 }} onClick={(event) => { setMobileMenuOpen(false); handleBookNowClick(event); }} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', textAlign: 'center', textDecoration: 'none' }}>
               Book Now
-            </motion.button>
+            </motion.a>
           </motion.div>
         )}
       </motion.nav>
@@ -384,18 +385,18 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <div style={{ height: 4, backgroundColor: 'var(--color-yellow)', margin: 'var(--space-6) auto', maxWidth: 200, transformOrigin: 'center' }} />
 
           {/* Tagline */}
-          <p style={{ fontSize: 'clamp(1rem, 2.5vw, 1.5rem)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.7)', marginBottom: 'var(--space-2)' }}>
+          <h1 style={{ fontSize: 'clamp(1rem, 2.5vw, 1.5rem)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.7)', marginBottom: 'var(--space-2)' }}>
             Barbados Car Rental
-          </p>
+          </h1>
           <p style={{ fontSize: 'clamp(0.85rem, 1.5vw, 1.1rem)', color: 'rgba(255,255,255,0.8)', marginBottom: 'var(--space-10)', fontFamily: 'var(--font-mono)' }}>
             Online Booking · Zero Phone Calls · Fast & Easy
           </p>
 
           {/* CTA buttons */}
           <div style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <a href="/book" onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-5) var(--space-12)', fontSize: 'var(--font-size-lg)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textDecoration: 'none' }}>
               <Icons.bolt style={{ width: 20, height: 20 }} /> Book Now
-            </button>
+            </a>
             <a href="#how-it-works" style={{ color: 'var(--color-white)', border: '2px solid rgba(255,255,255,0.3)', padding: 'var(--space-5) var(--space-10)', fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               How It Works ↓
             </a>
@@ -457,7 +458,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
               {vehicles.map((v) => (
                 <div key={v.id} style={{ backgroundColor: 'var(--color-charcoal)', border: '2px solid var(--color-dark-gray)', overflow: 'hidden', position: 'relative' }}>
                   <div className="landing-vehicle-img" style={{ height: 280, background: 'linear-gradient(135deg, var(--color-charcoal), var(--color-black))', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '4px solid var(--color-yellow)' }}>
-                    <img src={v.imageUrl || '/vehicle.png'} alt={v.name} width={400} height={280} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
+                    <img src={v.imageUrl && !v.imageUrl.endsWith('/vehicle.png') ? v.imageUrl : '/vehicle.webp'} alt={v.name} width={400} height={280} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' }} />
                   </div>
                   <div style={{ padding: 'var(--space-6)' }}>
                     <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 'var(--space-3)' }}>{v.name}</h3>
@@ -474,9 +475,9 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
                         <span style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--color-yellow)', fontFamily: 'var(--font-mono)' }}>${v.rate}</span>
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.65)', marginLeft: 'var(--space-2)' }}>/ day</span>
                       </div>
-                      <button onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <a href="/book" onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', border: 'none', padding: 'var(--space-3) var(--space-6)', fontSize: 'var(--font-size-sm)', fontWeight: 700, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
                         Book Now <Icons.arrowRight style={{ width: 14, height: 14 }} />
-                      </button>
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -518,7 +519,7 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
             <div style={{ backgroundColor: 'var(--color-white)', border: '4px solid var(--color-charcoal)', padding: 'var(--space-12)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 380, position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderTop: '4px solid var(--color-yellow)', borderLeft: '4px solid var(--color-yellow)' }} />
               <div style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderBottom: '4px solid var(--color-yellow)', borderRight: '4px solid var(--color-yellow)' }} />
-              <img src="/dons-car.png" alt="Don's Rental car" width={180} height={240} loading="lazy" style={{ width: 180, height: 240, objectFit: 'cover', borderRadius: 12, filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.15))' }} />
+              <img src="/dons-car.webp" alt="Don's Rental car" width={360} height={480} loading="lazy" style={{ width: 180, height: 240, objectFit: 'cover', borderRadius: 12, filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.15))' }} />
               <div style={{ marginTop: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)' }}>
                 {['JPEG', 'PNG', 'HEIC'].map((fmt) => (
                   <span key={fmt} style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)', color: 'var(--color-medium-gray)', padding: '3px 10px', border: '1px solid var(--color-charcoal)' }}>{fmt}</span>
@@ -565,9 +566,9 @@ export function LandingPage({ onBookNow, user, onRenderGoogleButton }: LandingPa
           <p style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-charcoal)', marginBottom: 'var(--space-10)', lineHeight: 1.6 }}>
             No phone calls. No waiting. No middlemen.<br />Book your Barbados car rental <strong>in under 2 minutes</strong>.
           </p>
-          <button onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-yellow)', border: 'none', padding: 'var(--space-6) var(--space-14)', fontSize: 'var(--font-size-xl)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <a href="/book" onClick={handleBookNowClick} style={{ backgroundColor: 'var(--color-black)', color: 'var(--color-yellow)', border: 'none', padding: 'var(--space-6) var(--space-14)', fontSize: 'var(--font-size-xl)', fontWeight: 800, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)', textDecoration: 'none' }}>
             <Icons.bolt style={{ width: 22, height: 22 }} /> Book Now
-          </button>
+          </a>
         </div>
       </section>
 

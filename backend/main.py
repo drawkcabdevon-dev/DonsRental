@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import re
+from html import escape as html_escape
 import base64
 import hmac
 import hashlib
@@ -833,7 +834,7 @@ VEHICLES_FALLBACK = [
         "transmission": "automatic",
         "fuelType": "petrol",
         "description": "Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum. Weekend & weekly specials available.",
-        "imageUrl": "/vehicle.png",
+        "imageUrl": "/vehicle.webp",
         "features": ["Air Conditioning", "2-Day Minimum", "Weekend Specials", "Free Drop-off"],
     }
 ]
@@ -2268,10 +2269,82 @@ INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
 SPA_ROUTES = {"", "book", "admin", "terms", "privacy"}
 
 # Short-lived because these change on deploy/crawl, not per build.
-_REVALIDATE_DAILY = {"robots.txt", "sitemap.xml", "manifest.json"}
+_REVALIDATE_DAILY = {"robots.txt", "sitemap.xml", "manifest.json", "seo-routes.json"}
+
+_SEO_CONFIG_CACHE: dict = {"mtime": None, "data": None}
 
 import mimetypes
 mimetypes.init()
+
+
+def _seo_config() -> dict | None:
+    config_path = os.path.join(FRONTEND_DIR, "seo-routes.json")
+    try:
+        mtime = os.stat(config_path).st_mtime
+    except OSError:
+        return None
+    if _SEO_CONFIG_CACHE["mtime"] != mtime:
+        try:
+            with open(config_path, encoding="utf-8") as config_file:
+                _SEO_CONFIG_CACHE["data"] = json.load(config_file)
+            _SEO_CONFIG_CACHE["mtime"] = mtime
+        except (OSError, ValueError):
+            return None
+    return _SEO_CONFIG_CACHE["data"]
+
+
+def _set_head_meta(source: str, attribute: str, key: str, value: str) -> str:
+    pattern = re.compile(rf'(<meta\s+{attribute}="{re.escape(key)}"\s+content=")[^"]*(")')
+    escaped = html_escape(value, quote=True)
+    updated, count = pattern.subn(lambda match: match.group(1) + escaped + match.group(2), source)
+    if count:
+        return updated
+    tag = f'<meta {attribute}="{key}" content="{escaped}" />'
+    return updated.replace("</head>", f"  {tag}\n</head>", 1)
+
+
+def _html_for_route(full_path: str, source: str) -> tuple[str, dict]:
+    config = _seo_config()
+    if not config:
+        return source, {}
+
+    path = "/" + full_path.strip("/")
+    routes = config.get("routes", {})
+    meta = routes.get(path) or routes.get("/")
+    if not meta:
+        return source, {}
+
+    site_url = str(config.get("siteUrl", "")).rstrip("/")
+    canonical = site_url + path
+    description = str(meta.get("description", ""))
+    title = str(meta.get("title", ""))
+    robots = str(meta.get("robots", config.get("defaultRobots", "index, follow")))
+
+    result = re.sub(r"<title>.*?</title>", f"<title>{html_escape(title)}</title>", source, count=1, flags=re.S)
+    result = _set_head_meta(result, "name", "description", description)
+    result = _set_head_meta(result, "name", "robots", robots)
+    result = _set_head_meta(result, "property", "og:title", title)
+    result = _set_head_meta(result, "property", "og:description", description)
+    result = _set_head_meta(result, "property", "og:url", canonical)
+    result = _set_head_meta(result, "name", "twitter:title", title)
+    result = _set_head_meta(result, "name", "twitter:description", description)
+
+    canonical_pattern = re.compile(r'(<link\s+rel="canonical"\s+href=")[^"]*(")')
+    escaped_canonical = html_escape(canonical, quote=True)
+    result, count = canonical_pattern.subn(
+        lambda match: match.group(1) + escaped_canonical + match.group(2), result, count=1
+    )
+    if not count:
+        result = result.replace(
+            "</head>",
+            f'  <link rel="canonical" href="{escaped_canonical}" />\n</head>',
+            1,
+        )
+
+    headers = {}
+    if "noindex" in robots.lower():
+        headers["X-Robots-Tag"] = "noindex, nofollow"
+    return result, headers
 
 
 def _static_cache_control(rel_path: str) -> str:
@@ -2309,13 +2382,12 @@ if os.path.isdir(FRONTEND_DIR):
                     headers={"Cache-Control": _static_cache_control(rel_path)},
                 )
 
-        # Real SPA route → index.html (client-side router resolves it)
+        # Real SPA route → index.html with route-specific head metadata
         if full_path.strip("/") in SPA_ROUTES and os.path.isfile(INDEX_HTML):
-            return FileResponse(
-                INDEX_HTML,
-                media_type="text/html",
-                headers={"Cache-Control": _static_cache_control("index.html")},
-            )
+            with open(INDEX_HTML, encoding="utf-8") as index_file:
+                html_content, route_headers = _html_for_route(full_path, index_file.read())
+            headers = {"Cache-Control": _static_cache_control("index.html"), **route_headers}
+            return HTMLResponse(content=html_content, headers=headers)
 
         # Everything else is a genuine 404, explicitly non-indexable.
         return Response(

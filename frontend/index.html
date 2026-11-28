@@ -40,11 +40,11 @@
     <meta name="geo.region" content="BB-01" />
     <meta name="geo.placename" content="Barbados" />
 
-    <!-- Structured Data: LocalBusiness -->
+    <!-- Structured Data: AutoRental -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "LocalBusiness",
+      "@type": ["AutoRental", "LocalBusiness"],
       "@id": "https://rentals.onlineverywhere.com/#business",
       "name": "Don's Rental",
       "description": "Affordable car rental services in Barbados offering the Suzuki Swift.",
@@ -52,11 +52,20 @@
       "image": "https://rentals.onlineverywhere.com/og-image.png",
       "telephone": "+12462682842",
       "priceRange": "$$",
+      "openingHours": "Mo-Su 00:00-23:59",
+      "openingHoursSpecification": [{
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "opens": "00:00",
+        "closes": "23:59"
+      }],
       "address": {
         "@type": "PostalAddress",
-        "addressCountry": "BB",
-        "addressLocality": "Barbados"
+        "streetAddress": "Barbados",
+        "addressLocality": "Barbados",
+        "addressCountry": "BB"
       },
+      "sameAs": ["https://onlineverywhere.com/"],
       "geo": {
         "@type": "GeoCoordinates",
         "latitude": 13.1740,

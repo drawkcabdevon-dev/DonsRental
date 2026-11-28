@@ -1,0 +1,31 @@
+{
+  "siteUrl": "https://rentals.onlineverywhere.com",
+  "defaultRobots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
+  "routes": {
+    "/": {
+      "title": "Don's Rental | Affordable Car Rental in Barbados | Suzuki Swift",
+      "description": "Don's Rental offers affordable, hassle-free car rentals in Barbados. Book the Suzuki Swift online today for the best rates on the island.",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    },
+    "/book": {
+      "title": "Book a Car in Barbados Online | Don's Rental",
+      "description": "Reserve your Barbados car rental online in minutes. Choose your vehicle, dates and licence details — no phone calls, no waiting.",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    },
+    "/terms": {
+      "title": "Terms & Conditions | Don's Rental Barbados",
+      "description": "Read the Don's Rental terms for car rentals in Barbados, including booking, cancellation, payment and liability policies.",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    },
+    "/privacy": {
+      "title": "Privacy Policy | Don's Rental Barbados",
+      "description": "How Don's Rental handles customer, booking and driver licence information for car rentals in Barbados.",
+      "robots": "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    },
+    "/admin": {
+      "title": "Admin | Don's Rental",
+      "description": "Private administration area for Don's Rental.",
+      "robots": "noindex, nofollow"
+    }
+  }
+}

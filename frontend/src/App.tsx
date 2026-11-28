@@ -20,6 +20,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { useStepTransition } from './hooks/useAnimations';
+import { useRouteHead } from './hooks/useRouteHead';
 import { Check, X, AlertTriangle, MessageSquare, Calendar, Car, Zap, ArrowLeft, ArrowRight, CircleCheck } from 'lucide-react';
 
 interface Toast {
@@ -47,6 +48,7 @@ let _toastId = 0;
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  useRouteHead();
   const isLandingPage = location.pathname === '/';
   const [step, setStep] = useState<BookingStep>(1);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);

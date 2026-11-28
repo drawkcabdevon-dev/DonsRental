@@ -300,7 +300,7 @@ def get_vehicles() -> list:
                 'transmission': v.get('transmission', 'automatic'),
                 'description': v.get('description', ''),
                 'features': v.get('features', 'Air Conditioning'),
-                'image_url': v.get('imageurl', v.get('imageUrl', '/vehicle.png')),
+                'image_url': v.get('imageurl', v.get('imageUrl', '/vehicle.webp')),
             })
         return result
     return [
@@ -308,7 +308,7 @@ def get_vehicles() -> list:
          'seats': '5', 'transmission': 'automatic',
          'description': 'Clean, reliable Suzuki Swift for getting around Barbados. 2-day minimum.',
          'features': 'Air Conditioning, 2-Day Minimum, Weekend Specials, Free Drop-off',
-         'image_url': '/vehicle.png'},
+         'image_url': '/vehicle.webp'},
     ]
 
 

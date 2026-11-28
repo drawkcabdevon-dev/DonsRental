@@ -23,7 +23,7 @@ export const api = {
           transmission: 'automatic',
           fuelType: 'petrol',
           description: 'Clean, reliable car for getting around Barbados. 2-day minimum. Weekend & weekly specials available.',
-          imageUrl: '/vehicle.png',
+          imageUrl: '/vehicle.webp',
           features: ['Air Conditioning', '2-Day Minimum', 'Weekend Specials', 'Free Drop-off'],
         },
       ];
